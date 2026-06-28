@@ -71,7 +71,10 @@ class Resolver {
 			const data = await response.json() as { response: string };
 			const parsed = JSON.parse(data.response) as ParsedCommand;
 
-			return this._createCommand(parsed);
+			const command = this._createCommand(parsed);
+
+			console.debug(`[Resolver] "${input}" → ${JSON.stringify(command)}`);
+			return command;
 		} catch (error) {
 			throw new Error(
 				`Failed to resolve command: ${error instanceof Error ? error.message : "Unknown error"}`,
