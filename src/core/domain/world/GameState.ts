@@ -3,6 +3,7 @@ import NPC from "../npc/Npc";
 import Player from "../player/Player";
 import Item from "./Item";
 import WorldClock from "./WorldClock";
+import Location from "./Location";
 
 class GameState {
 	metadata: {
@@ -10,7 +11,7 @@ class GameState {
 		createdTimestamp: number;
 	};
 	worldClock: WorldClock;
-	currentLocation: WebGLUniformLocation;
+	currentLocation: Location;
 	player: Player;
 	spellbook: SpellBook;
 	inventory: {
@@ -36,7 +37,7 @@ class GameState {
 			createdTimestamp: Date.now(),
 		};
 		this.worldClock = new WorldClock();
-		this.currentLocation = "startingVillage";
+		this.currentLocation = new Location();
 		this.player = new Player();
 		this.spellbook = new SpellBook();
 		this.inventory = {

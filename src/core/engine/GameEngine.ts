@@ -1,6 +1,14 @@
-import { CommandSchema, IGameEngine } from "../../types";
+import { IGameEngine } from "../../types";
 import GameState from "../domain/world/GameState";
 import Resolver from "./Resolver";
+import { MoveCommand } from "../../ui/cli/commands/Move";
+import { TalkCommand } from "../../ui/cli/commands/Talk";
+import { StudyCommand } from "../../ui/cli/commands/Study";
+import { InteractCommand } from "../../ui/cli/commands/Interact";
+import { RestCommand } from "../../ui/cli/commands/Rest";
+import { SaveCommand } from "../../ui/cli/commands/Save";
+import { LoadCommand } from "../../ui/cli/commands/Load";
+import { Command } from "../../ui/cli/commands/Command";
 
 class GameEngine implements IGameEngine {
 	public state: GameState;
@@ -24,130 +32,106 @@ class GameEngine implements IGameEngine {
 		return this.state;
 	}
 
-	private async _executeCommand(command: CommandSchema): Promise<void> {
-		switch (command.type) {
-			case "MOVE":
-				this._handleMove(command);
-				break;
-			case "TALK":
-				this._handleTalk(command);
-				break;
-			case "STUDY":
-				this._handleStudy(command);
-				break;
-			case "INTERACT":
-				this._handleInteract(command);
-				break;
-			case "REST":
-				this._handleRest(command);
-				break;
-			case "SAVE":
-				this._handleSave(command);
-				break;
-			case "LOAD":
-				this._handleLoad(command);
-				break;
+	private async _executeCommand(command: Command): Promise<void> {
+		if (command instanceof MoveCommand) {
+			this._handleMove(command);
+		} else if (command instanceof TalkCommand) {
+			this._handleTalk(command);
+		} else if (command instanceof StudyCommand) {
+			this._handleStudy(command);
+		} else if (command instanceof InteractCommand) {
+			this._handleInteract(command);
+		} else if (command instanceof RestCommand) {
+			this._handleRest(command);
+		} else if (command instanceof SaveCommand) {
+			this._handleSave(command);
+		} else if (command instanceof LoadCommand) {
+			this._handleLoad(command);
 		}
 	}
 
-	private _handleMove(command: CommandSchema): void {
-		if (!command.target) {
-			this.state.output = "Where would you like to go?";
-			return;
-		}
+	private _handleMove(command: MoveCommand): void {
+		const previousLocation = this.state.currentLocation;
+		const destinationLocation = command.destination as string;
 
-		const previousLocation = this.state.currentLocation as string;
-		this.state.currentLocation =
-			command.target as unknown as WebGLUniformLocation;
-		this.state.recentEvents.push(
-			`Moved from ${previousLocation} to ${command.target}`,
-		);
-		this.state.output = `You traveled to ${command.target}.`;
+		if (
+			previousLocation.connectedLocationsIds.some(
+				(locationId) => locationId === destinationLocation,
+			)
+		) {
+			this.state.currentLocation =
+				command.destination as unknown as Location;
+			this.state.recentEvents.push(
+				`Moved from ${previousLocation} to ${command.destination}`,
+			);
+			this.state.output = `You traveled to ${command.destination}.`;
+		} else {
+			this.state.output = `You can't move to ${command.destination} from ${previousLocation}.`;
+			this.state.recentEvents.push(
+				`Failed to move from ${previousLocation} to ${command.destination}`,
+			);
+		}
 	}
 
-	private _handleTalk(command: CommandSchema): void {
-		if (!command.target) {
-			this.state.output = "Who would you like to talk to?";
-			return;
-		}
-
+	private _handleTalk(command: TalkCommand): void {
 		const npc = this.state.knownNPCs.find(
-			(n) => n.name.toLowerCase() === command.target?.toLowerCase(),
+			(n) => n.name.toLowerCase() === command.npcName.toLowerCase(),
 		);
 		if (!npc) {
-			this.state.output = `You don't see anyone named ${command.target} here.`;
+			this.state.output = `You don't see anyone named ${command.npcName} here.`;
 			return;
 		}
 
-		this.state.recentEvents.push(`Talked to ${command.target}`);
-		this.state.output = `You talked to ${command.target}. They seem interested in what you have to say.`;
+		this.state.recentEvents.push(`Talked to ${command.npcName}`);
+		this.state.output = `You talked to ${command.npcName}. They seem interested in what you have to say.`;
 	}
 
-	private _handleStudy(command: CommandSchema): void {
-		if (!command.target) {
-			this.state.output = "What would you like to study?";
-			return;
-		}
-
+	private _handleStudy(command: StudyCommand): void {
 		const spell = this.state.spellbook.spells?.find(
-			(s) => s.name.toLowerCase() === command.target?.toLowerCase(),
+			(s) => s.name.toLowerCase() === command.spellName.toLowerCase(),
 		);
 		if (!spell) {
-			this.state.output = `You don't know a spell called ${command.target}.`;
+			this.state.output = `You don't know a spell called ${command.spellName}.`;
 			return;
 		}
 
-		this.state.recentEvents.push(`Studied ${command.target}`);
-		this.state.output = `You spent time studying ${command.target}. You feel more proficient now.`;
+		this.state.recentEvents.push(`Studied ${command.spellName}`);
+		this.state.output = `You spent time studying ${command.spellName}. You feel more proficient now.`;
 	}
 
-	private _handleInteract(command: CommandSchema): void {
-		if (!command.target) {
-			this.state.output = "What would you like to interact with?";
-			return;
-		}
-
+	private _handleInteract(command: InteractCommand): void {
 		const item = this.state.inventory.items.find(
-			(i) => i.name.toLowerCase() === command.target?.toLowerCase(),
+			(i) => i.name.toLowerCase() === command.targetName.toLowerCase(),
 		);
 		if (!item) {
-			this.state.output = `You don't have anything called ${command.target}.`;
+			this.state.output = `You don't have anything called ${command.targetName}.`;
 			return;
 		}
 
-		this.state.recentEvents.push(`Interacted with ${command.target}`);
-		this.state.output = `You interacted with ${command.target}. Something happened!`;
+		this.state.recentEvents.push(
+			`Interacted with ${command.targetName} using ${command.actionType}`,
+		);
+		this.state.output = `You ${command.actionType} ${command.targetName}. Something happened!`;
 	}
 
-	private _handleRest(command: CommandSchema): void {
-		const duration = (command.params?.duration as number) || 1;
-		this.state.worldClock.advanceTime(duration * 60);
+	private _handleRest(command: RestCommand): void {
+		this.state.worldClock.advanceTime(command.duration * 60);
 		this.state.player.health = Math.min(
 			100,
-			this.state.player.health + 20 * duration,
+			this.state.player.health + 20 * command.duration,
 		);
-		this.state.recentEvents.push(`Rested for ${duration} hour(s)`);
-		this.state.output = `You rested for ${duration} hour(s). You feel refreshed!`;
+		this.state.recentEvents.push(`Rested for ${command.duration} hour(s)`);
+		this.state.output = `You rested for ${command.duration} hour(s) at ${command.location}. You feel refreshed!`;
 	}
 
-	private _handleSave(command: CommandSchema): void {
-		const filename =
-			(command.params?.filename as string) ||
-			command.target ||
-			"autosave";
-		this.state.recentEvents.push(`Game saved as ${filename}`);
-		this.state.output = `Game saved as '${filename}'.`;
-		// TODO: Implement actual file persistence
+	private _handleSave(command: SaveCommand): void {
+		this.state.recentEvents.push(`Game saved as ${command.filename}`);
+		this.state.output = `Game saved as '${command.filename}'.`;
 	}
 
-	private _handleLoad(command: CommandSchema): void {
-		const filename =
-			(command.params?.filename as string) ||
-			command.target ||
-			"autosave";
-		this.state.recentEvents.push(`Loaded game from ${filename}`);
-		this.state.output = `Loaded game from '${filename}'.`;
-		// TODO: Implement actual file loading
+	private _handleLoad(command: LoadCommand): void {
+		this.state.recentEvents.push(`Loaded game from ${command.filename}`);
+		this.state.output = `Loaded game from '${command.filename}'.`;
 	}
 }
 

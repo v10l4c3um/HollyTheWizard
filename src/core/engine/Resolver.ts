@@ -1,3 +1,18 @@
+import { Command } from "../../ui/cli/commands/Command";
+import { MoveCommand } from "../../ui/cli/commands/Move";
+import { TalkCommand } from "../../ui/cli/commands/Talk";
+import { StudyCommand } from "../../ui/cli/commands/Study";
+import { InteractCommand } from "../../ui/cli/commands/Interact";
+import { RestCommand } from "../../ui/cli/commands/Rest";
+import { SaveCommand } from "../../ui/cli/commands/Save";
+import { LoadCommand } from "../../ui/cli/commands/Load";
+
+interface ParsedCommand {
+	type: string;
+	target?: string;
+	params?: Record<string, unknown>;
+}
+
 class Resolver {
 	private ollamaEndpoint: string = "http://localhost:11434/api/generate";
 	private model: string = "ollama";
@@ -28,6 +43,8 @@ class Resolver {
 					direction: { type: "string" },
 					duration: { type: "number" },
 					filename: { type: "string" },
+					actionType: { type: "string" },
+					location: { type: "string" },
 				},
 				additionalProperties: true,
 			},
@@ -35,7 +52,7 @@ class Resolver {
 		required: ["type"],
 	};
 
-	async resolve(input: string): Promise<CommandSchema> {
+	async resolve(input: string): Promise<Command> {
 		const prompt = this._buildPrompt(input);
 
 		try {
@@ -57,9 +74,9 @@ class Resolver {
 			}
 
 			const data = await response.json();
-			const parsed = JSON.parse(data.response) as CommandSchema;
+			const parsed = JSON.parse(data.response) as ParsedCommand;
 
-			return this._validateCommand(parsed);
+			return this._createCommand(parsed);
 		} catch (error) {
 			throw new Error(
 				`Failed to resolve command: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -84,38 +101,46 @@ User input: "${input}"
 Extract the command type, target (if applicable), and any parameters. Respond with only valid JSON.`;
 	}
 
-	private _validateCommand(command: unknown): CommandSchema {
-		if (typeof command !== "object" || command === null) {
-			throw new Error("Invalid command format");
+	private _createCommand(parsed: ParsedCommand): Command {
+		const { type, target, params } = parsed;
+
+		switch (type) {
+			case "MOVE":
+				return new MoveCommand(
+					target || "unknown",
+					(params?.distance as number) || 1,
+				);
+			case "TALK":
+				return new TalkCommand(
+					target || "someone",
+					params?.conversationTopic as string | undefined,
+				);
+			case "STUDY":
+				return new StudyCommand(
+					target || "unknown spell",
+					(params?.duration as number) || 1,
+				);
+			case "INTERACT":
+				return new InteractCommand(
+					target || "object",
+					(params?.actionType as string) || "use",
+				);
+			case "REST":
+				return new RestCommand(
+					(params?.duration as number) || 1,
+					(params?.location as string) || "current location",
+				);
+			case "SAVE":
+				return new SaveCommand(
+					(params?.filename as string) || target || "autosave",
+				);
+			case "LOAD":
+				return new LoadCommand(
+					(params?.filename as string) || target || "autosave",
+				);
+			default:
+				throw new Error(`Unknown command type: ${type}`);
 		}
-
-		const cmd = command as Record<string, unknown>;
-
-		if (!cmd.type || typeof cmd.type !== "string") {
-			throw new Error("Command must have a type");
-		}
-
-		const validTypes = [
-			"MOVE",
-			"TALK",
-			"STUDY",
-			"INTERACT",
-			"REST",
-			"SAVE",
-			"LOAD",
-		];
-		if (!validTypes.includes(cmd.type)) {
-			throw new Error(`Invalid command type: ${cmd.type}`);
-		}
-
-		return {
-			type: cmd.type as CommandSchema["type"],
-			target: typeof cmd.target === "string" ? cmd.target : undefined,
-			params:
-				typeof cmd.params === "object"
-					? (cmd.params as Record<string, unknown>)
-					: undefined,
-		};
 	}
 }
 

@@ -5,12 +5,6 @@ export interface IGameEngine {
 	handleCommand(input: string): Promise<GameState>;
 }
 
-export interface CommandSchema {
-	type: CommandType;
-	target?: string;
-	params?: Record<string, unknown>;
-}
-
 export enum CommandType {
 	MOVE = "MOVE",
 	TALK = "TALK",
