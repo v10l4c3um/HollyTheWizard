@@ -13,6 +13,18 @@ class WorldClock {
 	advanceTime(minutes: number): void {
 		this.minutesOfDay = (this.minutesOfDay + minutes) % 1440;
 	}
+
+	getMinutesOfDay(): number {
+		return this.minutesOfDay;
+	}
+
+	getCurrentTime(): string {
+		const h = Math.floor(this.minutesOfDay / 60);
+		const m = this.minutesOfDay % 60;
+		const ampm = h >= 12 ? "PM" : "AM";
+		const display_h = h === 0 ? 12 : h > 12 ? h - 12 : h;
+		return `${display_h}:${String(m).padStart(2, "0")} ${ampm}`;
+	}
 }
 
 export default WorldClock;

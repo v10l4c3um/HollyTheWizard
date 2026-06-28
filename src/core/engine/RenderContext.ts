@@ -7,4 +7,9 @@ export interface RenderContext {
 	nearbyNPCNames: string[];
 	recentEvents: string[];
 	narrationMode: string;
+	timePassed?: {
+		minutes: number;
+		beforeTimeOfDay: string;
+		afterTimeOfDay: string;
+	};
 }

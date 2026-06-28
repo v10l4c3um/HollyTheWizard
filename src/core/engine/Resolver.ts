@@ -4,7 +4,6 @@ import { OllamaConfig } from "./OllamaConfig";
 interface ParsedCommand {
 	type: string;
 	target?: string;
-	targetName: string;
 	params?: Record<string, unknown>;
 }
 
@@ -97,11 +96,11 @@ Available commands:
 
 User input: "${input}"
 
-Extract the command type, the target id (if applicable), the target name (if applicable), and any parameters. Respond with only valid JSON.`;
+Extract the command type, the target id (if applicable), and any parameters. Respond with only valid JSON.`;
 	}
 
 	private _createCommand(parsed: ParsedCommand): Command {
-		const { type, target, targetName, params } = parsed;
+		const { type, target, params } = parsed;
 
 		switch (type) {
 			case "MOVE":

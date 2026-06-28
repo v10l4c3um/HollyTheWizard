@@ -41,8 +41,21 @@ class GameEngine implements IGameEngine {
 				this.state.discoveredLocationIds.push(result.stateChanges.newDiscoveredLocationId);
 			}
 
+			let timePassed: { minutes: number; beforeTimeOfDay: string; afterTimeOfDay: string } | undefined;
+			if (result.timeCost.type === "minutes") {
+				const beforeTimeOfDay = this.state.worldClock.timeOfDay;
+				this.state.worldClock.advanceTime(result.timeCost.amount);
+				const afterTimeOfDay = this.state.worldClock.timeOfDay;
+				timePassed = {
+					minutes: result.timeCost.amount,
+					beforeTimeOfDay,
+					afterTimeOfDay,
+				};
+				console.log(`[TIME DEBUG] ${result.timeCost.amount} minutes passed | ${beforeTimeOfDay} → ${afterTimeOfDay} | Current time: ${this.state.worldClock.getCurrentTime()}`);
+			}
+
 			this.state.output = await this.renderer.render(
-				this._buildRenderContext(result.briefOutput),
+				this._buildRenderContext(result.briefOutput, timePassed),
 			);
 		} catch (error) {
 			this.state.output = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
@@ -51,7 +64,10 @@ class GameEngine implements IGameEngine {
 		return this.state;
 	}
 
-	private _buildRenderContext(briefOutput: string): RenderContext {
+	private _buildRenderContext(
+		briefOutput: string,
+		timePassed?: { minutes: number; beforeTimeOfDay: string; afterTimeOfDay: string },
+	): RenderContext {
 		const location = this.registry.getLocation(this.state.currentLocationId);
 		const nearbyNPCNames = this.state.knownNPCIds
 			.map((id) => this.registry.getNPC(id)?.name ?? id);
@@ -65,6 +81,7 @@ class GameEngine implements IGameEngine {
 			nearbyNPCNames,
 			recentEvents: this.state.recentEvents.slice(-5),
 			narrationMode: this.state.settings.narrationMode,
+			timePassed,
 		};
 	}
 }

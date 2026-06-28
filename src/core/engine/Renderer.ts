@@ -40,6 +40,10 @@ class Renderer {
 				? `Recent events: ${ctx.recentEvents.slice(-3).join("; ")}.`
 				: "";
 
+		const timeInfo = ctx.timePassed
+			? `Time passed: ${ctx.timePassed.minutes} minutes (${ctx.timePassed.beforeTimeOfDay} → ${ctx.timePassed.afterTimeOfDay}). Mention this naturally if relevant.`
+			: "";
+
 		return `You are a narrator for a fantasy RPG.
 
 Write a single immersive paragraph (3-5 sentences) in second person.
@@ -56,6 +60,7 @@ Location: ${ctx.locationName} — ${ctx.locationDescription}
 Time of day: ${ctx.timeOfDay}
 ${npcs}
 ${recentEvents}
+${timeInfo}
 Narration style: ${ctx.narrationMode}
 
 What just happened (brief): ${ctx.briefOutput}

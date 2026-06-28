@@ -2,6 +2,7 @@ import { Command } from "../../ui/cli/commands/Command";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { TurnResult } from "./TurnResult";
+import { TimeCost } from "./TimeCost";
 
 class TurnResolver {
 	apply(command: Command, state: GameState, registry: Registry): TurnResult {
@@ -52,6 +53,7 @@ class TurnResolver {
 			return {
 				briefOutput: "You seem to be nowhere. Something is wrong.",
 				events: [],
+				timeCost: { type: "none" },
 				stateChanges: {},
 			};
 		}
@@ -60,6 +62,7 @@ class TurnResolver {
 			return {
 				briefOutput: `There is no "${destinationId}" here.`,
 				events: [],
+				timeCost: { type: "none" },
 				stateChanges: {},
 			};
 		}
@@ -75,6 +78,7 @@ class TurnResolver {
 				events: [
 					`Failed to move from ${current.displayName} to ${destinationDisplayName}`,
 				],
+				timeCost: { type: "minutes", amount: 2 },
 				stateChanges: {},
 			};
 		}
@@ -84,6 +88,7 @@ class TurnResolver {
 			events: [
 				`Moved from ${current.displayName} to ${destinationDisplayName}`,
 			],
+			timeCost: { type: "minutes", amount: 5 },
 			stateChanges: {
 				currentLocationId: destinationId,
 				newDiscoveredLocationId: isNew ? destinationId : undefined,
@@ -97,13 +102,15 @@ class TurnResolver {
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
-		if (!state.knownNPCIds.includes(npcId)) {
-			return {
-				briefOutput: `You don't see anyone with id "${npcId}" here.`,
-				events: [],
-				stateChanges: {},
-			};
-		}
+		// Note: Removed the check for known NPCs to allow talking to any NPC, even if not known yet.
+		// if (!state.knownNPCIds.includes(npcId)) {
+		// 	return {
+		// 		briefOutput: `You don't know anyone with id "${npcId}" here.`,
+		// 		events: [],
+		// 		timeCost: { type: "none" },
+		// 		stateChanges: {},
+		// 	};
+		// }
 
 		const npc = registry.getNPC(npcId);
 		const npcName = npc?.name ?? npcId;
@@ -112,6 +119,7 @@ class TurnResolver {
 		return {
 			briefOutput: `You talked to ${npcName}${topicSuffix}. They seem interested in what you have to say.`,
 			events: [`Talked to ${npcId}`],
+			timeCost: { type: "minutes", amount: 15 },
 			stateChanges: {},
 		};
 	}
@@ -128,12 +136,13 @@ class TurnResolver {
 			const briefOutput = known
 				? `You haven't learned ${known.name} yet.`
 				: `There is no spell with id "${spellId}".`;
-			return { briefOutput, events: [], stateChanges: {} };
+			return { briefOutput, events: [], timeCost: { type: "none" }, stateChanges: {} };
 		}
 
 		return {
 			briefOutput: `You spent ${duration} hour(s) studying ${spell.name}. You feel more proficient now.`,
 			events: [`Studied ${spellId} for ${duration}h`],
+			timeCost: { type: "minutes", amount: 30 * duration },
 			stateChanges: {},
 		};
 	}
@@ -148,6 +157,7 @@ class TurnResolver {
 			return {
 				briefOutput: `You don't have an item with id "${itemId}".`,
 				events: [],
+				timeCost: { type: "none" },
 				stateChanges: {},
 			};
 		}
@@ -155,6 +165,7 @@ class TurnResolver {
 		return {
 			briefOutput: `You ${actionType} ${item.name}. Something happened!`,
 			events: [`${actionType} ${itemId}`],
+			timeCost: { type: "minutes", amount: 10 },
 			stateChanges: {},
 		};
 	}
@@ -172,6 +183,7 @@ class TurnResolver {
 		return {
 			briefOutput: `You rested for ${duration} hour(s) at ${locName}. You feel refreshed!`,
 			events: [`Rested for ${duration} hour(s) at ${locId}`],
+			timeCost: { type: "minutes", amount: 60 * duration },
 			stateChanges: {},
 		};
 	}
@@ -180,6 +192,7 @@ class TurnResolver {
 		return {
 			briefOutput: `Game saved as '${filename}'.`,
 			events: [`Game saved as ${filename}`],
+			timeCost: { type: "none" },
 			stateChanges: {},
 		};
 	}
@@ -188,6 +201,7 @@ class TurnResolver {
 		return {
 			briefOutput: `Loaded game from '${filename}'.`,
 			events: [`Loaded game from ${filename}`],
+			timeCost: { type: "none" },
 			stateChanges: {},
 		};
 	}
