@@ -36,13 +36,18 @@ export interface SpellBalance {
 export interface SpellState {
 	spellId: string;
 
-	proficiency: number; // 0–1 or 0–100
+	// Core progression
+	proficiency: number; // 0–100
+	practicePoints: number;
+
+	// Stabilization tracking
+	stability: number; // how "reliable" the spell feels (0–1)
+
 	successCount: number;
-	failureCount: number;
+	totalUses: number;
 
-	lastUsed?: number;
-
-	unlocked: boolean;
+	// Optional flavor for narration hooks
+	masteryTier: "unfamiliar" | "learning" | "comfortable" | "mastered";
 }
 
 export interface Spell {
