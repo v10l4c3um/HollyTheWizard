@@ -71,10 +71,10 @@ class TurnResolver {
 		const spell = state.spellbook.spells.find((s) => s.id === spellId);
 		if (!spell) {
 			const known = registry.getSpell(spellId);
-			const output = known
+			const briefOutput = known
 				? `You haven't learned ${known.name} yet.`
 				: `There is no spell with id "${spellId}".`;
-			return { output, events: [], stateChanges: {} };
+			return { briefOutput, events: [], stateChanges: {} };
 		}
 
 		return {

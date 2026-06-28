@@ -1,21 +1,12 @@
 import * as readline from "readline";
-
-interface GameResult {
-	success: boolean;
-	output: string;
-	newState?: unknown;
-}
-
-interface GameEngine {
-	handleCommand(input: string): Promise<GameResult>;
-}
+import { IGameEngine } from "../../types";
 
 class CliApp {
 	private rl: readline.Interface;
-	private engine: GameEngine;
+	private engine: IGameEngine;
 	private running: boolean = false;
 
-	constructor(engine: GameEngine) {
+	constructor(engine: IGameEngine) {
 		this.engine = engine;
 		this.rl = readline.createInterface({
 			input: process.stdin,
@@ -29,46 +20,33 @@ class CliApp {
 
 	private async handleInput(input: string): Promise<void> {
 		const trimmed = input.trim();
+		if (!trimmed) return;
 
-		if (!trimmed) {
-			return;
-		}
-
-		if (
-			trimmed.toLowerCase() === "quit" ||
-			trimmed.toLowerCase() === "exit"
-		) {
+		if (trimmed.toLowerCase() === "quit" || trimmed.toLowerCase() === "exit") {
 			this.running = false;
 			console.log("\nThanks for playing!");
 			return;
 		}
 
-		try {
-			const result = await this.engine.handleCommand(trimmed);
-			this.printSeparator();
-			console.log(result.output);
-		} catch (error) {
-			this.printSeparator();
-			console.log(
-				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
+		const state = await this.engine.handleCommand(trimmed);
+		this.printSeparator();
+		console.log(state.output);
 	}
 
 	public async start(): Promise<void> {
 		this.running = true;
 		console.log("=".repeat(60));
-		console.log("Welcome to Holly the Wizard");
+		console.log("  Holly the Wizard");
 		console.log("=".repeat(60));
 		this.printSeparator();
+		console.log(this.engine.state.output);
 
 		const prompt = (): void => {
 			if (!this.running) {
 				this.rl.close();
 				return;
 			}
-
-			this.rl.question("> ", async (input: string) => {
+			this.rl.question("\n> ", async (input: string) => {
 				await this.handleInput(input);
 				prompt();
 			});
@@ -83,4 +61,4 @@ class CliApp {
 	}
 }
 
-export { CliApp, GameEngine, GameResult };
+export { CliApp };
