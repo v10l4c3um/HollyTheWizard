@@ -2,8 +2,8 @@
 // This is the single entry point for creating a configured game instance
 
 interface GameConfig {
-	narrationProvider: 'mock' | 'ai' | 'fallback';
-	persistenceBackend: 'json' | 'sqlite';
+	narrationProvider: "mock" | "ai" | "fallback";
+	persistenceBackend: "json" | "sqlite";
 	randomSeed?: number;
 	contentPackPath: string;
 }
@@ -73,14 +73,17 @@ class FallbackNarrationProvider implements NarrationProvider {
 			rest: `You rest in ${context.location}.`,
 			talk: `You speak with someone in ${context.location}.`,
 		};
-		return descriptions[context.actionType] || `Something happens in ${context.location}.`;
+		return (
+			descriptions[context.actionType] ||
+			`Something happens in ${context.location}.`
+		);
 	}
 }
 
 class JsonPersistenceRepository implements PersistenceRepository {
 	private basePath: string;
 
-	constructor(basePath: string = './saves') {
+	constructor(basePath: string = "./saves") {
 		this.basePath = basePath;
 	}
 
@@ -91,7 +94,9 @@ class JsonPersistenceRepository implements PersistenceRepository {
 
 	async load(filename: string): Promise<unknown> {
 		// TODO: Implement JSON file reading
-		console.log(`[PERSISTENCE] Would load from ${this.basePath}/${filename}`);
+		console.log(
+			`[PERSISTENCE] Would load from ${this.basePath}/${filename}`,
+		);
 		return null;
 	}
 
@@ -115,14 +120,14 @@ export function bootstrap(config: GameConfig): BootstrappedGame {
 	// 2. Initialize narration provider based on config
 	let narrationProvider: NarrationProvider;
 	switch (config.narrationProvider) {
-		case 'mock':
+		case "mock":
 			narrationProvider = new MockNarrationProvider();
 			break;
-		case 'ai':
+		case "ai":
 			// TODO: Wire up real AI provider adapter when ready
 			narrationProvider = new FallbackNarrationProvider();
 			break;
-		case 'fallback':
+		case "fallback":
 		default:
 			narrationProvider = new FallbackNarrationProvider();
 	}
@@ -130,19 +135,21 @@ export function bootstrap(config: GameConfig): BootstrappedGame {
 	// 3. Initialize persistence repository based on config
 	let persistenceRepository: PersistenceRepository;
 	switch (config.persistenceBackend) {
-		case 'sqlite':
+		case "sqlite":
 			// TODO: Wire up SQLite repository when ready
 			persistenceRepository = new JsonPersistenceRepository();
 			break;
-		case 'json':
+		case "json":
 		default:
-			persistenceRepository = new JsonPersistenceRepository('./saves');
+			persistenceRepository = new JsonPersistenceRepository("./saves");
 	}
 
 	// 4. Load configuration and content packs
 	// TODO: Load spell definitions from content pack
 	// TODO: Load location definitions from content pack
 	// TODO: Load NPC templates from content pack
+	// TODO: Load item definitions from content pack
+	// TODO: Load faction and archetype definitions from content pack
 
 	// 5. Return composed services for dependency injection
 	return {
@@ -153,4 +160,10 @@ export function bootstrap(config: GameConfig): BootstrappedGame {
 	};
 }
 
-export type { GameConfig, RandomProvider, NarrationProvider, PersistenceRepository, BootstrappedGame };
+export type {
+	GameConfig,
+	RandomProvider,
+	NarrationProvider,
+	PersistenceRepository,
+	BootstrappedGame,
+};

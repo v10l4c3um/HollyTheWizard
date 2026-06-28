@@ -1,6 +1,7 @@
 import SpellBook from "../magic/SpellBook";
 import NPC from "../npc/Npc";
 import Player from "../player/Player";
+import Item from "./Item";
 import WorldClock from "./WorldClock";
 
 class GameState {
@@ -13,7 +14,7 @@ class GameState {
 	player: Player;
 	spellbook: SpellBook;
 	inventory: {
-		items: string[];
+		items: Item[];
 	};
 	discoveredLocations: Location[];
 	questFlags: {
