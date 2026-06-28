@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import Registry from "../Registry";
-import { Spell } from "../domain/magic/SpellBook";
+import { Spell } from "../domain/magic/Spell";
 
 interface ContentPackManifest {
 	name: string;

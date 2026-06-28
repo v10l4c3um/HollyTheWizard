@@ -1,7 +1,7 @@
 import Location from "./domain/world/Location";
 import NPC from "./domain/npc/Npc";
 import Item from "./domain/world/Item";
-import { Spell } from "./domain/magic/SpellBook";
+import { Spell } from "./domain/magic/Spell";
 
 class Registry {
 	private locations = new Map<string, Location>();
@@ -22,7 +22,7 @@ class Registry {
 	}
 
 	registerSpell(spell: Spell): void {
-		this.spells.set(spell.id, spell);
+		this.spells.set(spell.definition.id, spell);
 	}
 
 	getLocation(id: string): Location | undefined {

@@ -130,17 +130,29 @@ class TurnResolver {
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
-		const spell = state.spellbook.spells.find((s) => s.id === spellId);
+		const spell = state.spellbook.spells.find((s) => s.definition.id === spellId);
 		if (!spell) {
 			const known = registry.getSpell(spellId);
 			const briefOutput = known
-				? `You haven't learned ${known.name} yet.`
+				? `You haven't learned ${known.definition.name} yet.`
 				: `There is no spell with id "${spellId}".`;
-			return { briefOutput, events: [], timeCost: { type: "none" }, stateChanges: {} };
+			return {
+				briefOutput,
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+
+		const spellToUpdate = state.spellbook.spells.find(
+			(s) => s.definition.id === spellId,
+		)!;
+		if (spellToUpdate.balance) {
+			spellToUpdate.balance.practiceRequirement -= duration;
 		}
 
 		return {
-			briefOutput: `You spent ${duration} hour(s) studying ${spell.name}. You feel more proficient now.`,
+			briefOutput: `You spent ${duration} hour(s) studying ${spell.definition.name}. You feel more proficient now.`,
 			events: [`Studied ${spellId} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 30 * duration },
 			stateChanges: {},
