@@ -25,20 +25,22 @@ class Renderer {
 			throw new Error(`Renderer request failed: ${response.statusText}`);
 		}
 
-		const data = await response.json();
-		return (data.response as string).trim();
+		const data = await response.json() as { response: string };
+		return data.response.trim();
 	}
 
 	private _buildPrompt(ctx: RenderContext): string {
-		const npcs = ctx.nearbyNPCNames.length > 0
-			? `Nearby: ${ctx.nearbyNPCNames.join(", ")}.`
-			: "No one else is nearby.";
+		const npcs =
+			ctx.nearbyNPCNames.length > 0
+				? `Nearby: ${ctx.nearbyNPCNames.join(", ")}.`
+				: "No one else is nearby.";
 
-		const recentEvents = ctx.recentEvents.length > 0
-			? `Recent events: ${ctx.recentEvents.slice(-3).join("; ")}.`
-			: "";
+		const recentEvents =
+			ctx.recentEvents.length > 0
+				? `Recent events: ${ctx.recentEvents.slice(-3).join("; ")}.`
+				: "";
 
-		return `You are a narrator for a fantasy RPG. Write a single immersive paragraph (2-4 sentences) describing what just happened, in second person.
+		return `You are a narrator for a fantasy RPG. Write a single immersive paragraph (3-5 sentences) describing what just happened, in second person.
 
 Character: ${ctx.playerName}
 Location: ${ctx.locationName} — ${ctx.locationDescription}

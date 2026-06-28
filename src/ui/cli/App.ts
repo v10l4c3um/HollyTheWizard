@@ -1,5 +1,4 @@
 import * as readline from "readline";
-
 import { IGameEngine } from "../../types";
 
 class CliApp {
@@ -21,46 +20,33 @@ class CliApp {
 
 	private async handleInput(input: string): Promise<void> {
 		const trimmed = input.trim();
+		if (!trimmed) return;
 
-		if (!trimmed) {
-			return;
-		}
-
-		if (
-			trimmed.toLowerCase() === "quit" ||
-			trimmed.toLowerCase() === "exit"
-		) {
+		if (trimmed.toLowerCase() === "quit" || trimmed.toLowerCase() === "exit") {
 			this.running = false;
 			console.log("\nThanks for playing!");
 			return;
 		}
 
-		try {
-			const result = await this.engine.handleCommand(trimmed);
-			this.printSeparator();
-			console.log(result.output);
-		} catch (error) {
-			this.printSeparator();
-			console.log(
-				`Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
+		const state = await this.engine.handleCommand(trimmed);
+		this.printSeparator();
+		console.log(state.output);
 	}
 
 	public async start(): Promise<void> {
 		this.running = true;
 		console.log("=".repeat(60));
-		console.log("Welcome to Holly the Wizard");
+		console.log("  Holly the Wizard");
 		console.log("=".repeat(60));
 		this.printSeparator();
+		console.log(this.engine.state.output);
 
 		const prompt = (): void => {
 			if (!this.running) {
 				this.rl.close();
 				return;
 			}
-
-			this.rl.question("> ", async (input: string) => {
+			this.rl.question("\n> ", async (input: string) => {
 				await this.handleInput(input);
 				prompt();
 			});

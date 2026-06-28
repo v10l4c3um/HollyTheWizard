@@ -68,7 +68,7 @@ class Resolver {
 				);
 			}
 
-			const data = await response.json();
+			const data = await response.json() as { response: string };
 			const parsed = JSON.parse(data.response) as ParsedCommand;
 
 			return this._createCommand(parsed);
