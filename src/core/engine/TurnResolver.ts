@@ -1,4 +1,4 @@
-import { Command } from "../../types";
+import { Command } from "../../ui/cli/commands/Command";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { TurnResult } from "./TurnResult";
@@ -9,13 +9,32 @@ class TurnResolver {
 			case "MOVE":
 				return this._move(command.destinationId, state, registry);
 			case "TALK":
-				return this._talk(command.npcId, command.conversationTopic, state, registry);
+				return this._talk(
+					command.npcId,
+					command.conversationTopic,
+					state,
+					registry,
+				);
 			case "STUDY":
-				return this._study(command.spellId, command.duration ?? 1, state, registry);
+				return this._study(
+					command.spellId,
+					command.duration ?? 1,
+					state,
+					registry,
+				);
 			case "INTERACT":
-				return this._interact(command.itemId, command.actionType, state);
+				return this._interact(
+					command.itemId,
+					command.actionType,
+					state,
+				);
 			case "REST":
-				return this._rest(command.duration, command.locationId, state, registry);
+				return this._rest(
+					command.duration,
+					command.locationId,
+					state,
+					registry,
+				);
 			case "SAVE":
 				return this._save(command.filename);
 			case "LOAD":
@@ -23,27 +42,48 @@ class TurnResolver {
 		}
 	}
 
-	private _move(destinationId: string, state: GameState, registry: Registry): TurnResult {
+	private _move(
+		destinationId: string,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
 		const current = registry.getLocation(state.currentLocationId);
 		if (!current) {
-			return { briefOutput: "You seem to be nowhere. Something is wrong.", events: [], stateChanges: {} };
+			return {
+				briefOutput: "You seem to be nowhere. Something is wrong.",
+				events: [],
+				stateChanges: {},
+			};
 		}
 
-		if (!current.connectedLocations.includes(destinationId)) {
+		if (!registry.getLocation(destinationId)) {
 			return {
-				briefOutput: `You can't move to ${destinationId} from ${current.displayName}.`,
-				events: [`Failed to move from ${current.id} to ${destinationId}`],
+				briefOutput: `There is no "${destinationId}" here.`,
+				events: [],
 				stateChanges: {},
 			};
 		}
 
 		const destination = registry.getLocation(destinationId);
-		const destinationName = destination?.displayName ?? destinationId;
+		const destinationDisplayName =
+			destination?.displayName ?? destinationId;
 		const isNew = !state.discoveredLocationIds.includes(destinationId);
 
+		if (!current.connectedLocationsIds.includes(destinationId)) {
+			return {
+				briefOutput: `You can't move to ${destinationDisplayName} from ${current.displayName}.`,
+				events: [
+					`Failed to move from ${current.displayName} to ${destinationDisplayName}`,
+				],
+				stateChanges: {},
+			};
+		}
+
 		return {
-			briefOutput: `You traveled to ${destinationName}.`,
-			events: [`Moved from ${current.id} to ${destinationId}`],
+			briefOutput: `You traveled to ${destinationDisplayName}.`,
+			events: [
+				`Moved from ${current.displayName} to ${destinationDisplayName}`,
+			],
 			stateChanges: {
 				currentLocationId: destinationId,
 				newDiscoveredLocationId: isNew ? destinationId : undefined,
@@ -51,9 +91,18 @@ class TurnResolver {
 		};
 	}
 
-	private _talk(npcId: string, topic: string | undefined, state: GameState, registry: Registry): TurnResult {
+	private _talk(
+		npcId: string,
+		topic: string | undefined,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
 		if (!state.knownNPCIds.includes(npcId)) {
-			return { briefOutput: `You don't see anyone with id "${npcId}" here.`, events: [], stateChanges: {} };
+			return {
+				briefOutput: `You don't see anyone with id "${npcId}" here.`,
+				events: [],
+				stateChanges: {},
+			};
 		}
 
 		const npc = registry.getNPC(npcId);
@@ -67,7 +116,12 @@ class TurnResolver {
 		};
 	}
 
-	private _study(spellId: string, duration: number, state: GameState, registry: Registry): TurnResult {
+	private _study(
+		spellId: string,
+		duration: number,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
 		const spell = state.spellbook.spells.find((s) => s.id === spellId);
 		if (!spell) {
 			const known = registry.getSpell(spellId);
@@ -84,10 +138,18 @@ class TurnResolver {
 		};
 	}
 
-	private _interact(itemId: string, actionType: string, state: GameState): TurnResult {
+	private _interact(
+		itemId: string,
+		actionType: string,
+		state: GameState,
+	): TurnResult {
 		const item = state.inventory.items.find((i) => i.id === itemId);
 		if (!item) {
-			return { briefOutput: `You don't have an item with id "${itemId}".`, events: [], stateChanges: {} };
+			return {
+				briefOutput: `You don't have an item with id "${itemId}".`,
+				events: [],
+				stateChanges: {},
+			};
 		}
 
 		return {
@@ -97,7 +159,12 @@ class TurnResolver {
 		};
 	}
 
-	private _rest(duration: number, locationId: string | undefined, state: GameState, registry: Registry): TurnResult {
+	private _rest(
+		duration: number,
+		locationId: string | undefined,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
 		const locId = locationId ?? state.currentLocationId;
 		const location = registry.getLocation(locId);
 		const locName = location?.displayName ?? locId;

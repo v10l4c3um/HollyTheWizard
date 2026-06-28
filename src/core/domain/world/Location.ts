@@ -10,12 +10,16 @@ class Location {
 
 	// maybe allow possible expansions, or restrictions on what can be done in this location, like "no magic" or "only combat actions allowed"
 
-	constructor() {
-		this.id = "defaultLocation";
-		this.displayName = "Default Location";
-		this.description =
-			"This is the default location. It has no special features.";
-		this.connectedLocationsIds = [];
+	constructor(
+		id: string,
+		displayName: string,
+		description: string,
+		connectedLocations: string[],
+	) {
+		this.id = id;
+		this.displayName = displayName;
+		this.description = description;
+		this.connectedLocationsIds = connectedLocations;
 	}
 }
 

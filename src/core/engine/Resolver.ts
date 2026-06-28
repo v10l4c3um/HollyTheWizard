@@ -1,9 +1,10 @@
-import { Command } from "../../types";
+import { Command } from "../../ui/cli/commands/Command";
 import { OllamaConfig } from "./OllamaConfig";
 
 interface ParsedCommand {
 	type: string;
 	target?: string;
+	targetName: string;
 	params?: Record<string, unknown>;
 }
 
@@ -68,7 +69,7 @@ class Resolver {
 				);
 			}
 
-			const data = await response.json() as { response: string };
+			const data = (await response.json()) as { response: string };
 			const parsed = JSON.parse(data.response) as ParsedCommand;
 
 			const command = this._createCommand(parsed);
@@ -96,15 +97,18 @@ Available commands:
 
 User input: "${input}"
 
-Extract the command type, the target id (if applicable), and any parameters. Respond with only valid JSON.`;
+Extract the command type, the target id (if applicable), the target name (if applicable), and any parameters. Respond with only valid JSON.`;
 	}
 
 	private _createCommand(parsed: ParsedCommand): Command {
-		const { type, target, params } = parsed;
+		const { type, target, targetName, params } = parsed;
 
 		switch (type) {
 			case "MOVE":
-				return { type: "MOVE", destinationId: target ?? "unknown" };
+				return {
+					type: "MOVE",
+					destinationId: target ?? "unknown",
+				};
 			case "TALK":
 				return {
 					type: "TALK",

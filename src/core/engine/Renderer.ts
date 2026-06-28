@@ -25,7 +25,7 @@ class Renderer {
 			throw new Error(`Renderer request failed: ${response.statusText}`);
 		}
 
-		const data = await response.json() as { response: string };
+		const data = (await response.json()) as { response: string };
 		return data.response.trim();
 	}
 
@@ -40,7 +40,16 @@ class Renderer {
 				? `Recent events: ${ctx.recentEvents.slice(-3).join("; ")}.`
 				: "";
 
-		return `You are a narrator for a fantasy RPG. Write a single immersive paragraph (3-5 sentences) describing what just happened, in second person.
+		return `You are a narrator for a fantasy RPG.
+
+Write a single immersive paragraph (3-5 sentences) in second person.
+
+IMPORTANT STYLE RULES:
+
+- You are ONLY translating game events into narrative.
+- You must NOT invent causes, magic, lore, or physical obstacles that are not explicitly given.
+- If something is not possible, express it as lack of access or inability, not as an in-world force or story event.
+- Keep failure states neutral, grounded, and slightly literary (book-like tone is fine, but no new fiction causes).
 
 Character: ${ctx.playerName}
 Location: ${ctx.locationName} — ${ctx.locationDescription}
@@ -51,7 +60,8 @@ Narration style: ${ctx.narrationMode}
 
 What just happened (brief): ${ctx.briefOutput}
 
-Write only the narrative paragraph. No preamble, no meta-commentary.`;
+Write only the narrative paragraph. No preamble, no meta-commentary.
+`;
 	}
 }
 
