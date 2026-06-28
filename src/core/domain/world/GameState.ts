@@ -10,20 +10,20 @@ class GameState {
 		createdTimestamp: number;
 	};
 	worldClock: WorldClock;
-	currentLocation: WebGLUniformLocation;
+	currentLocationId: string;
 	player: Player;
 	spellbook: SpellBook;
 	inventory: {
 		items: Item[];
 	};
-	discoveredLocations: Location[];
+	discoveredLocationIds: string[];
 	questFlags: {
 		active: string[];
 		completed: string[];
 	};
-	knownNPCs: NPC[];
-	// TODO: Figure out how to represent recent events or action history in a way that is useful for the game logic and narrative
+	knownNPCIds: string[];
 	recentEvents: string[];
+	output: string;
 
 	settings: {
 		narrationMode: string;
@@ -36,22 +36,25 @@ class GameState {
 			createdTimestamp: Date.now(),
 		};
 		this.worldClock = new WorldClock();
-		this.currentLocation = "startingVillage";
+		this.currentLocationId = "startingVillage";
 		this.player = new Player();
 		this.spellbook = new SpellBook();
 		this.inventory = {
 			items: [],
 		};
-		this.discoveredLocations = [];
+		this.discoveredLocationIds = [];
 		this.questFlags = {
 			active: [],
 			completed: [],
 		};
-		this.knownNPCs = [];
+		this.knownNPCIds = [];
 		this.recentEvents = [];
+		this.output = "";
 		this.settings = {
 			narrationMode: "default",
 			romanceIntensity: 0,
 		};
 	}
 }
+
+export default GameState;

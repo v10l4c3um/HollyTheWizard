@@ -1,3 +1,15 @@
-class Item {}
+class Item {
+	id: string;
+	name: string;
+	description: string;
+	quantity: number;
+
+	constructor(id: string, name: string = "Item", description: string = "", quantity: number = 1) {
+		this.id = id;
+		this.name = name;
+		this.description = description;
+		this.quantity = quantity;
+	}
+}
 
 export default Item;
