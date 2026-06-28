@@ -1,16 +1,8 @@
-import { CommandType } from "../../../types";
-
-export interface Command {
-	type: CommandType;
-	destination?: string;
-	npcName?: string;
-	spellName?: string;
-	targetName?: string;
-	duration?: number;
-	filename?: string;
-	distance?: number;
-	conversationTopic?: string;
-	actionType?: string;
-	location?: string;
-	execute(): Promise<void>;
-}
+export type Command =
+	| { type: "MOVE"; destinationId: string }
+	| { type: "TALK"; npcId: string; conversationTopic?: string }
+	| { type: "STUDY"; spellId: string; duration?: number }
+	| { type: "INTERACT"; itemId: string; actionType: string }
+	| { type: "REST"; duration: number; locationId?: string }
+	| { type: "SAVE"; filename: string }
+	| { type: "LOAD"; filename: string };

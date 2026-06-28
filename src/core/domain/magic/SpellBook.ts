@@ -1,4 +1,5 @@
-interface Spell {
+export interface Spell {
+	id: string;
 	name: string;
 	description: string;
 	manaCost: number;

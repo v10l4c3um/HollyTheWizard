@@ -3,7 +3,6 @@ import NPC from "../npc/Npc";
 import Player from "../player/Player";
 import Item from "./Item";
 import WorldClock from "./WorldClock";
-import Location from "./Location";
 
 class GameState {
 	metadata: {
@@ -11,18 +10,18 @@ class GameState {
 		createdTimestamp: number;
 	};
 	worldClock: WorldClock;
-	currentLocation: Location;
+	currentLocationId: string;
 	player: Player;
 	spellbook: SpellBook;
 	inventory: {
 		items: Item[];
 	};
-	discoveredLocations: Location[];
+	discoveredLocationIds: string[];
 	questFlags: {
 		active: string[];
 		completed: string[];
 	};
-	knownNPCs: NPC[];
+	knownNPCIds: string[];
 	recentEvents: string[];
 	output: string;
 
@@ -37,18 +36,18 @@ class GameState {
 			createdTimestamp: Date.now(),
 		};
 		this.worldClock = new WorldClock();
-		this.currentLocation = new Location();
+		this.currentLocationId = "startingVillage";
 		this.player = new Player();
 		this.spellbook = new SpellBook();
 		this.inventory = {
 			items: [],
 		};
-		this.discoveredLocations = [];
+		this.discoveredLocationIds = [];
 		this.questFlags = {
 			active: [],
 			completed: [],
 		};
-		this.knownNPCs = [];
+		this.knownNPCIds = [];
 		this.recentEvents = [];
 		this.output = "";
 		this.settings = {
