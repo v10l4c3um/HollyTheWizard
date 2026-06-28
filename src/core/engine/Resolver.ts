@@ -1,4 +1,5 @@
-import { Command } from "../../ui/cli/commands/Command";
+import { Command } from "../../types";
+import { OllamaConfig } from "./OllamaConfig";
 
 interface ParsedCommand {
 	type: string;
@@ -7,14 +8,21 @@ interface ParsedCommand {
 }
 
 class Resolver {
-	private ollamaEndpoint: string = "http://localhost:11434/api/generate";
-	private model: string = "ollama";
+	private config: OllamaConfig;
 	private commandSchema = {
 		type: "object",
 		properties: {
 			type: {
 				type: "string",
-				enum: ["MOVE", "TALK", "STUDY", "INTERACT", "REST", "SAVE", "LOAD"],
+				enum: [
+					"MOVE",
+					"TALK",
+					"STUDY",
+					"INTERACT",
+					"REST",
+					"SAVE",
+					"LOAD",
+				],
 				description: "The command type",
 			},
 			target: {
@@ -35,15 +43,19 @@ class Resolver {
 		required: ["type"],
 	};
 
+	constructor(config: OllamaConfig) {
+		this.config = config;
+	}
+
 	async resolve(input: string): Promise<Command> {
 		const prompt = this._buildPrompt(input);
 
 		try {
-			const response = await fetch(this.ollamaEndpoint, {
+			const response = await fetch(this.config.endpoint, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					model: this.model,
+					model: this.config.model,
 					prompt: prompt,
 					stream: false,
 					format: this.commandSchema,
@@ -51,7 +63,9 @@ class Resolver {
 			});
 
 			if (!response.ok) {
-				throw new Error(`Ollama request failed: ${response.statusText}`);
+				throw new Error(
+					`Ollama request failed: ${response.statusText}`,
+				);
 			}
 
 			const data = await response.json();
@@ -92,7 +106,9 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 				return {
 					type: "TALK",
 					npcId: target ?? "unknown",
-					conversationTopic: params?.conversationTopic as string | undefined,
+					conversationTopic: params?.conversationTopic as
+						| string
+						| undefined,
 				};
 			case "STUDY":
 				return {
@@ -104,7 +120,8 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 				return {
 					type: "INTERACT",
 					itemId: target ?? "unknown",
-					actionType: (params?.actionType as string | undefined) ?? "use",
+					actionType:
+						(params?.actionType as string | undefined) ?? "use",
 				};
 			case "REST":
 				return {
@@ -113,9 +130,21 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 					locationId: params?.location as string | undefined,
 				};
 			case "SAVE":
-				return { type: "SAVE", filename: (params?.filename as string | undefined) ?? target ?? "autosave" };
+				return {
+					type: "SAVE",
+					filename:
+						(params?.filename as string | undefined) ??
+						target ??
+						"autosave",
+				};
 			case "LOAD":
-				return { type: "LOAD", filename: (params?.filename as string | undefined) ?? target ?? "autosave" };
+				return {
+					type: "LOAD",
+					filename:
+						(params?.filename as string | undefined) ??
+						target ??
+						"autosave",
+				};
 			default:
 				throw new Error(`Unknown command type: ${type}`);
 		}

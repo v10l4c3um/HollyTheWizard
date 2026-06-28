@@ -26,12 +26,12 @@ class TurnResolver {
 	private _move(destinationId: string, state: GameState, registry: Registry): TurnResult {
 		const current = registry.getLocation(state.currentLocationId);
 		if (!current) {
-			return { output: "You seem to be nowhere. Something is wrong.", events: [], stateChanges: {} };
+			return { briefOutput: "You seem to be nowhere. Something is wrong.", events: [], stateChanges: {} };
 		}
 
 		if (!current.connectedLocations.includes(destinationId)) {
 			return {
-				output: `You can't move to ${destinationId} from ${current.displayName}.`,
+				briefOutput: `You can't move to ${destinationId} from ${current.displayName}.`,
 				events: [`Failed to move from ${current.id} to ${destinationId}`],
 				stateChanges: {},
 			};
@@ -42,7 +42,7 @@ class TurnResolver {
 		const isNew = !state.discoveredLocationIds.includes(destinationId);
 
 		return {
-			output: `You traveled to ${destinationName}.`,
+			briefOutput: `You traveled to ${destinationName}.`,
 			events: [`Moved from ${current.id} to ${destinationId}`],
 			stateChanges: {
 				currentLocationId: destinationId,
@@ -53,7 +53,7 @@ class TurnResolver {
 
 	private _talk(npcId: string, topic: string | undefined, state: GameState, registry: Registry): TurnResult {
 		if (!state.knownNPCIds.includes(npcId)) {
-			return { output: `You don't see anyone with id "${npcId}" here.`, events: [], stateChanges: {} };
+			return { briefOutput: `You don't see anyone with id "${npcId}" here.`, events: [], stateChanges: {} };
 		}
 
 		const npc = registry.getNPC(npcId);
@@ -61,7 +61,7 @@ class TurnResolver {
 		const topicSuffix = topic ? ` about ${topic}` : "";
 
 		return {
-			output: `You talked to ${npcName}${topicSuffix}. They seem interested in what you have to say.`,
+			briefOutput: `You talked to ${npcName}${topicSuffix}. They seem interested in what you have to say.`,
 			events: [`Talked to ${npcId}`],
 			stateChanges: {},
 		};
@@ -78,7 +78,7 @@ class TurnResolver {
 		}
 
 		return {
-			output: `You spent ${duration} hour(s) studying ${spell.name}. You feel more proficient now.`,
+			briefOutput: `You spent ${duration} hour(s) studying ${spell.name}. You feel more proficient now.`,
 			events: [`Studied ${spellId} for ${duration}h`],
 			stateChanges: {},
 		};
@@ -87,11 +87,11 @@ class TurnResolver {
 	private _interact(itemId: string, actionType: string, state: GameState): TurnResult {
 		const item = state.inventory.items.find((i) => i.id === itemId);
 		if (!item) {
-			return { output: `You don't have an item with id "${itemId}".`, events: [], stateChanges: {} };
+			return { briefOutput: `You don't have an item with id "${itemId}".`, events: [], stateChanges: {} };
 		}
 
 		return {
-			output: `You ${actionType} ${item.name}. Something happened!`,
+			briefOutput: `You ${actionType} ${item.name}. Something happened!`,
 			events: [`${actionType} ${itemId}`],
 			stateChanges: {},
 		};
@@ -103,7 +103,7 @@ class TurnResolver {
 		const locName = location?.displayName ?? locId;
 
 		return {
-			output: `You rested for ${duration} hour(s) at ${locName}. You feel refreshed!`,
+			briefOutput: `You rested for ${duration} hour(s) at ${locName}. You feel refreshed!`,
 			events: [`Rested for ${duration} hour(s) at ${locId}`],
 			stateChanges: {},
 		};
@@ -111,7 +111,7 @@ class TurnResolver {
 
 	private _save(filename: string): TurnResult {
 		return {
-			output: `Game saved as '${filename}'.`,
+			briefOutput: `Game saved as '${filename}'.`,
 			events: [`Game saved as ${filename}`],
 			stateChanges: {},
 		};
@@ -119,7 +119,7 @@ class TurnResolver {
 
 	private _load(filename: string): TurnResult {
 		return {
-			output: `Loaded game from '${filename}'.`,
+			briefOutput: `Loaded game from '${filename}'.`,
 			events: [`Loaded game from ${filename}`],
 			stateChanges: {},
 		};

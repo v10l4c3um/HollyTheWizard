@@ -1,5 +1,5 @@
 export interface TurnResult {
-	output: string;
+	briefOutput: string;
 	events: string[];
 	stateChanges: {
 		currentLocationId?: string;
