@@ -3,12 +3,13 @@ import PlayerStats from "./PlayerStats";
 
 class Player {
 	name: string;
-	gender: boolean; // true for male
+	gender: boolean;
 	age: number;
 	appearance: string;
 	archetype: string;
 	faction: string;
 	inventory: Item[];
+	health: number;
 
 	stats: PlayerStats;
 
@@ -21,6 +22,7 @@ class Player {
 		this.faction = "default";
 		this.inventory = [];
 		this.stats = new PlayerStats();
+		this.health = 100;
 	}
 }
 

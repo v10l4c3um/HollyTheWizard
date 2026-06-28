@@ -22,8 +22,8 @@ class GameState {
 		completed: string[];
 	};
 	knownNPCs: NPC[];
-	// TODO: Figure out how to represent recent events or action history in a way that is useful for the game logic and narrative
 	recentEvents: string[];
+	output: string;
 
 	settings: {
 		narrationMode: string;
@@ -49,9 +49,12 @@ class GameState {
 		};
 		this.knownNPCs = [];
 		this.recentEvents = [];
+		this.output = "";
 		this.settings = {
 			narrationMode: "default",
 			romanceIntensity: 0,
 		};
 	}
 }
+
+export default GameState;

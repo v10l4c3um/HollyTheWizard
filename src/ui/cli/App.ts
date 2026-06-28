@@ -1,21 +1,13 @@
 import * as readline from "readline";
 
-interface GameResult {
-	success: boolean;
-	output: string;
-	newState?: unknown;
-}
-
-interface GameEngine {
-	handleCommand(input: string): Promise<GameResult>;
-}
+import { IGameEngine } from "../../types";
 
 class CliApp {
 	private rl: readline.Interface;
-	private engine: GameEngine;
+	private engine: IGameEngine;
 	private running: boolean = false;
 
-	constructor(engine: GameEngine) {
+	constructor(engine: IGameEngine) {
 		this.engine = engine;
 		this.rl = readline.createInterface({
 			input: process.stdin,
@@ -83,4 +75,4 @@ class CliApp {
 	}
 }
 
-export { CliApp, GameEngine, GameResult };
+export { CliApp };
