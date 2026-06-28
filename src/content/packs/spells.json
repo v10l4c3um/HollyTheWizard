@@ -1,0 +1,173 @@
+{
+  "name": "Core Spells",
+  "version": "1.0.0",
+  "description": "Basic spells available to all wizards",
+  "spells": [
+    {
+      "id": "fireball",
+      "name": "Fireball",
+      "description": "A classic spell that hurls a ball of flame at the target. Spectacular and effective.",
+      "manaCost": 30,
+      "level": 2,
+      "requiredConditions": [],
+      "usageType": "combat",
+      "learningDifficulty": 0.4,
+      "practiceRequirement": 15,
+      "range": "ranged",
+      "targetType": "single",
+      "backfireRisk": "low",
+      "scaling": {
+        "intellect": 0.8,
+        "focus": 0.3
+      },
+      "visuals": "A sphere of orange flame",
+      "sound": "whoosh-crackle",
+      "loreTag": "ancient_fire_magic"
+    },
+    {
+      "id": "frostbolt",
+      "name": "Frostbolt",
+      "description": "A shard of ice that freezes the target in place momentarily.",
+      "manaCost": 25,
+      "level": 2,
+      "requiredConditions": [],
+      "usageType": "combat",
+      "learningDifficulty": 0.35,
+      "practiceRequirement": 12,
+      "range": "ranged",
+      "targetType": "single",
+      "backfireRisk": "low",
+      "scaling": {
+        "intellect": 0.7,
+        "focus": 0.4
+      },
+      "visuals": "A spike of blue ice",
+      "sound": "ting-whoosh",
+      "loreTag": "ancient_frost_magic"
+    },
+    {
+      "id": "arcane_missile",
+      "name": "Arcane Missile",
+      "description": "A basic spell that fires magical projectiles. Reliable and efficient.",
+      "manaCost": 15,
+      "level": 1,
+      "requiredConditions": [],
+      "usageType": "combat",
+      "learningDifficulty": 0.15,
+      "practiceRequirement": 8,
+      "range": "short",
+      "targetType": "single",
+      "backfireRisk": "none",
+      "scaling": {
+        "intellect": 0.5,
+        "focus": 0.5
+      },
+      "visuals": "A bolt of purple energy",
+      "sound": "zap",
+      "loreTag": "basic_arcane"
+    },
+    {
+      "id": "heal",
+      "name": "Heal",
+      "description": "Mends wounds and restores vitality. A staple spell for any healer.",
+      "manaCost": 20,
+      "level": 1,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.2,
+      "practiceRequirement": 10,
+      "range": "touch",
+      "targetType": "single",
+      "backfireRisk": "none",
+      "scaling": {
+        "intellect": 0.6,
+        "empathy": 0.4
+      },
+      "visuals": "A soft golden glow",
+      "sound": "gentle-hum",
+      "loreTag": "life_magic"
+    },
+    {
+      "id": "shield",
+      "name": "Shield",
+      "description": "Creates a magical barrier that absorbs incoming damage.",
+      "manaCost": 18,
+      "level": 1,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.25,
+      "practiceRequirement": 12,
+      "range": "self",
+      "targetType": "self",
+      "backfireRisk": "low",
+      "scaling": {
+        "intellect": 0.7,
+        "focus": 0.3
+      },
+      "visuals": "A shimmering barrier",
+      "sound": "crystallize",
+      "loreTag": "protection_magic"
+    },
+    {
+      "id": "magelight",
+      "name": "Magelight",
+      "description": "Conjures a floating orb of magical light. Essential for exploring dark places.",
+      "manaCost": 5,
+      "level": 1,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.05,
+      "practiceRequirement": 3,
+      "range": "self",
+      "targetType": "passive",
+      "backfireRisk": "none",
+      "scaling": {
+        "intellect": 0.3
+      },
+      "visuals": "A soft floating light",
+      "sound": "gentle-pop",
+      "loreTag": "basic_light_magic"
+    },
+    {
+      "id": "meteor_strike",
+      "name": "Meteor Strike",
+      "description": "A devastating spell that calls down meteors from the sky. Extremely powerful but risky.",
+      "manaCost": 100,
+      "level": 4,
+      "requiredConditions": [],
+      "usageType": "combat",
+      "learningDifficulty": 0.85,
+      "practiceRequirement": 40,
+      "range": "ranged",
+      "targetType": "area",
+      "backfireRisk": "high",
+      "scaling": {
+        "intellect": 1.2,
+        "focus": 0.5
+      },
+      "visuals": "Meteors crash from above",
+      "sound": "boom-crash",
+      "loreTag": "forbidden_magic"
+    },
+    {
+      "id": "time_warp",
+      "name": "Time Warp",
+      "description": "An experimental spell that manipulates time around a small area. Highly unpredictable.",
+      "manaCost": 80,
+      "level": 3,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.75,
+      "practiceRequirement": 35,
+      "range": "short",
+      "targetType": "area",
+      "backfireRisk": "high",
+      "scaling": {
+        "intellect": 1.0
+      },
+      "visuals": "Reality seems to shimmer",
+      "sound": "warble",
+      "loreTag": "chrono_magic"
+    }
+  ]
+}

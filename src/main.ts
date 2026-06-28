@@ -3,9 +3,11 @@ import Registry from "./core/Registry";
 import Location from "./core/domain/world/Location";
 import { CliApp } from "./ui/cli/App";
 import NPC from "./core/domain/npc/Npc";
+import ContentLoader from "./core/content/ContentLoader";
 
 // Seed registry with starter world data
 const registry = new Registry();
+const contentLoader = new ContentLoader();
 
 registry.registerLocation(
 	new Location(
@@ -42,6 +44,9 @@ registry.registerNPC(
 		0,
 	),
 );
+
+// Load spell content packs
+contentLoader.loadAllSpellPacks(registry);
 
 const engine = new GameEngine(registry);
 const app = new CliApp(engine);

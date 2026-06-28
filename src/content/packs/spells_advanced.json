@@ -1,0 +1,91 @@
+{
+  "name": "Advanced Spells",
+  "version": "1.0.0",
+  "description": "Advanced spells for experienced wizards",
+  "spells": [
+    {
+      "id": "chain_lightning",
+      "name": "Chain Lightning",
+      "description": "Lightning that jumps between targets, striking multiple enemies at once.",
+      "manaCost": 45,
+      "level": 3,
+      "requiredConditions": [],
+      "usageType": "combat",
+      "learningDifficulty": 0.6,
+      "practiceRequirement": 25,
+      "range": "ranged",
+      "targetType": "group",
+      "backfireRisk": "medium",
+      "scaling": {
+        "intellect": 0.9,
+        "focus": 0.4
+      },
+      "visuals": "Lightning arcs between enemies",
+      "sound": "crackle-boom",
+      "loreTag": "storm_magic"
+    },
+    {
+      "id": "teleport",
+      "name": "Teleport",
+      "description": "Instantly transports the caster to a nearby location.",
+      "manaCost": 35,
+      "level": 3,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.65,
+      "practiceRequirement": 30,
+      "range": "short",
+      "targetType": "self",
+      "backfireRisk": "medium",
+      "scaling": {
+        "intellect": 0.8,
+        "focus": 0.6
+      },
+      "visuals": "Reality bends around you",
+      "sound": "pop-whoosh",
+      "loreTag": "spatial_magic"
+    },
+    {
+      "id": "summon_familiar",
+      "name": "Summon Familiar",
+      "description": "Summons a magical creature to assist the caster in battle.",
+      "manaCost": 50,
+      "level": 3,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.7,
+      "practiceRequirement": 35,
+      "range": "self",
+      "targetType": "passive",
+      "backfireRisk": "medium",
+      "scaling": {
+        "intellect": 0.9,
+        "empathy": 0.5
+      },
+      "visuals": "A creature materializes",
+      "sound": "mystical-chime",
+      "loreTag": "summoning_magic"
+    },
+    {
+      "id": "arcane_reflection",
+      "name": "Arcane Reflection",
+      "description": "A defensive spell that reflects magical attacks back to the attacker.",
+      "manaCost": 30,
+      "level": 2,
+      "requiredConditions": [],
+      "usageType": "utility",
+      "learningDifficulty": 0.55,
+      "practiceRequirement": 20,
+      "range": "self",
+      "targetType": "self",
+      "backfireRisk": "low",
+      "scaling": {
+        "intellect": 0.7,
+        "focus": 0.5
+      },
+      "visuals": "Magical energy bounces back",
+      "sound": "ding",
+      "loreTag": "protection_magic"
+    }
+  ]
+}
