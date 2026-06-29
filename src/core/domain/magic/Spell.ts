@@ -1,3 +1,5 @@
+import { AttributesSet } from "../player/Attributes";
+
 export interface SpellDefinition {
 	id: string;
 	name: string;
@@ -10,7 +12,8 @@ export interface SpellDefinition {
 	range: "self" | "touch" | "short" | "ranged";
 	targetType: "self" | "single" | "group" | "area" | "passive";
 
-	requiredConditions: RequiredCondition[];
+	revealCondition?: RequiredCondition;
+	castCondition?: RequiredCondition;
 
 	visuals?: string;
 	sound?: string;
@@ -18,9 +21,29 @@ export interface SpellDefinition {
 }
 
 interface RequiredCondition {
-	type: "class" | "attribute" | "environment";
+	type: "quest" | "attribute" | "item" | "location";
 	value: string | number;
+	source?: string; // e.g., "found in a book", "taught by a professor", etc.
 }
+
+type SpellKnowledgeState =
+	| "hidden" // player is not ready
+	| "available" // prerequisites met, but not encountered
+	| "learned" // encountered and understood
+	| "mastered"; // high proficiency
+
+type SpellMasteryTier =
+	| "unfamiliar" // debuff
+	| "learning" // neutral
+	| "comfortable" // easier
+	| "mastered"; // cheap
+
+/*
+Mastery 20: cast reliably outside combat
+Mastery 50: cast reliably in combat
+Mastery 75: reduced mana cost
+Mastery 90: ???
+*/
 
 export interface SpellBalance {
 	manaCost: number;
@@ -43,11 +66,11 @@ export interface SpellState {
 	// Stabilization tracking
 	stability: number; // how "reliable" the spell feels (0–1)
 
-	successCount: number;
-	totalUses: number;
+	knowledgeState: SpellKnowledgeState;
 
-	// Optional flavor for narration hooks
-	masteryTier: "unfamiliar" | "learning" | "comfortable" | "mastered";
+	masteryTier: SpellMasteryTier;
+	masteryLevel: number; // 0-100
+	reliability: number; // 0-100
 }
 
 export interface Spell {

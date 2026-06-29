@@ -17,7 +17,9 @@ class TurnResolver {
 					registry,
 				);
 			case "STUDY":
-				return this._study(
+				return this._study(command.classId, state, registry);
+			case "PRACTICE":
+				return this._practice(
 					command.spellId,
 					command.duration ?? 1,
 					state,
@@ -125,17 +127,33 @@ class TurnResolver {
 	}
 
 	private _study(
+		classId: string,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
+		return {
+			briefOutput: "Studied a class.",
+			events: [`Studied ${classId}`],
+			timeCost: { type: "minutes", amount: 60 },
+			stateChanges: {},
+		};
+	}
+
+	private _practice(
 		spellId: string,
 		duration: number,
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
-		const spell = state.spellbook.spells.find((s) => s.definition.id === spellId);
+		const spell = state.spellbook.spells.find(
+			(s) => s.definition.id === spellId,
+		);
 		if (!spell) {
 			const known = registry.getSpell(spellId);
 			const briefOutput = known
 				? `You haven't learned ${known.definition.name} yet.`
 				: `There is no spell with id "${spellId}".`;
+
 			return {
 				briefOutput,
 				events: [],
@@ -152,8 +170,8 @@ class TurnResolver {
 		}
 
 		return {
-			briefOutput: `You spent ${duration} hour(s) studying ${spell.definition.name}. You feel more proficient now.`,
-			events: [`Studied ${spellId} for ${duration}h`],
+			briefOutput: `You spent ${duration} hour(s) practicing ${spell.definition.name}. You feel more proficient now.`,
+			events: [`Practiced ${spellId} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 30 * duration },
 			stateChanges: {},
 		};

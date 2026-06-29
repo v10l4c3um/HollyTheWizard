@@ -5,7 +5,7 @@ export type Command =
 			npcId: string;
 			conversationTopic?: string;
 	  }
-	| { type: "STUDY"; spellId: string; duration?: number }
+	| { type: "STUDY"; classId: string }
 	| { type: "INTERACT"; itemId: string; actionType: string }
 	| {
 			type: "REST";
@@ -13,4 +13,5 @@ export type Command =
 			locationId?: string;
 	  }
 	| { type: "SAVE"; filename: string }
-	| { type: "LOAD"; filename: string };
+	| { type: "LOAD"; filename: string }
+	| { type: "PRACTICE"; spellId: string; duration?: number };
