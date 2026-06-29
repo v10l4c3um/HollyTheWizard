@@ -1,8 +1,8 @@
 import { AttributeId, AttributesSet } from "../player/Attributes";
 
-type SchoolYear = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type SchoolYear = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-type DayOfWeek =
+export type DayOfWeek =
 	| "monday"
 	| "tuesday"
 	| "wednesday"
@@ -11,7 +11,7 @@ type DayOfWeek =
 	| "saturday"
 	| "sunday";
 
-type Period = "morning" | "afternoon" | "evening";
+export type Period = "morning" | "afternoon" | "evening";
 
 export type SubjectType =
 	| "alchemy"
@@ -42,24 +42,24 @@ export type SubjectType =
 	| "transfiguration"
 	| "wandlore";
 
-interface SubjectDefinition {
+export interface SubjectDefinition {
 	type: SubjectType;
 	name: string;
 	description: string;
 }
 
-interface SubjectCurriculum {
+export interface SubjectCurriculum {
 	subjectType: SubjectType;
 	year: SchoolYear;
 	lessons: LessonDefinition[];
 }
 
-interface LessonReward {
+export interface LessonReward {
 	attributes?: AttributeId[];
 	subjectKnowledge?: Partial<Record<SubjectType, number>>;
 }
 
-type Requirement =
+export type Requirement =
 	| {
 			type: "attribute";
 			id: AttributeId;
@@ -79,7 +79,7 @@ type Requirement =
 			spellId: string;
 	  };
 
-interface SpellRevealOpportunity {
+export interface SpellRevealOpportunity {
 	spellId: string;
 	chance: number; // 0-1
 
@@ -88,7 +88,7 @@ interface SpellRevealOpportunity {
 	source: "lesson" | "location" | "event" | "npc" | "item";
 }
 
-interface LessonDefinition {
+export interface LessonDefinition {
 	id: string;
 
 	subjectType: SubjectType;
@@ -107,7 +107,7 @@ interface LessonDefinition {
 	revealOpportunities?: SpellRevealOpportunity[];
 }
 
-interface TimetableSlot {
+export interface TimetableSlot {
 	day: DayOfWeek;
 	period: Period;
 
@@ -116,12 +116,12 @@ interface TimetableSlot {
 	subject?: SubjectType;
 }
 
-interface WeeklyTimetable {
+export interface WeeklyTimetable {
 	year: SchoolYear;
 	slots: TimetableSlot[];
 }
 
-interface SubjectProgress {
+export interface SubjectProgress {
 	subject: SubjectType;
 	year: SchoolYear;
 
@@ -132,21 +132,20 @@ interface SubjectProgress {
 	skippedLessons: string[];
 }
 
-interface GameCalendar {
+export interface GameCalendar {
 	year: SchoolYear;
 	week: number;
 	day: DayOfWeek;
 	period: Period;
 }
 
-interface SchoolData {
+export interface SchoolData {
 	subjects: Record<SubjectType, SubjectDefinition>;
 	curriculums: SubjectCurriculum[];
 	timetables: WeeklyTimetable[];
 }
 
-interface PlayerAcademicState {
+export interface PlayerAcademicState {
 	attributes: Record<AttributeId, number>;
 	subjects: Record<SubjectType, SubjectProgress>;
-	//spells: Record<string, SpellState>;
 }

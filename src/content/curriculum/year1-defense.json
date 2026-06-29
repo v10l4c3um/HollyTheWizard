@@ -1,0 +1,79 @@
+{
+  "subjectType": "defense-against-the-dark-arts",
+  "year": 1,
+  "lessons": [
+    {
+      "id": "defense-1-1",
+      "subjectType": "defense-against-the-dark-arts",
+      "year": 1,
+      "order": 1,
+      "title": "Introduction to Dark Creatures",
+      "topic": "Understanding common dark creatures and basic defensive principles",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["INT", "PER"],
+        "subjectKnowledge": {
+          "defense-against-the-dark-arts": 5
+        }
+      }
+    },
+    {
+      "id": "defense-1-2",
+      "subjectType": "defense-against-the-dark-arts",
+      "year": 1,
+      "order": 2,
+      "title": "The Shield Charm",
+      "topic": "Protego for deflecting minor hexes and jinxes",
+      "importance": "important",
+      "rewards": {
+        "attributes": ["WIL", "CON"],
+        "subjectKnowledge": {
+          "defense-against-the-dark-arts": 10
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "shield",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "defense-against-the-dark-arts",
+              "min": 5
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    },
+    {
+      "id": "defense-1-3",
+      "subjectType": "defense-against-the-dark-arts",
+      "year": 1,
+      "order": 3,
+      "title": "The Disarming Charm",
+      "topic": "Expelliarmus for disarming opponents",
+      "importance": "important",
+      "rewards": {
+        "attributes": ["DEX", "WIL"],
+        "subjectKnowledge": {
+          "defense-against-the-dark-arts": 12
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "disarm",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "defense-against-the-dark-arts",
+              "min": 10
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    }
+  ]
+}

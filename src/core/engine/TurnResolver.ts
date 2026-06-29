@@ -3,8 +3,20 @@ import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { TurnResult } from "./TurnResult";
 import { TimeCost } from "./TimeCost";
+import { CurriculumService } from "../domain/quest/CurriculumService";
+import { SpellRevealService } from "../domain/magic/SpellRevealService";
+import { applySpellUse } from "../domain/magic/SpellProgressionService";
+import { SubjectType } from "../domain/quest/Curriculum";
 
 class TurnResolver {
+	private curriculumService: CurriculumService;
+	private spellRevealService: SpellRevealService;
+
+	constructor() {
+		this.curriculumService = new CurriculumService();
+		this.spellRevealService = new SpellRevealService();
+	}
+
 	apply(command: Command, state: GameState, registry: Registry): TurnResult {
 		switch (command.type) {
 			case "MOVE":
@@ -17,7 +29,9 @@ class TurnResolver {
 					registry,
 				);
 			case "STUDY":
-				return this._study(command.classId, state, registry);
+				return this._study(command.subject, command.duration ?? 1, state, registry);
+			case "ATTEND_CLASS":
+				return this._attendClass(command.subject, state, registry);
 			case "PRACTICE":
 				return this._practice(
 					command.spellId,
@@ -127,15 +141,140 @@ class TurnResolver {
 	}
 
 	private _study(
-		classId: string,
+		subject: SubjectType,
+		duration: number,
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
+		const schoolData = registry.getSchoolData();
+		if (!schoolData) {
+			return {
+				briefOutput: "No curriculum data available.",
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+
+		const knowledgeGain = 10 * duration;
+		this.curriculumService.addSubjectKnowledge(
+			subject,
+			knowledgeGain,
+			state.academicState
+		);
+
+		const revealed = this.spellRevealService.updateSpellAvailability(
+			registry,
+			state.spellbook,
+			state.academicState,
+			state.worldClock.getMinutesOfDay()
+		);
+
+		const subjectName = schoolData.subjects[subject]?.name || subject;
+		let output = `You studied ${subjectName}. Gained +${knowledgeGain} knowledge.`;
+
+		if (revealed.length > 0) {
+			const spellNames = revealed.map(id => {
+				const spell = registry.getSpell(id);
+				return spell?.definition.name || id;
+			}).join(", ");
+			output += ` New spells available: ${spellNames}!`;
+		}
+
 		return {
-			briefOutput: "Studied a class.",
-			events: [`Studied ${classId}`],
+			briefOutput: output,
+			events: [`Studied ${subject} for ${duration}h`],
+			timeCost: { type: "minutes", amount: 60 * duration },
+			stateChanges: {
+				subjectKnowledgeGains: { [subject]: knowledgeGain } as Partial<Record<SubjectType, number>>,
+				spellsRevealed: revealed
+			},
+		};
+	}
+
+	private _attendClass(
+		subject: SubjectType,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
+		const schoolData = registry.getSchoolData();
+		if (!schoolData) {
+			return {
+				briefOutput: "No curriculum data available.",
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+
+		const lesson = this.curriculumService.getCurrentLesson(
+			subject,
+			state.academicState,
+			schoolData
+		);
+
+		if (!lesson) {
+			const subjectName = schoolData.subjects[subject]?.name || subject;
+			return {
+				briefOutput: `No more lessons available for ${subjectName}.`,
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+
+		this.curriculumService.applyLessonRewards(lesson, state.academicState);
+
+		const spellOpportunities = this.curriculumService.getLessonSpellOpportunities(lesson);
+		const revealedSpells: string[] = [];
+
+		for (const opportunity of spellOpportunities) {
+			const result = this.spellRevealService.attemptSpellReveal(
+				opportunity,
+				state.academicState,
+				state.spellbook,
+				state.worldClock.getMinutesOfDay()
+			);
+
+			if (result.success) {
+				revealedSpells.push(opportunity.spellId);
+			}
+		}
+
+		this.curriculumService.advanceLesson(
+			subject,
+			state.academicState,
+			lesson.id,
+			true
+		);
+
+		const subjectName = schoolData.subjects[subject]?.name || subject;
+		let output = `Attended ${subjectName}: "${lesson.title}". ${lesson.topic}.`;
+
+		if (lesson.rewards.subjectKnowledge) {
+			const knowledgeGains = Object.entries(lesson.rewards.subjectKnowledge)
+				.map(([subj, amt]) => `+${amt} ${subj}`)
+				.join(", ");
+			output += ` Knowledge: ${knowledgeGains}.`;
+		}
+
+		if (revealedSpells.length > 0) {
+			const spellNames = revealedSpells.map(id => {
+				const spell = registry.getSpell(id);
+				return spell?.definition.name || id;
+			}).join(", ");
+			output += ` New spells available: ${spellNames}!`;
+		}
+
+		return {
+			briefOutput: output,
+			events: [`Attended ${subject} class - ${lesson.title}`],
 			timeCost: { type: "minutes", amount: 60 },
-			stateChanges: {},
+			stateChanges: {
+				subjectKnowledgeGains: lesson.rewards.subjectKnowledge as Partial<Record<SubjectType, number>>,
+				spellsRevealed: revealedSpells,
+				lessonCompleted: { subject, lessonId: lesson.id }
+			},
 		};
 	}
 
@@ -145,34 +284,53 @@ class TurnResolver {
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
-		const spell = state.spellbook.spells.find(
-			(s) => s.definition.id === spellId,
-		);
-		if (!spell) {
-			const known = registry.getSpell(spellId);
-			const briefOutput = known
-				? `You haven't learned ${known.definition.name} yet.`
-				: `There is no spell with id "${spellId}".`;
+		const spellState = state.spellbook.getSpellState(spellId);
+		const spell = registry.getSpell(spellId);
 
+		if (!spell) {
 			return {
-				briefOutput,
+				briefOutput: `There is no spell with id "${spellId}".`,
 				events: [],
 				timeCost: { type: "none" },
 				stateChanges: {},
 			};
 		}
 
-		const spellToUpdate = state.spellbook.spells.find(
-			(s) => s.definition.id === spellId,
-		)!;
-		if (spellToUpdate.balance) {
-			spellToUpdate.balance.practiceRequirement -= duration;
+		if (!spellState || spellState.knowledgeState !== "learned" && spellState.knowledgeState !== "mastered") {
+			return {
+				briefOutput: `You haven't learned ${spell.definition.name} yet.`,
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
 		}
 
+		const attemptsPerHour = 10;
+		const totalAttempts = attemptsPerHour * duration;
+		let successCount = 0;
+		let updatedState = spellState;
+
+		for (let i = 0; i < totalAttempts; i++) {
+			const successChance = Math.min(0.3 + (updatedState.proficiency / 100) * 0.6, 0.95);
+			const success = Math.random() < successChance;
+			if (success) successCount++;
+
+			updatedState = applySpellUse(
+				updatedState,
+				{ success },
+				spell.balance
+			);
+		}
+
+		state.spellbook.setSpellState(spellId, updatedState);
+
+		const proficiencyGain = updatedState.proficiency - spellState.proficiency;
+		const masteryTierName = updatedState.masteryTier.charAt(0).toUpperCase() + updatedState.masteryTier.slice(1);
+
 		return {
-			briefOutput: `You spent ${duration} hour(s) practicing ${spell.definition.name}. You feel more proficient now.`,
+			briefOutput: `You practiced ${spell.definition.name} ${totalAttempts} times. Success: ${successCount}/${totalAttempts}. Proficiency: ${Math.round(updatedState.proficiency)}/100 (${masteryTierName}).`,
 			events: [`Practiced ${spellId} for ${duration}h`],
-			timeCost: { type: "minutes", amount: 30 * duration },
+			timeCost: { type: "minutes", amount: 60 * duration },
 			stateChanges: {},
 		};
 	}

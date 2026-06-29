@@ -1,0 +1,137 @@
+{
+  "subjectType": "charms",
+  "year": 1,
+  "lessons": [
+    {
+      "id": "charms-1-1",
+      "subjectType": "charms",
+      "year": 1,
+      "order": 1,
+      "title": "Introduction to Charms",
+      "topic": "The difference between charms and transfiguration, and the proper use of wands",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["INT", "WIL"],
+        "subjectKnowledge": {
+          "charms": 5
+        }
+      }
+    },
+    {
+      "id": "charms-1-2",
+      "subjectType": "charms",
+      "year": 1,
+      "order": 2,
+      "title": "The Levitation Charm",
+      "topic": "Wingardium Leviosa and proper wand movement for levitation",
+      "importance": "important",
+      "rewards": {
+        "attributes": ["WIL", "DEX"],
+        "subjectKnowledge": {
+          "charms": 8
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "levitate",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "charms",
+              "min": 5
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    },
+    {
+      "id": "charms-1-3",
+      "subjectType": "charms",
+      "year": 1,
+      "order": 3,
+      "title": "The Unlocking Charm",
+      "topic": "Alohomora for opening locked doors and containers",
+      "importance": "important",
+      "rewards": {
+        "attributes": ["INT", "DEX"],
+        "subjectKnowledge": {
+          "charms": 10
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "unlock",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "charms",
+              "min": 10
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    },
+    {
+      "id": "charms-1-4",
+      "subjectType": "charms",
+      "year": 1,
+      "order": 4,
+      "title": "The Mending Charm",
+      "topic": "Reparo for repairing broken objects",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["WIL", "INT"],
+        "subjectKnowledge": {
+          "charms": 8
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "repair",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "charms",
+              "min": 15
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    },
+    {
+      "id": "charms-1-5",
+      "subjectType": "charms",
+      "year": 1,
+      "order": 5,
+      "title": "The Wand-Lighting Charm",
+      "topic": "Lumos to create light from your wand tip",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["WIL"],
+        "subjectKnowledge": {
+          "charms": 6
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "mage_light",
+          "chance": 1.0,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "charms",
+              "min": 20
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { SubjectType } from "../../../core/domain/quest/Curriculum";
+
 export type Command =
 	| { type: "MOVE"; destinationId: string }
 	| {
@@ -5,7 +7,8 @@ export type Command =
 			npcId: string;
 			conversationTopic?: string;
 	  }
-	| { type: "STUDY"; classId: string }
+	| { type: "STUDY"; subject: SubjectType; duration?: number }
+	| { type: "ATTEND_CLASS"; subject: SubjectType }
 	| { type: "INTERACT"; itemId: string; actionType: string }
 	| {
 			type: "REST";

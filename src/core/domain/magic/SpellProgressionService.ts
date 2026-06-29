@@ -24,21 +24,15 @@ export function applySpellUse(
 	const next: SpellState = { ...state };
 
 	// -----------------------------------
-
-	// 1. Update usage counters
-	// -----------------------------------
-	next.totalUses++;
-	next.successCount += outcome.success ? 1 : 0;
-
-	// -----------------------------------
-	// 2. Gain practice points
+	// 1. Gain practice points
 	// (failures still teach, just less)
 	// -----------------------------------
 	const basePracticeGain = outcome.success ? 1.0 : 0.35;
 	const difficultyModifier = clamp(1 - balance.learningDifficulty, 0.1, 1);
 	next.practicePoints += basePracticeGain * difficultyModifier;
+
 	// -----------------------------------
-	// 3. Convert practice → proficiency
+	// 2. Convert practice → proficiency
 	// -----------------------------------
 	while (next.practicePoints >= balance.practiceRequirement) {
 		next.practicePoints -= balance.practiceRequirement;
@@ -47,17 +41,32 @@ export function applySpellUse(
 		const gain = 2 * proficiencyFactor;
 		next.proficiency = clamp(next.proficiency + gain, 0, 100);
 	}
+
 	// -----------------------------------
-	// 4. Stability update (reliability over time)
+	// 3. Update reliability based on recent outcome
+	// (exponential moving average)
 	// -----------------------------------
-	next.stability = clamp(
-		next.successCount / Math.max(1, next.totalUses),
-		0,
-		1,
-	);
+	const alpha = 0.1;
+	const outcomeValue = outcome.success ? 100 : 0;
+	next.reliability = next.reliability * (1 - alpha) + outcomeValue * alpha;
+
 	// -----------------------------------
-	// 5. Update mastery tier (for narration)
+	// 4. Stability tracks consistency (use proficiency as proxy)
+	// -----------------------------------
+	next.stability = clamp(next.proficiency / 100, 0, 1);
+
+	// -----------------------------------
+	// 5. Update mastery tier and level
 	// -----------------------------------
 	next.masteryTier = computeMasteryTier(next.proficiency);
+	next.masteryLevel = next.proficiency;
+
+	// -----------------------------------
+	// 6. Check if spell should be considered mastered
+	// -----------------------------------
+	if (next.proficiency >= 85 && next.knowledgeState === "learned") {
+		next.knowledgeState = "mastered";
+	}
+
 	return next;
 }

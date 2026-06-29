@@ -119,7 +119,7 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 			case "STUDY":
 				return {
 					type: "STUDY",
-					spellId: target ?? "unknown",
+					subject: (target ?? "charms") as any,
 					duration: (params?.duration as number | undefined) ?? 1,
 				};
 			case "INTERACT":

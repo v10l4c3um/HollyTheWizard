@@ -26,13 +26,13 @@ interface RequiredCondition {
 	source?: string; // e.g., "found in a book", "taught by a professor", etc.
 }
 
-type SpellKnowledgeState =
+export type SpellKnowledgeState =
 	| "hidden" // player is not ready
 	| "available" // prerequisites met, but not encountered
 	| "learned" // encountered and understood
 	| "mastered"; // high proficiency
 
-type SpellMasteryTier =
+export type SpellMasteryTier =
 	| "unfamiliar" // debuff
 	| "learning" // neutral
 	| "comfortable" // easier
@@ -71,6 +71,10 @@ export interface SpellState {
 	masteryTier: SpellMasteryTier;
 	masteryLevel: number; // 0-100
 	reliability: number; // 0-100
+
+	// Discovery tracking
+	discoveredFrom?: string;
+	becameAvailableAt?: number;
 }
 
 export interface Spell {

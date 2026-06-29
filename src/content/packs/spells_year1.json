@@ -1,0 +1,95 @@
+{
+  "levitate": {
+    "definition": {
+      "id": "levitate",
+      "name": "Wingardium Leviosa",
+      "description": "A levitation charm that makes objects float in the air.",
+      "level": "novice",
+      "usageType": "utility",
+      "range": "short",
+      "targetType": "single",
+      "visuals": "The object glows with a soft white light as it rises.",
+      "loreTag": "One of the most fundamental charms taught at Hogwarts."
+    },
+    "balance": {
+      "manaCost": 15,
+      "backfireRisk": "low",
+      "learningDifficulty": 0.3,
+      "practiceRequirement": 8,
+      "scaling": {
+        "intellect": 0.5,
+        "willpower": 0.5
+      }
+    }
+  },
+  "unlock": {
+    "definition": {
+      "id": "unlock",
+      "name": "Alohomora",
+      "description": "An unlocking charm that opens locked doors, windows, and containers.",
+      "level": "novice",
+      "usageType": "utility",
+      "range": "touch",
+      "targetType": "single",
+      "visuals": "The lock clicks and glows briefly with golden light.",
+      "loreTag": "A charm popularized by Eldon Elsrickle in the 17th century."
+    },
+    "balance": {
+      "manaCost": 12,
+      "backfireRisk": "none",
+      "learningDifficulty": 0.25,
+      "practiceRequirement": 6,
+      "scaling": {
+        "intellect": 0.6,
+        "dexterity": 0.4
+      }
+    }
+  },
+  "repair": {
+    "definition": {
+      "id": "repair",
+      "name": "Reparo",
+      "description": "A mending charm that repairs broken objects.",
+      "level": "novice",
+      "usageType": "utility",
+      "range": "touch",
+      "targetType": "single",
+      "visuals": "Broken pieces glow and reassemble themselves.",
+      "loreTag": "Essential for any witch or wizard prone to accidents."
+    },
+    "balance": {
+      "manaCost": 18,
+      "backfireRisk": "low",
+      "learningDifficulty": 0.35,
+      "practiceRequirement": 10,
+      "scaling": {
+        "intellect": 0.5,
+        "willpower": 0.3,
+        "dexterity": 0.2
+      }
+    }
+  },
+  "disarm": {
+    "definition": {
+      "id": "disarm",
+      "name": "Expelliarmus",
+      "description": "A disarming charm that knocks an opponent's wand from their hand.",
+      "level": "novice",
+      "usageType": "combat",
+      "range": "short",
+      "targetType": "single",
+      "visuals": "A jet of scarlet light strikes the target's hand.",
+      "loreTag": "The signature spell of the Boy Who Lived."
+    },
+    "balance": {
+      "manaCost": 20,
+      "backfireRisk": "low",
+      "learningDifficulty": 0.4,
+      "practiceRequirement": 12,
+      "scaling": {
+        "willpower": 0.6,
+        "dexterity": 0.4
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "charms": {
+    "type": "charms",
+    "name": "Charms",
+    "description": "The study of spells that alter objects without changing their fundamental nature."
+  },
+  "potions": {
+    "type": "potions",
+    "name": "Potions",
+    "description": "The art of brewing magical mixtures with various effects."
+  },
+  "defense-against-the-dark-arts": {
+    "type": "defense-against-the-dark-arts",
+    "name": "Defense Against the Dark Arts",
+    "description": "Defensive spells and counter-curses to protect against dark magic."
+  },
+  "transfiguration": {
+    "type": "transfiguration",
+    "name": "Transfiguration",
+    "description": "The transformation of objects and beings into different forms."
+  },
+  "herbology": {
+    "type": "herbology",
+    "name": "Herbology",
+    "description": "The study of magical plants and fungi and their properties."
+  }
+}

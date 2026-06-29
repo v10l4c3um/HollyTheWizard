@@ -1,0 +1,28 @@
+{
+  "year1": {
+    "year": 1,
+    "slots": [
+      { "day": "monday", "period": "morning", "type": "class", "subject": "charms" },
+      { "day": "monday", "period": "afternoon", "type": "class", "subject": "potions" },
+      { "day": "monday", "period": "evening", "type": "free" },
+      { "day": "tuesday", "period": "morning", "type": "class", "subject": "defense-against-the-dark-arts" },
+      { "day": "tuesday", "period": "afternoon", "type": "class", "subject": "transfiguration" },
+      { "day": "tuesday", "period": "evening", "type": "free" },
+      { "day": "wednesday", "period": "morning", "type": "class", "subject": "herbology" },
+      { "day": "wednesday", "period": "afternoon", "type": "free" },
+      { "day": "wednesday", "period": "evening", "type": "free" },
+      { "day": "thursday", "period": "morning", "type": "class", "subject": "charms" },
+      { "day": "thursday", "period": "afternoon", "type": "class", "subject": "potions" },
+      { "day": "thursday", "period": "evening", "type": "free" },
+      { "day": "friday", "period": "morning", "type": "class", "subject": "defense-against-the-dark-arts" },
+      { "day": "friday", "period": "afternoon", "type": "free" },
+      { "day": "friday", "period": "evening", "type": "free" },
+      { "day": "saturday", "period": "morning", "type": "free" },
+      { "day": "saturday", "period": "afternoon", "type": "free" },
+      { "day": "saturday", "period": "evening", "type": "free" },
+      { "day": "sunday", "period": "morning", "type": "free" },
+      { "day": "sunday", "period": "afternoon", "type": "free" },
+      { "day": "sunday", "period": "evening", "type": "curfew" }
+    ]
+  }
+}

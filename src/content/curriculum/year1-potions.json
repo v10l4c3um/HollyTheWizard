@@ -1,0 +1,65 @@
+{
+  "subjectType": "potions",
+  "year": 1,
+  "lessons": [
+    {
+      "id": "potions-1-1",
+      "subjectType": "potions",
+      "year": 1,
+      "order": 1,
+      "title": "Introduction to Potionmaking",
+      "topic": "Basic potion-making equipment and safety procedures",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["INT", "PER"],
+        "subjectKnowledge": {
+          "potions": 5
+        }
+      }
+    },
+    {
+      "id": "potions-1-2",
+      "subjectType": "potions",
+      "year": 1,
+      "order": 2,
+      "title": "The Cure for Boils",
+      "topic": "Brewing a simple healing potion",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["INT", "DEX"],
+        "subjectKnowledge": {
+          "potions": 8
+        }
+      },
+      "revealOpportunities": [
+        {
+          "spellId": "heal",
+          "chance": 0.8,
+          "requirements": [
+            {
+              "type": "subjectKnowledge",
+              "subjectId": "potions",
+              "min": 5
+            }
+          ],
+          "source": "lesson"
+        }
+      ]
+    },
+    {
+      "id": "potions-1-3",
+      "subjectType": "potions",
+      "year": 1,
+      "order": 3,
+      "title": "Forgetfulness Potion",
+      "topic": "A potion that causes memory loss",
+      "importance": "routine",
+      "rewards": {
+        "attributes": ["INT", "WIL"],
+        "subjectKnowledge": {
+          "potions": 10
+        }
+      }
+    }
+  ]
+}

@@ -4,6 +4,8 @@ import Location from "./core/domain/world/Location";
 import { CliApp } from "./ui/cli/App";
 import NPC from "./core/domain/npc/Npc";
 import ContentLoader from "./core/content/ContentLoader";
+import { SchoolDataLoader } from "./core/content/SchoolDataLoader";
+import { createHiddenSpellState } from "./core/domain/magic/SpellStateFactory";
 
 // Seed registry with starter world data
 const registry = new Registry();
@@ -48,6 +50,19 @@ registry.registerNPC(
 // Load spell content packs
 contentLoader.loadAllSpellPacks(registry);
 
+// Load school data (curriculum, subjects, timetables)
+const schoolDataLoader = new SchoolDataLoader();
+const schoolData = schoolDataLoader.loadSchoolData();
+registry.registerSchoolData(schoolData);
+
 const engine = new GameEngine(registry);
+
+// Initialize all spells in hidden state
+const allSpellIds = registry.getAllSpellIds();
+for (const spellId of allSpellIds) {
+	const state = createHiddenSpellState(spellId);
+	engine.state.spellbook.setSpellState(spellId, state);
+}
+
 const app = new CliApp(engine);
 app.start();
