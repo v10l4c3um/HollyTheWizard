@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"start": "npx ts-node src/main.ts",
+		"start": "npx ts-node --files src/main.ts",
 		"build": "npx tsc",
 		"test": "jest"
 	},
@@ -10,9 +10,15 @@
 		"jest": "^30.4.2",
 		"ts-jest": "^29.4.11",
 		"ts-node": "^10.9.2",
+		"tsx": "^4.22.4",
 		"typescript": "^5.8.3"
 	},
 	"dependencies": {
+		"@types/react": "^17.0.93",
+		"ink": "^3.2.0",
+		"ink-spinner": "^4.0.3",
+		"ink-text-input": "^4.0.3",
+		"react": "^17.0.2",
 		"zod": "^4.4.3"
 	}
 }

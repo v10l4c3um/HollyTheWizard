@@ -1,38 +1,18 @@
+import React from "react";
+import { render } from "ink";
 import { GameEngine } from "./core/engine/GameEngine";
 import Registry from "./core/Registry";
 import { createGameBus } from "./core/domain/events/GameEvents";
 import Location from "./core/domain/world/Location";
-import { CliApp } from "./ui/cli/App";
 import NPC from "./core/domain/npc/Npc";
 import ContentLoader from "./core/content/ContentLoader";
 import { SchoolDataLoader } from "./core/content/SchoolDataLoader";
 import { createHiddenSpellState } from "./core/domain/magic/SpellStateFactory";
+import { InkApp } from "./ui/ink/InkApp";
+import { IGameEngine } from "./types";
 
-// Helper function for loading animation
-async function showLoadingAnimation(message: string, duration: number = 1000) {
-	return new Promise<void>((resolve) => {
-		const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-		let idx = 0;
-		const startTime = Date.now();
-		
-		const interval = setInterval(() => {
-			const elapsed = Date.now() - startTime;
-			if (elapsed >= duration) {
-				clearInterval(interval);
-				console.log(`\r${message} ✓`);
-				resolve();
-				return;
-			}
-			
-			const frame = frames[idx % frames.length];
-			process.stdout.write(`\r${message} ${frame}`);
-			idx++;
-		}, 100);
-	});
-}
-
-async function initializeGame() {
-	// Seed registry with starter world data
+// ─── Registry (shared across factory calls) ────────────────────────────────
+function buildRegistry(): Registry {
 	const registry = new Registry();
 	const contentLoader = new ContentLoader();
 
@@ -44,7 +24,6 @@ async function initializeGame() {
 			["forest", "market"],
 		),
 	);
-
 	registry.registerLocation(
 		new Location(
 			"forest",
@@ -53,7 +32,6 @@ async function initializeGame() {
 			["startingVillage"],
 		),
 	);
-
 	registry.registerLocation(
 		new Location(
 			"market",
@@ -62,7 +40,6 @@ async function initializeGame() {
 			["startingVillage"],
 		),
 	);
-
 	registry.registerNPC(
 		new NPC(
 			"villager",
@@ -72,69 +49,69 @@ async function initializeGame() {
 		),
 	);
 
-	// Show loading animation for spell packs
-	console.log("Loading game content...");
-	await showLoadingAnimation("Loading spell packs", 1000);
-
-	// Load spell content packs
 	contentLoader.loadAllSpellPacks(registry);
-
-	// Show loading animation for NPC packs
-	await showLoadingAnimation("Loading NPC packs", 1000);
-
-	// Load NPC content packs
 	contentLoader.loadAllNpcPacks(registry);
 
-	// Show loading animation for school data
-	await showLoadingAnimation("Loading school data", 1000);
-
-	// Load school data (curriculum, subjects, timetables)
 	const schoolDataLoader = new SchoolDataLoader();
-	const schoolData = schoolDataLoader.loadSchoolData();
-	registry.registerSchoolData(schoolData);
+	registry.registerSchoolData(schoolDataLoader.loadSchoolData());
 
+	return registry;
+}
+
+// ─── Engine factory (called after loading screen) ──────────────────────────
+async function engineFactory(): Promise<IGameEngine> {
+	const registry = buildRegistry();
 	const bus = createGameBus();
 	const engine = new GameEngine(registry, {}, bus);
 
 	bus.on("LessonAttended", ({ subjectId, lessonId }) => {
 		const flag = `lesson_completed:${subjectId}:${lessonId}`;
-		if (!engine.state.questFlags.active.includes(flag)) {
+		if (!engine.state.questFlags.active.includes(flag))
 			engine.state.questFlags.active.push(flag);
-		}
 	});
-
 	bus.on("LocationDiscovered", ({ locationId }) => {
 		const flag = `discovered:${locationId}`;
-		if (!engine.state.questFlags.active.includes(flag)) {
+		if (!engine.state.questFlags.active.includes(flag))
 			engine.state.questFlags.active.push(flag);
-		}
 	});
-
 	bus.on("SpellRevealed", ({ spellId }) => {
 		const flag = `spell_revealed:${spellId}`;
-		if (!engine.state.questFlags.active.includes(flag)) {
+		if (!engine.state.questFlags.active.includes(flag))
 			engine.state.questFlags.active.push(flag);
-		}
 	});
-
 	bus.on("SpellMastered", ({ spellId }) => {
 		const flag = `mastered:${spellId}`;
-		if (!engine.state.questFlags.completed.includes(flag)) {
+		if (!engine.state.questFlags.completed.includes(flag))
 			engine.state.questFlags.completed.push(flag);
-		}
 	});
 
-	// Initialize all spells in hidden state
-	const allSpellIds = registry.getAllSpellIds();
-	for (const spellId of allSpellIds) {
-		const state = createHiddenSpellState(spellId);
-		engine.state.spellbook.setSpellState(spellId, state);
+	for (const spellId of registry.getAllSpellIds()) {
+		engine.state.spellbook.setSpellState(
+			spellId,
+			createHiddenSpellState(spellId),
+		);
 	}
 
-	const app = new CliApp(engine);
-	
 	await engine.initializeCampaignBlueprint();
-	await app.start();
+	return engine;
 }
 
-initializeGame().catch(console.error);
+// ─── Location name resolver ─────────────────────────────────────────────────
+// We pre-build a name map once so the UI can look up display names cheaply.
+let _cachedRegistry: Registry | null = null;
+
+function locationNameResolver(id: string): string {
+	// Build a lightweight registry just for name lookups if needed
+	if (!_cachedRegistry) {
+		_cachedRegistry = buildRegistry();
+	}
+	return _cachedRegistry.getLocation(id)?.name ?? id;
+}
+
+// ─── Entry point ────────────────────────────────────────────────────────────
+render(
+	React.createElement(InkApp, {
+		engineFactory,
+		locationNameResolver,
+	}),
+);
