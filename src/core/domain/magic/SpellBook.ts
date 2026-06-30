@@ -30,11 +30,24 @@ class SpellBook {
 
 	hasLearnedSpell(spellId: string): boolean {
 		const state = this.spells.get(spellId);
-		return state?.knowledgeState === "learned" || state?.knowledgeState === "mastered";
+		return (
+			state?.knowledgeState === "learned" ||
+			state?.knowledgeState === "mastered"
+		);
 	}
 
 	getAllSpells(): SpellState[] {
 		return Array.from(this.spells.values());
+	}
+
+	toJSON(): Record<string, SpellState> {
+		return Object.fromEntries(this.spells);
+	}
+
+	static fromJSON(data: Record<string, SpellState>): SpellBook {
+		const book = new SpellBook();
+		book.spells = new Map(Object.entries(data ?? {}));
+		return book;
 	}
 }
 

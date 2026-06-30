@@ -7,8 +7,8 @@ export type Command =
 			npcId: string;
 			conversationTopic?: string;
 	  }
-	| { type: "STUDY"; subject: SubjectType; duration?: number }
-	| { type: "ATTEND_CLASS"; subject: SubjectType }
+	| { type: "STUDY"; subjectId: string; duration?: number }
+	| { type: "ATTEND_CLASS"; subjectId: string; duration?: number }
 	| { type: "INTERACT"; itemId: string; actionType: string }
 	| {
 			type: "REST";
@@ -17,4 +17,5 @@ export type Command =
 	  }
 	| { type: "SAVE"; filename: string }
 	| { type: "LOAD"; filename: string }
-	| { type: "PRACTICE"; spellId: string; duration?: number };
+	| { type: "PRACTICE"; spellId: string; duration?: number }
+	| { type: "ADVANCE_YEAR" };

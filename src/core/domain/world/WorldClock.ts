@@ -18,6 +18,16 @@ class WorldClock {
 		return this.minutesOfDay;
 	}
 
+	setMinutesOfDay(value: number): void {
+		this.minutesOfDay = ((value % 1440) + 1440) % 1440;
+	}
+
+	static fromJSON(data: { minutesOfDay: number }): WorldClock {
+		const clock = new WorldClock();
+		clock.setMinutesOfDay(data.minutesOfDay);
+		return clock;
+	}
+
 	getCurrentTime(): string {
 		const h = Math.floor(this.minutesOfDay / 60);
 		const m = this.minutesOfDay % 60;

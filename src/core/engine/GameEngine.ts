@@ -6,10 +6,20 @@ import TurnResolver from "./TurnResolver";
 import Renderer from "./Renderer";
 import { OllamaConfig, DEFAULT_OLLAMA_CONFIG } from "./OllamaConfig";
 import { RenderContext } from "./RenderContext";
+import { createGameBus, GameBus } from "../domain/events/GameEvents";
+import { BlueprintLLMProvider } from "../../ai/providers/BlueprintLLMProvider";
+import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
+import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlueprint";
+import { AdvanceYear } from "../application/use-cases/AdvanceYear";
+import { BlueprintProgressService } from "../domain/campaign/BlueprintProgressService";
+import { PersistenceRepository } from "../application/ports/PersistenceRepository";
+import { JsonPersistenceRepository } from "../../infastructure/persistance/json/JsonPersistenceRepository";
 
 export interface GameEngineConfig {
 	resolverConfig?: OllamaConfig;
 	rendererConfig?: OllamaConfig;
+	blueprintConfig?: OllamaConfig;
+	persistenceRepository?: PersistenceRepository;
 }
 
 class GameEngine implements IGameEngine {
@@ -18,30 +28,138 @@ class GameEngine implements IGameEngine {
 	private resolver: Resolver;
 	private turnResolver: TurnResolver;
 	private renderer: Renderer;
+	private bus: GameBus;
+	private generateCampaignBlueprint: GenerateCampaignBlueprint;
+	private generateYearBlueprint: GenerateYearBlueprint;
+	private advanceYear: AdvanceYear;
+	private blueprintProgressService: BlueprintProgressService;
+	private persistenceRepository: PersistenceRepository;
 
-	constructor(registry: Registry, config: GameEngineConfig = {}) {
+	constructor(
+		registry: Registry,
+		config: GameEngineConfig = {},
+		bus?: GameBus,
+	) {
 		this.state = new GameState();
 		this.registry = registry;
-		this.resolver = new Resolver(config.resolverConfig ?? DEFAULT_OLLAMA_CONFIG);
-		this.turnResolver = new TurnResolver();
-		this.renderer = new Renderer(config.rendererConfig ?? DEFAULT_OLLAMA_CONFIG);
-		this.state.output = "Welcome to Holly the Wizard! Type a command to begin.";
+		this.bus = bus ?? createGameBus();
+		this.resolver = new Resolver(
+			config.resolverConfig ?? DEFAULT_OLLAMA_CONFIG,
+		);
+		this.turnResolver = new TurnResolver(this.bus);
+		this.renderer = new Renderer(
+			config.rendererConfig ?? DEFAULT_OLLAMA_CONFIG,
+		);
+		this.state.output =
+			"Welcome to Holly the Wizard! Type a command to begin.";
+
+		const blueprintLLMProvider = new BlueprintLLMProvider(
+			config.blueprintConfig ?? DEFAULT_OLLAMA_CONFIG,
+		);
+		this.generateCampaignBlueprint = new GenerateCampaignBlueprint(
+			blueprintLLMProvider,
+			this.registry,
+			this.bus,
+		);
+		this.generateYearBlueprint = new GenerateYearBlueprint(
+			blueprintLLMProvider,
+			this.registry,
+			this.bus,
+		);
+		this.advanceYear = new AdvanceYear(
+			this.generateYearBlueprint,
+			this.bus,
+		);
+		this.blueprintProgressService = new BlueprintProgressService();
+		this.persistenceRepository =
+			config.persistenceRepository ?? new JsonPersistenceRepository();
+	}
+
+	/**
+	 * Generates the campaign-level blueprint once, at game start. Must be
+	 * called (and awaited) before the CLI app starts accepting input.
+	 */
+	async initializeCampaignBlueprint(
+		seed: string = `seed-${Date.now()}`,
+	): Promise<void> {
+		this.state.campaignBlueprint =
+			await this.generateCampaignBlueprint.execute(seed);
+		this.state.yearBlueprints[this.state.currentYear] =
+			await this.generateYearBlueprint.execute(
+				this.state.currentYear,
+				this.state.campaignBlueprint,
+				this.state,
+			);
 	}
 
 	async handleCommand(input: string): Promise<GameState> {
 		try {
 			const command = await this.resolver.resolve(input);
-			const result = this.turnResolver.apply(command, this.state, this.registry);
+
+			if (command.type === "ADVANCE_YEAR") {
+				const result = await this.advanceYear.execute(this.state);
+				this.state.recentEvents.push(...result.events);
+				this.state.output = await this.renderer.render(
+					this._buildRenderContext(result.briefOutput),
+				);
+				this.blueprintProgressService.checkMilestones(
+					this.state,
+					this.bus,
+				);
+				return this.state;
+			}
+
+			if (command.type === "SAVE") {
+				await this.persistenceRepository.save(
+					command.filename,
+					this.state,
+				);
+				this.bus.emit("GameSaved", { filename: command.filename });
+				this.state.output = `Game saved as '${command.filename}'.`;
+				this.blueprintProgressService.checkMilestones(
+					this.state,
+					this.bus,
+				);
+				return this.state;
+			}
+
+			if (command.type === "LOAD") {
+				this.state = await this.persistenceRepository.load(
+					command.filename,
+				);
+				this.bus.emit("GameLoaded", { filename: command.filename });
+				this.state.output = `Loaded game from '${command.filename}'.`;
+				this.blueprintProgressService.checkMilestones(
+					this.state,
+					this.bus,
+				);
+				return this.state;
+			}
+
+			const result = this.turnResolver.apply(
+				command,
+				this.state,
+				this.registry,
+			);
 
 			this.state.recentEvents.push(...result.events);
 			if (result.stateChanges.currentLocationId !== undefined) {
-				this.state.currentLocationId = result.stateChanges.currentLocationId;
+				this.state.currentLocationId =
+					result.stateChanges.currentLocationId;
 			}
 			if (result.stateChanges.newDiscoveredLocationId !== undefined) {
-				this.state.discoveredLocationIds.push(result.stateChanges.newDiscoveredLocationId);
+				this.state.discoveredLocationIds.push(
+					result.stateChanges.newDiscoveredLocationId,
+				);
 			}
 
-			let timePassed: { minutes: number; beforeTimeOfDay: string; afterTimeOfDay: string } | undefined;
+			let timePassed:
+				| {
+						minutes: number;
+						beforeTimeOfDay: string;
+						afterTimeOfDay: string;
+				  }
+				| undefined;
 			if (result.timeCost.type === "minutes") {
 				const beforeTimeOfDay = this.state.worldClock.timeOfDay;
 				this.state.worldClock.advanceTime(result.timeCost.amount);
@@ -51,12 +169,20 @@ class GameEngine implements IGameEngine {
 					beforeTimeOfDay,
 					afterTimeOfDay,
 				};
-				console.log(`[TIME DEBUG] ${result.timeCost.amount} minutes passed | ${beforeTimeOfDay} → ${afterTimeOfDay} | Current time: ${this.state.worldClock.getCurrentTime()}`);
+				this.bus.emit("TimeAdvanced", {
+					minutesDelta: result.timeCost.amount,
+					newMinutesOfDay: this.state.worldClock.getMinutesOfDay(),
+				});
+				console.log(
+					`[TIME DEBUG] ${result.timeCost.amount} minutes passed | ${beforeTimeOfDay} → ${afterTimeOfDay} | Current time: ${this.state.worldClock.getCurrentTime()}`,
+				);
 			}
 
 			this.state.output = await this.renderer.render(
 				this._buildRenderContext(result.briefOutput, timePassed),
 			);
+
+			this.blueprintProgressService.checkMilestones(this.state, this.bus);
 		} catch (error) {
 			this.state.output = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
 		}
@@ -66,11 +192,18 @@ class GameEngine implements IGameEngine {
 
 	private _buildRenderContext(
 		briefOutput: string,
-		timePassed?: { minutes: number; beforeTimeOfDay: string; afterTimeOfDay: string },
+		timePassed?: {
+			minutes: number;
+			beforeTimeOfDay: string;
+			afterTimeOfDay: string;
+		},
 	): RenderContext {
-		const location = this.registry.getLocation(this.state.currentLocationId);
-		const nearbyNPCNames = this.state.knownNPCIds
-			.map((id) => this.registry.getNPC(id)?.name ?? id);
+		const location = this.registry.getLocation(
+			this.state.currentLocationId,
+		);
+		const nearbyNPCNames = this.state.knownNPCIds.map(
+			(id) => this.registry.getNPC(id)?.name ?? id,
+		);
 
 		return {
 			briefOutput,

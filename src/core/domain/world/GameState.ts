@@ -3,7 +3,18 @@ import NPC from "../npc/Npc";
 import Player from "../player/Player";
 import Item from "./Item";
 import WorldClock from "./WorldClock";
-import { PlayerAcademicState, SubjectType, SubjectProgress } from "../quest/Curriculum";
+import {
+	PlayerAcademicState,
+	SubjectType,
+	SubjectProgress,
+	SchoolYear,
+} from "../quest/Curriculum";
+import { CampaignBlueprintBase } from "../campaign/CampaignBlueprint";
+import {
+	YearBlueprint,
+	YearProgress,
+	createEmptyYearProgress,
+} from "../campaign/YearBlueprint";
 
 class GameState {
 	metadata: {
@@ -32,6 +43,11 @@ class GameState {
 		romanceIntensity: number;
 	};
 
+	currentYear: SchoolYear;
+	campaignBlueprint?: CampaignBlueprintBase;
+	yearBlueprints: Partial<Record<SchoolYear, YearBlueprint>>;
+	yearProgress: YearProgress;
+
 	constructor() {
 		this.metadata = {
 			saveVersion: "0.0.1",
@@ -57,19 +73,46 @@ class GameState {
 			narrationMode: "default",
 			romanceIntensity: 0,
 		};
+
+		this.currentYear = 1;
+		this.yearBlueprints = {};
+		this.yearProgress = createEmptyYearProgress(1);
 	}
 
 	private initializeAcademicState(): PlayerAcademicState {
-		const subjects: Record<SubjectType, SubjectProgress> = {} as Record<SubjectType, SubjectProgress>;
+		const subjects: Record<SubjectType, SubjectProgress> = {} as Record<
+			SubjectType,
+			SubjectProgress
+		>;
 
 		const allSubjects: SubjectType[] = [
-			"alchemy", "ancient-magic", "ancient-runes", "apparition", "arithmancy",
-			"astronomy", "care-of-magical-creatures", "charms", "curse-breaking",
-			"defense-against-the-dark-arts", "divination", "enchanting", "flying",
-			"healing", "herbology", "history-of-magic", "legilimency",
-			"magical-architecture", "magical-law", "magical-theory", "magizoology",
-			"muggle-studies", "occlumency", "potions", "spell-creation",
-			"transfiguration", "wandlore"
+			"alchemy",
+			"ancient-magic",
+			"ancient-runes",
+			"apparition",
+			"arithmancy",
+			"astronomy",
+			"care-of-magical-creatures",
+			"charms",
+			"curse-breaking",
+			"defense-against-the-dark-arts",
+			"divination",
+			"enchanting",
+			"flying",
+			"healing",
+			"herbology",
+			"history-of-magic",
+			"legilimency",
+			"magical-architecture",
+			"magical-law",
+			"magical-theory",
+			"magizoology",
+			"muggle-studies",
+			"occlumency",
+			"potions",
+			"spell-creation",
+			"transfiguration",
+			"wandlore",
 		];
 
 		for (const subject of allSubjects) {
@@ -79,7 +122,7 @@ class GameState {
 				currentLessonOrder: 1,
 				knowledge: 0,
 				attendedLessons: [],
-				skippedLessons: []
+				skippedLessons: [],
 			};
 		}
 
@@ -94,10 +137,42 @@ class GameState {
 				PER: 10,
 				AGI: 10,
 				LUC: 10,
-				WIS: 10
+				WIS: 10,
 			},
-			subjects
+			subjects,
 		};
+	}
+
+	/**
+	 * Rehydrates a GameState from a plain object produced by
+	 * `JSON.parse(JSON.stringify(gameState))` (e.g. loaded from disk).
+	 * Class-instance fields with methods (`worldClock`, `spellbook`) are
+	 * rebuilt via their own `fromJSON`; the rest are plain data and can
+	 * be copied directly.
+	 */
+	static fromPlainObject(data: any): GameState {
+		const state = new GameState();
+
+		state.metadata = data.metadata;
+		state.currentLocationId = data.currentLocationId;
+		state.player = data.player;
+		state.academicState = data.academicState;
+		state.inventory = data.inventory;
+		state.discoveredLocationIds = data.discoveredLocationIds;
+		state.questFlags = data.questFlags;
+		state.knownNPCIds = data.knownNPCIds;
+		state.recentEvents = data.recentEvents;
+		state.output = data.output;
+		state.settings = data.settings;
+		state.currentYear = data.currentYear;
+		state.campaignBlueprint = data.campaignBlueprint;
+		state.yearBlueprints = data.yearBlueprints ?? {};
+		state.yearProgress = data.yearProgress;
+
+		state.worldClock = WorldClock.fromJSON(data.worldClock);
+		state.spellbook = SpellBook.fromJSON(data.spellbook);
+
+		return state;
 	}
 }
 

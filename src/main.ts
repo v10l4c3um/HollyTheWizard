@@ -1,5 +1,6 @@
 import { GameEngine } from "./core/engine/GameEngine";
 import Registry from "./core/Registry";
+import { createGameBus } from "./core/domain/events/GameEvents";
 import Location from "./core/domain/world/Location";
 import { CliApp } from "./ui/cli/App";
 import NPC from "./core/domain/npc/Npc";
@@ -55,7 +56,36 @@ const schoolDataLoader = new SchoolDataLoader();
 const schoolData = schoolDataLoader.loadSchoolData();
 registry.registerSchoolData(schoolData);
 
-const engine = new GameEngine(registry);
+const bus = createGameBus();
+const engine = new GameEngine(registry, {}, bus);
+
+bus.on("LessonAttended", ({ subjectId, lessonId }) => {
+	const flag = `lesson_completed:${subjectId}:${lessonId}`;
+	if (!engine.state.questFlags.active.includes(flag)) {
+		engine.state.questFlags.active.push(flag);
+	}
+});
+
+bus.on("LocationDiscovered", ({ locationId }) => {
+	const flag = `discovered:${locationId}`;
+	if (!engine.state.questFlags.active.includes(flag)) {
+		engine.state.questFlags.active.push(flag);
+	}
+});
+
+bus.on("SpellRevealed", ({ spellId }) => {
+	const flag = `spell_revealed:${spellId}`;
+	if (!engine.state.questFlags.active.includes(flag)) {
+		engine.state.questFlags.active.push(flag);
+	}
+});
+
+bus.on("SpellMastered", ({ spellId }) => {
+	const flag = `mastered:${spellId}`;
+	if (!engine.state.questFlags.completed.includes(flag)) {
+		engine.state.questFlags.completed.push(flag);
+	}
+});
 
 // Initialize all spells in hidden state
 const allSpellIds = registry.getAllSpellIds();
@@ -65,4 +95,8 @@ for (const spellId of allSpellIds) {
 }
 
 const app = new CliApp(engine);
-app.start();
+
+(async () => {
+	await engine.initializeCampaignBlueprint();
+	await app.start();
+})();

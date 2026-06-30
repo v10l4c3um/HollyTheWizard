@@ -7,12 +7,13 @@ import { CurriculumService } from "../domain/quest/CurriculumService";
 import { SpellRevealService } from "../domain/magic/SpellRevealService";
 import { applySpellUse } from "../domain/magic/SpellProgressionService";
 import { SubjectType } from "../domain/quest/Curriculum";
+import { GameBus } from "../domain/events/GameEvents";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
 	private spellRevealService: SpellRevealService;
 
-	constructor() {
+	constructor(private bus: GameBus) {
 		this.curriculumService = new CurriculumService();
 		this.spellRevealService = new SpellRevealService();
 	}
@@ -29,9 +30,19 @@ class TurnResolver {
 					registry,
 				);
 			case "STUDY":
-				return this._study(command.subject, command.duration ?? 1, state, registry);
+				return this._study(
+					command.subjectId,
+					command.duration ?? 1,
+					state,
+					registry,
+				);
 			case "ATTEND_CLASS":
-				return this._attendClass(command.subject, state, registry);
+				return this._attendClass(
+					command.subjectId,
+					command.duration ?? 1,
+					state,
+					registry,
+				);
 			case "PRACTICE":
 				return this._practice(
 					command.spellId,
@@ -56,6 +67,15 @@ class TurnResolver {
 				return this._save(command.filename);
 			case "LOAD":
 				return this._load(command.filename);
+			case "ADVANCE_YEAR":
+				// Handled directly by GameEngine.handleCommand (requires async LLM
+				// generation); this branch only guards against direct misuse.
+				return {
+					briefOutput: "",
+					events: [],
+					timeCost: { type: "none" },
+					stateChanges: {},
+				};
 		}
 	}
 
@@ -99,6 +119,14 @@ class TurnResolver {
 			};
 		}
 
+		this.bus.emit("LocationVisited", {
+			locationId: destinationId,
+			isFirstVisit: isNew,
+		});
+		if (isNew) {
+			this.bus.emit("LocationDiscovered", { locationId: destinationId });
+		}
+
 		return {
 			briefOutput: `You traveled to ${destinationDisplayName}.`,
 			events: [
@@ -132,6 +160,8 @@ class TurnResolver {
 		const npcName = npc?.name ?? npcId;
 		const topicSuffix = topic ? ` about ${topic}` : "";
 
+		this.bus.emit("NpcTalkedTo", { npcId, topic });
+
 		return {
 			briefOutput: `You talked to ${npcName}${topicSuffix}. They seem interested in what you have to say.`,
 			events: [`Talked to ${npcId}`],
@@ -141,7 +171,7 @@ class TurnResolver {
 	}
 
 	private _study(
-		subject: SubjectType,
+		subjectId: string,
 		duration: number,
 		state: GameState,
 		registry: Registry,
@@ -157,27 +187,42 @@ class TurnResolver {
 		}
 
 		const knowledgeGain = 10 * duration;
+		const subject: SubjectType = subjectId as SubjectType;
+
 		this.curriculumService.addSubjectKnowledge(
 			subject,
 			knowledgeGain,
-			state.academicState
+			state.academicState,
 		);
 
 		const revealed = this.spellRevealService.updateSpellAvailability(
 			registry,
 			state.spellbook,
 			state.academicState,
-			state.worldClock.getMinutesOfDay()
+			state.worldClock.getMinutesOfDay(),
 		);
 
 		const subjectName = schoolData.subjects[subject]?.name || subject;
 		let output = `You studied ${subjectName}. Gained +${knowledgeGain} knowledge.`;
 
+		this.bus.emit("SubjectStudied", {
+			subjectId: subject,
+			knowledgeGain,
+			totalKnowledge:
+				state.academicState.subjects[subject]?.knowledge ?? 0,
+		});
+
+		for (const spellId of revealed) {
+			this.bus.emit("SpellRevealed", { spellId, source: "study" });
+		}
+
 		if (revealed.length > 0) {
-			const spellNames = revealed.map(id => {
-				const spell = registry.getSpell(id);
-				return spell?.definition.name || id;
-			}).join(", ");
+			const spellNames = revealed
+				.map((id) => {
+					const spell = registry.getSpell(id);
+					return spell?.definition.name || id;
+				})
+				.join(", ");
 			output += ` New spells available: ${spellNames}!`;
 		}
 
@@ -186,14 +231,17 @@ class TurnResolver {
 			events: [`Studied ${subject} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
 			stateChanges: {
-				subjectKnowledgeGains: { [subject]: knowledgeGain } as Partial<Record<SubjectType, number>>,
-				spellsRevealed: revealed
+				subjectKnowledgeGains: { [subject]: knowledgeGain } as Partial<
+					Record<SubjectType, number>
+				>,
+				spellsRevealed: revealed,
 			},
 		};
 	}
 
 	private _attendClass(
-		subject: SubjectType,
+		subjectId: string,
+		duration: number,
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
@@ -207,10 +255,11 @@ class TurnResolver {
 			};
 		}
 
+		const subject: SubjectType = subjectId as SubjectType;
 		const lesson = this.curriculumService.getCurrentLesson(
 			subject,
 			state.academicState,
-			schoolData
+			schoolData,
 		);
 
 		if (!lesson) {
@@ -225,7 +274,8 @@ class TurnResolver {
 
 		this.curriculumService.applyLessonRewards(lesson, state.academicState);
 
-		const spellOpportunities = this.curriculumService.getLessonSpellOpportunities(lesson);
+		const spellOpportunities =
+			this.curriculumService.getLessonSpellOpportunities(lesson);
 		const revealedSpells: string[] = [];
 
 		for (const opportunity of spellOpportunities) {
@@ -233,7 +283,7 @@ class TurnResolver {
 				opportunity,
 				state.academicState,
 				state.spellbook,
-				state.worldClock.getMinutesOfDay()
+				state.worldClock.getMinutesOfDay(),
 			);
 
 			if (result.success) {
@@ -245,24 +295,48 @@ class TurnResolver {
 			subject,
 			state.academicState,
 			lesson.id,
-			true
+			true,
 		);
+
+		this.bus.emit("LessonAttended", {
+			subjectId: subject,
+			lessonId: lesson.id,
+			lessonTitle: lesson.title,
+		});
+
+		if (lesson.rewards.attributes) {
+			for (const attrId of lesson.rewards.attributes) {
+				this.bus.emit("AttributeGained", {
+					attributeId: attrId,
+					delta: 1,
+					newValue: state.academicState.attributes[attrId],
+				});
+			}
+		}
+
+		for (const spellId of revealedSpells) {
+			this.bus.emit("SpellRevealed", { spellId, source: "class" });
+		}
 
 		const subjectName = schoolData.subjects[subject]?.name || subject;
 		let output = `Attended ${subjectName}: "${lesson.title}". ${lesson.topic}.`;
 
 		if (lesson.rewards.subjectKnowledge) {
-			const knowledgeGains = Object.entries(lesson.rewards.subjectKnowledge)
+			const knowledgeGains = Object.entries(
+				lesson.rewards.subjectKnowledge,
+			)
 				.map(([subj, amt]) => `+${amt} ${subj}`)
 				.join(", ");
 			output += ` Knowledge: ${knowledgeGains}.`;
 		}
 
 		if (revealedSpells.length > 0) {
-			const spellNames = revealedSpells.map(id => {
-				const spell = registry.getSpell(id);
-				return spell?.definition.name || id;
-			}).join(", ");
+			const spellNames = revealedSpells
+				.map((id) => {
+					const spell = registry.getSpell(id);
+					return spell?.definition.name || id;
+				})
+				.join(", ");
 			output += ` New spells available: ${spellNames}!`;
 		}
 
@@ -271,9 +345,13 @@ class TurnResolver {
 			events: [`Attended ${subject} class - ${lesson.title}`],
 			timeCost: { type: "minutes", amount: 60 },
 			stateChanges: {
-				subjectKnowledgeGains: lesson.rewards.subjectKnowledge as Partial<Record<SubjectType, number>>,
+				subjectKnowledgeGains: lesson.rewards
+					.subjectKnowledge as Partial<Record<SubjectType, number>>,
 				spellsRevealed: revealedSpells,
-				lessonCompleted: { subject, lessonId: lesson.id }
+				lessonCompleted: {
+					subject: subjectId as SubjectType,
+					lessonId: lesson.id,
+				},
 			},
 		};
 	}
@@ -296,7 +374,11 @@ class TurnResolver {
 			};
 		}
 
-		if (!spellState || spellState.knowledgeState !== "learned" && spellState.knowledgeState !== "mastered") {
+		if (
+			!spellState ||
+			(spellState.knowledgeState !== "learned" &&
+				spellState.knowledgeState !== "mastered")
+		) {
 			return {
 				briefOutput: `You haven't learned ${spell.definition.name} yet.`,
 				events: [],
@@ -311,21 +393,41 @@ class TurnResolver {
 		let updatedState = spellState;
 
 		for (let i = 0; i < totalAttempts; i++) {
-			const successChance = Math.min(0.3 + (updatedState.proficiency / 100) * 0.6, 0.95);
+			const successChance = Math.min(
+				0.3 + (updatedState.proficiency / 100) * 0.6,
+				0.95,
+			);
 			const success = Math.random() < successChance;
 			if (success) successCount++;
 
 			updatedState = applySpellUse(
 				updatedState,
 				{ success },
-				spell.balance
+				spell.balance,
 			);
 		}
 
 		state.spellbook.setSpellState(spellId, updatedState);
 
-		const proficiencyGain = updatedState.proficiency - spellState.proficiency;
-		const masteryTierName = updatedState.masteryTier.charAt(0).toUpperCase() + updatedState.masteryTier.slice(1);
+		this.bus.emit("SpellPracticed", {
+			spellId,
+			attempts: totalAttempts,
+			successCount,
+			proficiency: updatedState.proficiency,
+		});
+
+		if (
+			updatedState.knowledgeState === "mastered" &&
+			spellState.knowledgeState !== "mastered"
+		) {
+			this.bus.emit("SpellMastered", { spellId });
+		}
+
+		const proficiencyGain =
+			updatedState.proficiency - spellState.proficiency;
+		const masteryTierName =
+			updatedState.masteryTier.charAt(0).toUpperCase() +
+			updatedState.masteryTier.slice(1);
 
 		return {
 			briefOutput: `You practiced ${spell.definition.name} ${totalAttempts} times. Success: ${successCount}/${totalAttempts}. Proficiency: ${Math.round(updatedState.proficiency)}/100 (${masteryTierName}).`,
@@ -377,6 +479,7 @@ class TurnResolver {
 	}
 
 	private _save(filename: string): TurnResult {
+		this.bus.emit("GameSaved", { filename });
 		return {
 			briefOutput: `Game saved as '${filename}'.`,
 			events: [`Game saved as ${filename}`],
@@ -386,6 +489,7 @@ class TurnResolver {
 	}
 
 	private _load(filename: string): TurnResult {
+		this.bus.emit("GameLoaded", { filename });
 		return {
 			briefOutput: `Loaded game from '${filename}'.`,
 			events: [`Loaded game from ${filename}`],

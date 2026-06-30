@@ -1,8 +1,12 @@
 import Registry from "../core/Registry";
 import GameState from "../core/domain/world/GameState";
 import TurnResolver from "../core/engine/TurnResolver";
-import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
+import {
+	createHiddenSpellState,
+	createLearnedSpellState,
+} from "../core/domain/magic/SpellStateFactory";
 import { Spell } from "../core/domain/magic/Spell";
+import { createGameBus } from "../core/domain/events/GameEvents";
 
 describe("Spell Progression System", () => {
 	let registry: Registry;
@@ -12,7 +16,8 @@ describe("Spell Progression System", () => {
 	beforeEach(() => {
 		registry = new Registry();
 		state = new GameState();
-		resolver = new TurnResolver();
+		const bus = createGameBus();
+		resolver = new TurnResolver(bus);
 
 		// Register test spell
 		const testSpell: Spell = {
@@ -23,15 +28,15 @@ describe("Spell Progression System", () => {
 				level: "novice",
 				usageType: "utility",
 				range: "self",
-				targetType: "self"
+				targetType: "self",
 			},
 			balance: {
 				manaCost: 10,
 				backfireRisk: "none",
 				learningDifficulty: 0.3,
 				practiceRequirement: 5,
-				scaling: {}
-			}
+				scaling: {},
+			},
 		};
 
 		registry.registerSpell(testSpell);
@@ -52,7 +57,7 @@ describe("Spell Progression System", () => {
 		const spellState = state.spellbook.getSpellState("test_spell");
 		state.spellbook.updateSpellState("test_spell", {
 			...spellState!,
-			knowledgeState: "learned"
+			knowledgeState: "learned",
 		});
 
 		const updatedState = state.spellbook.getSpellState("test_spell");
@@ -60,22 +65,15 @@ describe("Spell Progression System", () => {
 	});
 
 	test("practice increases proficiency", () => {
-		// Set spell to learned state
-		state.spellbook.updateSpellState("test_spell", {
-			knowledgeState: "learned",
-			proficiency: 0,
-			practicePoints: 0,
-			stability: 0,
-			masteryTier: "unfamiliar",
-			masteryLevel: 0,
-			reliability: 0,
-			spellId: "test_spell"
-		});
+		// Set spell to learned state using the factory function
+		const learnedState = createLearnedSpellState("test_spell", "test");
+		state.spellbook.setSpellState("test_spell", learnedState);
 
+		// Practice for longer to ensure proficiency gain (10 hours of practice)
 		const result = resolver.apply(
-			{ type: "PRACTICE", spellId: "test_spell", duration: 1 },
+			{ type: "PRACTICE", spellId: "test_spell", duration: 10 },
 			state,
-			registry
+			registry,
 		);
 
 		const updatedState = state.spellbook.getSpellState("test_spell");
@@ -87,20 +85,26 @@ describe("Spell Progression System", () => {
 		expect(state.academicState).toBeDefined();
 		expect(state.academicState.subjects["charms"]).toBeDefined();
 		expect(state.academicState.subjects["charms"].knowledge).toBe(0);
-		expect(state.academicState.subjects["charms"].currentLessonOrder).toBe(1);
+		expect(state.academicState.subjects["charms"].currentLessonOrder).toBe(
+			1,
+		);
 		expect(state.academicState.attributes.INT).toBe(10);
 	});
 
 	test("spellbook methods work correctly", () => {
-		const hiddenSpells = state.spellbook.getSpellsByKnowledgeState("hidden");
+		const hiddenSpells =
+			state.spellbook.getSpellsByKnowledgeState("hidden");
 		expect(hiddenSpells.length).toBe(1);
 
-		const learnedSpells = state.spellbook.getSpellsByKnowledgeState("learned");
+		const learnedSpells =
+			state.spellbook.getSpellsByKnowledgeState("learned");
 		expect(learnedSpells.length).toBe(0);
 
 		expect(state.spellbook.hasLearnedSpell("test_spell")).toBe(false);
 
-		state.spellbook.updateSpellState("test_spell", { knowledgeState: "learned" });
+		state.spellbook.updateSpellState("test_spell", {
+			knowledgeState: "learned",
+		});
 		expect(state.spellbook.hasLearnedSpell("test_spell")).toBe(true);
 	});
 });

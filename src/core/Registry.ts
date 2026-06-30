@@ -2,7 +2,11 @@ import Location from "./domain/world/Location";
 import NPC from "./domain/npc/Npc";
 import Item from "./domain/world/Item";
 import { Spell } from "./domain/magic/Spell";
-import { SchoolData, SubjectType, SubjectCurriculum } from "./domain/quest/Curriculum";
+import {
+	SchoolData,
+	SubjectType,
+	SubjectCurriculum,
+} from "./domain/quest/Curriculum";
 
 class Registry {
 	private locations = new Map<string, Location>();
@@ -35,6 +39,14 @@ class Registry {
 		return this.npcs.get(id);
 	}
 
+	getAllNpcIds(): string[] {
+		return Array.from(this.npcs.keys());
+	}
+
+	getAllLocationIds(): string[] {
+		return Array.from(this.locations.keys());
+	}
+
 	getItem(id: string): Item | undefined {
 		return this.items.get(id);
 	}
@@ -55,12 +67,15 @@ class Registry {
 		return this.schoolData;
 	}
 
-	getCurriculumForSubject(subject: SubjectType, year: number): SubjectCurriculum | undefined {
+	getCurriculumForSubject(
+		subject: SubjectType,
+		year: number,
+	): SubjectCurriculum | undefined {
 		if (!this.schoolData) {
 			return undefined;
 		}
 		return this.schoolData.curriculums.find(
-			(c) => c.subjectType === subject && c.year === year
+			(c) => c.subjectType === subject && c.year === year,
 		);
 	}
 }

@@ -18,10 +18,12 @@ class Resolver {
 					"MOVE",
 					"TALK",
 					"STUDY",
+					"ATTEND_CLASS",
 					"INTERACT",
 					"REST",
 					"SAVE",
 					"LOAD",
+					"ADVANCE_YEAR",
 				],
 				description: "The command type",
 			},
@@ -90,9 +92,11 @@ Available commands:
 - TALK: Interact with an NPC (e.g., "talk to goblin", "chat with merchant")
 - STUDY: Study a spell (e.g., "study fireball", "learn magic")
 - INTERACT: Use an item (e.g., "use potion", "open door")
+- ATTEND_CLASS: Attend a class (e.g., "attend charms class", "go to potions lecture")
 - REST: Rest and advance time (e.g., "rest", "sleep 2 hours")
 - SAVE: Save the game (e.g., "save game1")
 - LOAD: Load a saved game (e.g., "load game1")
+- ADVANCE_YEAR: Advance to the next school year (e.g., "advance to next year", "end the school year")
 
 User input: "${input}"
 
@@ -119,7 +123,13 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 			case "STUDY":
 				return {
 					type: "STUDY",
-					subject: (target ?? "charms") as any,
+					subjectId: (target ?? "charms") as any,
+					duration: (params?.duration as number | undefined) ?? 1,
+				};
+			case "ATTEND_CLASS":
+				return {
+					type: "ATTEND_CLASS",
+					subjectId: target ?? "unknown",
 					duration: (params?.duration as number | undefined) ?? 1,
 				};
 			case "INTERACT":
@@ -151,6 +161,8 @@ Extract the command type, the target id (if applicable), and any parameters. Res
 						target ??
 						"autosave",
 				};
+			case "ADVANCE_YEAR":
+				return { type: "ADVANCE_YEAR" };
 			default:
 				throw new Error(`Unknown command type: ${type}`);
 		}
