@@ -11,14 +11,14 @@ const SAVES_DIR = path.join(process.cwd(), "saves");
  * (`worldClock`, `spellbook`) are rehydrated via `GameState.fromPlainObject`.
  */
 export class JsonPersistenceRepository implements PersistenceRepository {
-	async save(filename: string, state: GameState): Promise<void> {
+	async save(filename: string = "autosave", state: GameState): Promise<void> {
 		await fs.mkdir(SAVES_DIR, { recursive: true });
 		const filePath = this._resolveFilePath(filename);
 		const json = JSON.stringify(state, null, 2);
 		await fs.writeFile(filePath, json, "utf-8");
 	}
 
-	async load(filename: string): Promise<GameState> {
+	async load(filename: string = "autosave"): Promise<GameState> {
 		const filePath = this._resolveFilePath(filename);
 		const json = await fs.readFile(filePath, "utf-8");
 		const data = JSON.parse(json);
@@ -28,11 +28,10 @@ export class JsonPersistenceRepository implements PersistenceRepository {
 	private _resolveFilePath(filename: string): string {
 		// Reject path separators/traversal so the filename can't escape
 		// the saves directory (OWASP path traversal).
-		const safeName = path
-			.basename(filename)
-			.replace(/[^a-zA-Z0-9_-]/g, "_");
+		var safeName = path.basename(filename).replace(/[^a-zA-Z0-9_-]/g, "_");
 		if (safeName.length === 0) {
-			throw new Error("Invalid save filename.");
+			safeName = "autosave"; // Default to autosave if the name is empty after sanitization
+			//throw new Error("Invalid save filename.");
 		}
 		return path.join(SAVES_DIR, `${safeName}.json`);
 	}

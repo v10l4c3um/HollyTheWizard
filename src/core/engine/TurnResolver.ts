@@ -482,7 +482,7 @@ class TurnResolver {
 		this.bus.emit("GameSaved", { filename });
 		return {
 			briefOutput: `Game saved as '${filename}'.`,
-			events: [`Game saved as ${filename}`],
+			events: [`Game saved as ${filename ? filename : "autosave"}`],
 			timeCost: { type: "none" },
 			stateChanges: {},
 		};

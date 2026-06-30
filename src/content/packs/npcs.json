@@ -1,0 +1,73 @@
+{
+  "name": "Core NPCs",
+  "version": "1.0.0",
+  "description": "Basic NPCs available in the wizarding world",
+  "npcs": [
+    {
+      "id": "professor_snape",
+      "name": "Professor Snape",
+      "dialogue": [
+        "Potter! What do you think I am, a doormat?",
+        "I suggest you study harder, Potter. Your magic is lacking.",
+        "Dumbledore would be proud of your... lack of effort."
+      ],
+      "affinity": 85,
+      "tag_description": "Strict and intimidating, but ultimately caring"
+    },
+    {
+      "id": "hagrid",
+      "name": "Rubeus Hagrid",
+      "dialogue": [
+        "Yer a wizard, Harry!",
+        "Ferret, ferret, ferret... oh, it's just you, Harry.",
+        "I likes t'be around the kids. Makes me feel young again!"
+      ],
+      "affinity": 90,
+      "tag_description": "Large, friendly, and protective of magical creatures"
+    },
+    {
+      "id": "dumbledore",
+      "name": "Albus Dumbledore",
+      "dialogue": [
+        "Happiness can be found even in the darkest of times, if one only remembers to turn on the light.",
+        "It is our choices that show what we truly are, far more than our abilities.",
+        "It is not our abilities that show what we truly are, but our choices."
+      ],
+      "affinity": 95,
+      "tag_description": "Wise, benevolent, and thoughtful leader"
+    },
+    {
+      "id": "harry_potter",
+      "name": "Harry Potter",
+      "dialogue": [
+        "I'm not going to be bullied by you!",
+        "I've got to go to the library.",
+        "I'm not scared of anything anymore!"
+      ],
+      "affinity": 70,
+      "tag_description": "Brave and determined, but sometimes impulsive"
+    },
+    {
+      "id": "hermione_granger",
+      "name": "Hermione Granger",
+      "dialogue": [
+        "I'm going to read the book about this!",
+        "That's a terrible idea, Harry.",
+        "I know all about this subject, actually."
+      ],
+      "affinity": 80,
+      "tag_description": "Knowledgeable, studious, and practical"
+    },
+    {
+      "id": "ron_weasley",
+      "name": "Ron Weasley",
+      "dialogue": [
+        "I can't believe you did that!",
+        "That's brilliant, Harry!",
+        "I want to be a wizard too!"
+      ],
+      "affinity": 75,
+      "tag_description": "Loyal, funny, and supportive friend"
+    }
+  ]
+}
