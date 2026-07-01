@@ -40,6 +40,55 @@ describe("OllamaClient", () => {
 		).resolves.toBe("resolved text");
 	});
 
+	it("disables thinking by default in generate requests", async () => {
+		(global.fetch as jest.Mock).mockResolvedValue({
+			ok: true,
+			json: async () => ({ response: "resolved text" }),
+		});
+
+		await generateWithOllama(TEST_CONFIG, "hello");
+
+		const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+			string,
+			RequestInit,
+		];
+		expect(init.body).toBe(
+			JSON.stringify({
+				model: "test-model",
+				prompt: "hello",
+				stream: false,
+				think: false,
+			}),
+		);
+	});
+
+	it("allows thinking to be re-enabled per config", async () => {
+		(global.fetch as jest.Mock).mockResolvedValue({
+			ok: true,
+			json: async () => ({ response: "resolved text" }),
+		});
+
+		await generateWithOllama(
+			{
+				...TEST_CONFIG,
+				disableThinking: false,
+			},
+			"hello",
+		);
+
+		const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+			string,
+			RequestInit,
+		];
+		expect(init.body).toBe(
+			JSON.stringify({
+				model: "test-model",
+				prompt: "hello",
+				stream: false,
+			}),
+		);
+	});
+
 	it("throws a normalized HTTP error for non-OK responses", async () => {
 		(global.fetch as jest.Mock).mockResolvedValue({
 			ok: false,

@@ -67,10 +67,7 @@ function resolveTimeout(
 	return config.debugMode ? undefined : timeoutMs;
 }
 
-function normalizeError(
-	error: unknown,
-	endpoint: string,
-): OllamaRequestError {
+function normalizeError(error: unknown, endpoint: string): OllamaRequestError {
 	if (error instanceof OllamaRequestError) {
 		return error;
 	}
@@ -92,18 +89,10 @@ function normalizeError(
 	}
 
 	if (error instanceof Error) {
-		return new OllamaRequestError(
-			error.message,
-			"unknown",
-			endpoint,
-		);
+		return new OllamaRequestError(error.message, "unknown", endpoint);
 	}
 
-	return new OllamaRequestError(
-		"Ollama request failed",
-		"unknown",
-		endpoint,
-	);
+	return new OllamaRequestError("Ollama request failed", "unknown", endpoint);
 }
 
 function buildGenerateBody(
@@ -111,10 +100,12 @@ function buildGenerateBody(
 	prompt: string,
 	format?: object | "json",
 ): string {
+	const disableThinking = config.disableThinking ?? true;
 	return JSON.stringify({
 		model: config.model,
 		prompt,
 		stream: false,
+		think: disableThinking ? false : undefined,
 		...(format ? { format } : {}),
 	});
 }
@@ -184,10 +175,6 @@ export async function generateWithOllama(
 					config.endpoint,
 				);
 			}
-			
-			if (context === "resolver" && config.debugMode) {
-				console.debug(`[Ollama] ${context} response structure:`, data);
-			}
 
 			if (typeof data.response !== "string") {
 				throw new OllamaRequestError(
@@ -199,7 +186,9 @@ export async function generateWithOllama(
 
 			if (data.response.trim() === "") {
 				if (context === "resolver") {
-					console.warn(`[Ollama] Empty response for resolver request with format: ${format ? JSON.stringify(format) : "none"}`);
+					console.warn(
+						`[Ollama] Empty response for resolver request with format: ${format ? JSON.stringify(format) : "none"}`,
+					);
 				}
 				throw new OllamaRequestError(
 					"Ollama returned an empty response. Model may have failed to generate output with the requested format constraints.",
