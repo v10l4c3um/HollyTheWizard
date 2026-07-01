@@ -149,10 +149,11 @@ export const CommandInput: React.FC<CommandInputProps> = ({
             </Box>
 
             {/* Input row */}
-            <Box flexDirection="row" gap={1}>
+            <Box flexDirection="row">
                 <Text color={disabled ? "gray" : "magenta"} bold>
                     {disabled ? "⌛" : "▶"}
                 </Text>
+                <Text> </Text>
                 <Text color="white">
                     {value || (blink ? "" : placeholder)}
                 </Text>

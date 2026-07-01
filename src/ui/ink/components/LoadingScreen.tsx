@@ -55,15 +55,16 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
             <Text color="magenta" bold>
                 Loading world…
             </Text>
-            <Box marginTop={1} flexDirection="column" gap={0}>
+            <Box marginTop={1} flexDirection="column">
                 {steps.map((step, i) => {
                     const done = completedSteps.includes(i);
                     const active = i === currentStep;
                     return (
-                        <Box key={i} flexDirection="row" gap={1} marginBottom={0}>
+                        <Box key={i} flexDirection="row">
                             <Text color={done ? "green" : active ? "cyan" : "gray"}>
                                 {done ? "✓" : active ? SPIN_FRAMES[spinFrame % SPIN_FRAMES.length] : "○"}
                             </Text>
+                            <Text> </Text>
                             <Text color={done ? "green" : active ? "white" : "gray"}>
                                 {step.label.padEnd(28)}
                             </Text>

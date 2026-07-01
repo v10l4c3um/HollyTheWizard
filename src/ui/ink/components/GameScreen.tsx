@@ -64,7 +64,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <Hud state={state} locationName={locationName} />
 
             {/* Main content row */}
-            <Box flexDirection="row" flexGrow={1} gap={0}>
+            <Box flexDirection="row" flexGrow={1}>
                 {/* Left: output panel */}
                 <Box flexDirection="column" flexGrow={1}>
                     <OutputPanel lines={outputLines} maxLines={14} />

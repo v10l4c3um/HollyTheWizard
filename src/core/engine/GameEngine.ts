@@ -4,7 +4,13 @@ import Registry from "../Registry";
 import Resolver from "./Resolver";
 import TurnResolver from "./TurnResolver";
 import Renderer from "./Renderer";
-import { OllamaConfig, DEFAULT_OLLAMA_CONFIG } from "./OllamaConfig";
+import {
+	OllamaConfig,
+	DEFAULT_BLUEPRINT_OLLAMA_CONFIG,
+	DEFAULT_RENDERER_OLLAMA_CONFIG,
+	DEFAULT_RESOLVER_OLLAMA_CONFIG,
+} from "./OllamaConfig";
+import { probeOllamaConnection } from "./OllamaClient";
 import { RenderContext } from "./RenderContext";
 import { createGameBus, GameBus } from "../domain/events/GameEvents";
 import { BlueprintLLMProvider } from "../../ai/providers/BlueprintLLMProvider";
@@ -34,28 +40,36 @@ class GameEngine implements IGameEngine {
 	private advanceYear: AdvanceYear;
 	private blueprintProgressService: BlueprintProgressService;
 	private persistenceRepository: PersistenceRepository;
+	private startupConfigs: OllamaConfig[];
 
 	constructor(
 		registry: Registry,
 		config: GameEngineConfig = {},
 		bus?: GameBus,
 	) {
+		const resolverConfig =
+			config.resolverConfig ?? DEFAULT_RESOLVER_OLLAMA_CONFIG;
+		const rendererConfig =
+			config.rendererConfig ?? DEFAULT_RENDERER_OLLAMA_CONFIG;
+		const blueprintConfig =
+			config.blueprintConfig ?? DEFAULT_BLUEPRINT_OLLAMA_CONFIG;
+
 		this.state = new GameState();
 		this.registry = registry;
 		this.bus = bus ?? createGameBus();
-		this.resolver = new Resolver(
-			config.resolverConfig ?? DEFAULT_OLLAMA_CONFIG,
-		);
+		this.resolver = new Resolver(resolverConfig);
 		this.turnResolver = new TurnResolver(this.bus);
-		this.renderer = new Renderer(
-			config.rendererConfig ?? DEFAULT_OLLAMA_CONFIG,
-		);
+		this.renderer = new Renderer(rendererConfig);
 		this.state.output =
 			"Welcome to Holly the Wizard! Type a command to begin.";
 
-		const blueprintLLMProvider = new BlueprintLLMProvider(
-			config.blueprintConfig ?? DEFAULT_OLLAMA_CONFIG,
-		);
+		this.startupConfigs = [
+			resolverConfig,
+			rendererConfig,
+			blueprintConfig,
+		];
+
+		const blueprintLLMProvider = new BlueprintLLMProvider(blueprintConfig);
 		this.generateCampaignBlueprint = new GenerateCampaignBlueprint(
 			blueprintLLMProvider,
 			this.registry,
@@ -82,6 +96,7 @@ class GameEngine implements IGameEngine {
 	async initializeCampaignBlueprint(
 		seed: string = `seed-${Date.now()}`,
 	): Promise<void> {
+		await this._verifyOllamaConnections();
 		this.state.campaignBlueprint =
 			await this.generateCampaignBlueprint.execute(seed);
 		this.state.yearBlueprints[this.state.currentYear] =
@@ -216,6 +231,30 @@ class GameEngine implements IGameEngine {
 			narrationMode: this.state.settings.narrationMode,
 			timePassed,
 		};
+	}
+
+	private async _verifyOllamaConnections(): Promise<void> {
+		const seen = new Set<string>();
+
+		for (const config of this.startupConfigs) {
+			const key = `${config.endpoint}::${config.model}`;
+			if (seen.has(key)) {
+				continue;
+			}
+			seen.add(key);
+
+			try {
+				await probeOllamaConnection(config);
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "Ollama availability check failed";
+				throw new Error(
+					`Startup failed: ${message} at ${config.endpoint}`,
+				);
+			}
+		}
 	}
 }
 

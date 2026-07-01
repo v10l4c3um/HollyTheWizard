@@ -33,9 +33,10 @@ export const MainMenu: React.FC<MainMenuProps> = ({ options, onSelect }) => {
     });
 
     return (
-        <Box flexDirection="column" paddingX={4} gap={0}>
-            <Box marginBottom={1} flexDirection="row" gap={1}>
+        <Box flexDirection="column" paddingX={4}>
+            <Box marginBottom={1} flexDirection="row">
                 <Text color="cyan">✦</Text>
+                <Text> </Text>
                 <Text color="white" dimColor>
                     Use ↑↓ to navigate  ·  Enter to select
                 </Text>
@@ -44,10 +45,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({ options, onSelect }) => {
             {options.map((opt, i) => {
                 const isActive = i === selected;
                 return (
-                    <Box key={i} flexDirection="row" gap={2} marginBottom={0}>
+                    <Box key={i} flexDirection="row">
                         <Text color={isActive ? "magenta" : "gray"}>
                             {isActive ? (pulse ? "▶" : "▷") : " "}
                         </Text>
+                        <Text>  </Text>
                         <Box flexDirection="column">
                             <Text
                                 color={isActive ? "white" : "gray"}

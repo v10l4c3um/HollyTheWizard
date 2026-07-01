@@ -1,170 +1,319 @@
 import { Command } from "../../ui/cli/commands/Command";
 import { OllamaConfig } from "./OllamaConfig";
+import { generateWithOllama } from "./OllamaClient";
 
-interface ParsedCommand {
-	type: string;
+/** All command intents the parser can recognize. */
+const INTENT_TYPES = [
+	"MOVE",
+	"TALK",
+	"STUDY",
+	"ATTEND_CLASS",
+	"PRACTICE",
+	"INTERACT",
+	"REST",
+	"SAVE",
+	"LOAD",
+	"ADVANCE_YEAR",
+] as const;
+
+type IntentType = (typeof INTENT_TYPES)[number];
+
+/** One-line summaries used to help the model pick the right intent. */
+const INTENT_SUMMARIES: Record<IntentType, string> = {
+	MOVE: 'Navigate to a location (e.g., "go to village", "travel north")',
+	TALK: 'Interact with an NPC (e.g., "talk to goblin", "chat with merchant")',
+	STUDY: 'Study a subject on your own (e.g., "study charms", "learn potions")',
+	ATTEND_CLASS:
+		'Attend a scheduled class (e.g., "attend charms class", "go to potions lecture")',
+	PRACTICE:
+		'Practice a learned spell (e.g., "practice fireball", "rehearse the shield charm")',
+	INTERACT: 'Use an item (e.g., "use potion", "open door")',
+	REST: 'Rest and advance time (e.g., "rest", "sleep 2 hours")',
+	SAVE: 'Save the game (e.g., "save game1")',
+	LOAD: 'Load a saved game (e.g., "load game1")',
+	ADVANCE_YEAR:
+		'Advance to the next school year (e.g., "advance to next year", "end the school year")',
+};
+
+/** Flattened argument shape returned by the second-stage extraction call. */
+interface ParsedArguments {
 	target?: string;
-	params?: Record<string, unknown>;
+	duration?: number;
+	conversationTopic?: string;
+	actionType?: string;
 }
+
+/** Per-intent JSON schema for the argument-extraction call. `null` means no arguments are needed. */
+const ARGUMENT_SCHEMAS: Record<IntentType, object | null> = {
+	MOVE: {
+		type: "object",
+		properties: {
+			target: {
+				type: "string",
+				description: "The destination location id",
+			},
+		},
+		required: ["target"],
+	},
+	TALK: {
+		type: "object",
+		properties: {
+			target: { type: "string", description: "The NPC id to talk to" },
+			conversationTopic: {
+				type: "string",
+				description: "The topic of conversation, if one is mentioned",
+			},
+		},
+		required: ["target"],
+	},
+	STUDY: {
+		type: "object",
+		properties: {
+			target: { type: "string", description: "The subject id to study" },
+			duration: {
+				type: "number",
+				description: "Hours to study, default 1",
+			},
+		},
+		required: ["target"],
+	},
+	ATTEND_CLASS: {
+		type: "object",
+		properties: {
+			target: {
+				type: "string",
+				description: "The subject id for the class",
+			},
+			duration: {
+				type: "number",
+				description: "Hours to attend, default 1",
+			},
+		},
+		required: ["target"],
+	},
+	PRACTICE: {
+		type: "object",
+		properties: {
+			target: { type: "string", description: "The spell id to practice" },
+			duration: {
+				type: "number",
+				description: "Hours to practice, default 1",
+			},
+		},
+		required: ["target"],
+	},
+	INTERACT: {
+		type: "object",
+		properties: {
+			target: {
+				type: "string",
+				description: "The item id to interact with",
+			},
+			actionType: {
+				type: "string",
+				description: 'The action to perform, e.g. "use" or "open"',
+			},
+		},
+		required: ["target"],
+	},
+	REST: {
+		type: "object",
+		properties: {
+			target: {
+				type: "string",
+				description: "The location id to rest at, if specified",
+			},
+			duration: {
+				type: "number",
+				description: "Hours to rest, default 1",
+			},
+		},
+	},
+	SAVE: {
+		type: "object",
+		properties: {
+			target: { type: "string", description: "The save filename" },
+		},
+	},
+	LOAD: {
+		type: "object",
+		properties: {
+			target: { type: "string", description: "The filename to load" },
+		},
+	},
+	// ADVANCE_YEAR takes no arguments, so no second LLM call is needed for it.
+	ADVANCE_YEAR: null,
+};
 
 class Resolver {
 	private config: OllamaConfig;
-	private commandSchema = {
+	private intentSchema = {
 		type: "object",
 		properties: {
-			type: {
+			intent: {
 				type: "string",
-				enum: [
-					"MOVE",
-					"TALK",
-					"STUDY",
-					"ATTEND_CLASS",
-					"INTERACT",
-					"REST",
-					"SAVE",
-					"LOAD",
-					"ADVANCE_YEAR",
-				],
-				description: "The command type",
-			},
-			target: {
-				type: "string",
-				description: "The target id (NPC, location, spell, item, etc.)",
-			},
-			params: {
-				type: "object",
-				properties: {
-					duration: { type: "number" },
-					filename: { type: "string" },
-					actionType: { type: "string" },
-					conversationTopic: { type: "string" },
-				},
-				additionalProperties: true,
+				enum: INTENT_TYPES as unknown as string[],
+				description: "The single best-matching command intent",
 			},
 		},
-		required: ["type"],
+		required: ["intent"],
 	};
 
 	constructor(config: OllamaConfig) {
 		this.config = config;
 	}
 
+	/**
+	 * Resolves free-form player input into a structured `Command` using a
+	 * two-stage pipeline:
+	 *   1. Intent parsing - classify the input into one of a small, fixed
+	 *      set of intents (cheap, single-field JSON response).
+	 *   2. Argument parsing - given the intent, extract only the fields
+	 *      relevant to that intent using a narrowly scoped schema.
+	 *
+	 * Splitting the work this way keeps each individual LLM call small and
+	 * focused, which is both faster and more consistent than asking a
+	 * single call to pick a type AND fill in a large union of possible
+	 * fields at once.
+	 */
 	async resolve(input: string): Promise<Command> {
-		const prompt = this._buildPrompt(input);
-
 		try {
-			const response = await fetch(this.config.endpoint, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					model: this.config.model,
-					prompt: prompt,
-					stream: false,
-					format: this.commandSchema,
-				}),
-			});
+			const intent = await this._classifyIntent(input);
 
-			if (!response.ok) {
-				throw new Error(
-					`Ollama request failed: ${response.statusText}`,
-				);
+			if (intent === "ADVANCE_YEAR") {
+				console.debug(`[Resolver] "${input}" → intent=ADVANCE_YEAR`);
+				return { type: "ADVANCE_YEAR" };
 			}
 
-			const data = (await response.json()) as { response: string };
-			const parsed = JSON.parse(data.response) as ParsedCommand;
+			const args = await this._extractArguments(input, intent);
+			const command = this._createCommand(intent, args);
 
-			const command = this._createCommand(parsed);
-
-			console.debug(`[Resolver] "${input}" → ${JSON.stringify(command)}`);
+			console.debug(
+				`[Resolver] "${input}" → intent=${intent} → ${JSON.stringify(command)}`,
+			);
 			return command;
 		} catch (error) {
-			throw new Error(
-				`Failed to resolve command: ${error instanceof Error ? error.message : "Unknown error"}`,
+			console.error(
+				`[Resolver] Failed to resolve "${input}": ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`,
 			);
+			return { type: "REST", duration: 1 };
 		}
 	}
 
-	private _buildPrompt(input: string): string {
-		return `You are a command parser for a fantasy RPG game. Parse the following user input into a structured command.
+	private async _classifyIntent(input: string): Promise<IntentType> {
+		const prompt = this._buildIntentPrompt(input);
+		const parsed = (await this._generate(prompt, this.intentSchema)) as {
+			intent?: string;
+		};
 
-Available commands:
-- MOVE: Navigate to a location (e.g., "go to village", "travel north")
-- TALK: Interact with an NPC (e.g., "talk to goblin", "chat with merchant")
-- STUDY: Study a spell (e.g., "study fireball", "learn magic")
-- INTERACT: Use an item (e.g., "use potion", "open door")
-- ATTEND_CLASS: Attend a class (e.g., "attend charms class", "go to potions lecture")
-- REST: Rest and advance time (e.g., "rest", "sleep 2 hours")
-- SAVE: Save the game (e.g., "save game1")
-- LOAD: Load a saved game (e.g., "load game1")
-- ADVANCE_YEAR: Advance to the next school year (e.g., "advance to next year", "end the school year")
+		const intent = parsed.intent as IntentType;
+		if (!INTENT_TYPES.includes(intent)) {
+			throw new Error(`Unrecognized intent: ${parsed.intent}`);
+		}
+		return intent;
+	}
+
+	private async _extractArguments(
+		input: string,
+		intent: IntentType,
+	): Promise<ParsedArguments> {
+		const schema = ARGUMENT_SCHEMAS[intent];
+		if (!schema) {
+			return {};
+		}
+
+		const prompt = this._buildArgumentPrompt(input, intent);
+		return (await this._generate(prompt, schema)) as ParsedArguments;
+	}
+
+	private async _generate(prompt: string, format: object): Promise<unknown> {
+		const responseText = await generateWithOllama(this.config, prompt, {
+			context: "resolver",
+			format,
+		});
+		return JSON.parse(responseText);
+	}
+
+	private _buildIntentPrompt(input: string): string {
+		const intentList = INTENT_TYPES.map(
+			(intent) => `- ${intent}: ${INTENT_SUMMARIES[intent]}`,
+		).join("\n");
+
+		return `You are an intent classifier for a fantasy RPG game. Classify the following user input into exactly one of the available intents.
+
+Available intents:
+${intentList}
 
 User input: "${input}"
 
-Extract the command type, the target id (if applicable), and any parameters. Respond with only valid JSON.`;
+Respond with only valid JSON containing the single best-matching intent.`;
 	}
 
-	private _createCommand(parsed: ParsedCommand): Command {
-		const { type, target, params } = parsed;
+	private _buildArgumentPrompt(input: string, intent: IntentType): string {
+		return `You are an argument extractor for a fantasy RPG game. The user's input has already been classified as a "${intent}" command (${INTENT_SUMMARIES[intent]}).
 
-		switch (type) {
+User input: "${input}"
+
+Extract only the fields relevant to this command. Respond with only valid JSON.`;
+	}
+
+	private _createCommand(intent: IntentType, args: ParsedArguments): Command {
+		switch (intent) {
 			case "MOVE":
 				return {
 					type: "MOVE",
-					destinationId: target ?? "unknown",
+					destinationId: args.target ?? "unknown",
 				};
 			case "TALK":
 				return {
 					type: "TALK",
-					npcId: target ?? "unknown",
-					conversationTopic: params?.conversationTopic as
-						| string
-						| undefined,
+					npcId: args.target ?? "unknown",
+					conversationTopic: args.conversationTopic,
 				};
 			case "STUDY":
 				return {
 					type: "STUDY",
-					subjectId: (target ?? "charms") as any,
-					duration: (params?.duration as number | undefined) ?? 1,
+					subjectId: (args.target ?? "charms") as any,
+					duration: args.duration ?? 1,
 				};
 			case "ATTEND_CLASS":
 				return {
 					type: "ATTEND_CLASS",
-					subjectId: target ?? "unknown",
-					duration: (params?.duration as number | undefined) ?? 1,
+					subjectId: args.target ?? "unknown",
+					duration: args.duration ?? 1,
+				};
+			case "PRACTICE":
+				return {
+					type: "PRACTICE",
+					spellId: args.target ?? "unknown",
+					duration: args.duration ?? 1,
 				};
 			case "INTERACT":
 				return {
 					type: "INTERACT",
-					itemId: target ?? "unknown",
-					actionType:
-						(params?.actionType as string | undefined) ?? "use",
+					itemId: args.target ?? "unknown",
+					actionType: args.actionType ?? "use",
 				};
 			case "REST":
 				return {
 					type: "REST",
-					duration: (params?.duration as number | undefined) ?? 1,
-					locationId: params?.location as string | undefined,
+					duration: args.duration ?? 1,
+					locationId: args.target,
 				};
 			case "SAVE":
 				return {
 					type: "SAVE",
-					filename:
-						(params?.filename as string | undefined) ??
-						target ??
-						"autosave",
+					filename: args.target ?? "autosave",
 				};
 			case "LOAD":
 				return {
 					type: "LOAD",
-					filename:
-						(params?.filename as string | undefined) ??
-						target ??
-						"autosave",
+					filename: args.target ?? "autosave",
 				};
 			case "ADVANCE_YEAR":
 				return { type: "ADVANCE_YEAR" };
-			default:
-				throw new Error(`Unknown command type: ${type}`);
 		}
 	}
 }

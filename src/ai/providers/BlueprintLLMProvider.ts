@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { OllamaConfig } from "../../core/engine/OllamaConfig";
+import { generateWithOllama } from "../../core/engine/OllamaClient";
 
 type GenerateAttempt<T> =
 	| { ok: true; value: T }
@@ -46,34 +47,18 @@ export class BlueprintLLMProvider {
 		schema: z.ZodType<T>,
 	): Promise<GenerateAttempt<T>> {
 		try {
-			const response = await fetch(this.config.endpoint, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					model: this.config.model,
-					prompt,
-					stream: false,
-					format: "json",
-				}),
+			const responseText = await generateWithOllama(this.config, prompt, {
+				context: "blueprint generation",
+				format: "json",
 			});
-
-			if (!response.ok) {
-				return {
-					ok: false,
-					rawText: "",
-					errors: [`Ollama request failed: ${response.statusText}`],
-				};
-			}
-
-			const data = (await response.json()) as { response: string };
 
 			let parsed: unknown;
 			try {
-				parsed = JSON.parse(data.response);
+				parsed = JSON.parse(responseText);
 			} catch {
 				return {
 					ok: false,
-					rawText: data.response,
+					rawText: responseText,
 					errors: ["Response was not valid JSON."],
 				};
 			}
@@ -85,7 +70,7 @@ export class BlueprintLLMProvider {
 
 			return {
 				ok: false,
-				rawText: data.response,
+				rawText: responseText,
 				errors: result.error.issues.map(
 					(issue) => `${issue.path.join(".")}: ${issue.message}`,
 				),

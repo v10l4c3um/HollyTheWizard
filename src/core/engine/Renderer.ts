@@ -1,4 +1,5 @@
 import { OllamaConfig } from "./OllamaConfig";
+import { generateWithOllama } from "./OllamaClient";
 import { RenderContext } from "./RenderContext";
 
 class Renderer {
@@ -11,22 +12,19 @@ class Renderer {
 	async render(ctx: RenderContext): Promise<string> {
 		const prompt = this._buildPrompt(ctx);
 
-		const response = await fetch(this.config.endpoint, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				model: this.config.model,
-				prompt,
-				stream: false,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Renderer request failed: ${response.statusText}`);
+		try {
+			const responseText = await generateWithOllama(this.config, prompt, {
+				context: "renderer",
+			});
+			return responseText.trim();
+		} catch (error) {
+			console.error(
+				`[Renderer] Failed to render narrative: ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`,
+			);
+			return "Nothing happened. AI narration is unavailable.";
 		}
-
-		const data = (await response.json()) as { response: string };
-		return data.response.trim();
 	}
 
 	private _buildPrompt(ctx: RenderContext): string {

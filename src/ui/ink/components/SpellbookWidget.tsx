@@ -78,11 +78,13 @@ export const SpellbookWidget: React.FC<SpellbookWidgetProps> = ({
                 const color = STATE_COLOR[spell.knowledgeState] ?? "gray";
                 const icon = STATE_ICON[spell.knowledgeState] ?? "◌";
                 return (
-                    <Box key={spell.spellId} flexDirection="row" gap={1}>
+                    <Box key={spell.spellId} flexDirection="row">
                         <Text color={isActive ? "white" : "gray"}>
                             {isActive ? "▶" : " "}
                         </Text>
+                        <Text> </Text>
                         <Text color={color}>{icon}</Text>
+                        <Text> </Text>
                         <Text color={isActive ? "white" : color} bold={isActive}>
                             {spell.spellId.replace(/_/g, " ").slice(0, 16).padEnd(16)}
                         </Text>
@@ -100,14 +102,16 @@ export const SpellbookWidget: React.FC<SpellbookWidgetProps> = ({
             {interactive && selected && (
                 <>
                     <Text color="gray" dimColor>────────────────────────────────</Text>
-                    <Box flexDirection="row" gap={1}>
+                    <Box flexDirection="row">
                         <Text color="cyan" dimColor>Mastery:</Text>
+                        <Text> </Text>
                         <Text color="white">{selected.masteryLevel}</Text>
                         <Text color="gray" dimColor>  Proficiency:</Text>
                         <Text color="white">{selected.proficiency}</Text>
                     </Box>
-                    <Box flexDirection="row" gap={1}>
+                    <Box flexDirection="row">
                         <Text color="cyan" dimColor>State:</Text>
+                        <Text> </Text>
                         <Text color={STATE_COLOR[selected.knowledgeState] ?? "gray"}>
                             {selected.knowledgeState}
                         </Text>

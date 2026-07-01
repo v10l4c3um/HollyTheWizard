@@ -7,7 +7,7 @@ import { GameScreen } from "./components/GameScreen";
 import { IGameEngine } from "../../types";
 
 // ─── App phases ───────────────────────────────────────────────────────────────
-type Phase = "menu" | "loading" | "game";
+type Phase = "menu" | "loading" | "game" | "startup-error";
 
 const MENU_OPTIONS: MenuOption[] = [
     {
@@ -50,11 +50,17 @@ const OptionsScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (k.escape || (_i.toLowerCase() === "q")) onBack();
     });
     return (
-        <Box flexDirection="column" paddingX={4} gap={1}>
+        <Box flexDirection="column" paddingX={4}>
             <Text color="magenta" bold>⚙  Options</Text>
-            <Text color="gray" dimColor>Narration mode: <Text color="white">AI / Fallback</Text></Text>
-            <Text color="gray" dimColor>Romance intensity: <Text color="white">medium</Text></Text>
-            <Text color="gray" dimColor>Display style: <Text color="white">default</Text></Text>
+            <Text color="gray" dimColor>
+                Narration mode: <Text color="white">AI / Fallback</Text>
+            </Text>
+            <Text color="gray" dimColor>
+                Romance intensity: <Text color="white">medium</Text>
+            </Text>
+            <Text color="gray" dimColor>
+                Display style: <Text color="white">default</Text>
+            </Text>
             <Text color="cyan" dimColor>  (Press Esc or Q to go back)</Text>
         </Box>
     );
@@ -78,6 +84,7 @@ export const InkApp: React.FC<InkAppProps> = ({
     const [initialOutput, setInitialOutput] = useState<string>("");
     const [menuChoice, setMenuChoice] = useState<string | null>(null);
     const [showOptions, setShowOptions] = useState(false);
+    const [startupError, setStartupError] = useState<string | null>(null);
 
     // ── Menu selection ────────────────────────────────────────────────────────
     const handleMenuSelect = async (value: string) => {
@@ -89,15 +96,23 @@ export const InkApp: React.FC<InkAppProps> = ({
 
     // ── Loading complete ──────────────────────────────────────────────────────
     const handleLoadingComplete = async () => {
-        const eng = await engineFactory();
-        if (menuChoice === "continue" || menuChoice === "load") {
-            try {
-                await eng.handleCommand("load autosave");
-            } catch { /* ignore, fall through to fresh state */ }
+        try {
+            const eng = await engineFactory();
+            if (menuChoice === "continue" || menuChoice === "load") {
+                try {
+                    await eng.handleCommand("load autosave");
+                } catch { /* ignore, fall through to fresh state */ }
+            }
+            setInitialOutput(eng.state.output || "Welcome, wizard. The world awaits.");
+            setEngine(eng);
+            setPhase("game");
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Startup failed.";
+            setStartupError(message);
+            setPhase("startup-error");
+            setTimeout(() => exit(), 1800);
         }
-        setInitialOutput(eng.state.output || "Welcome, wizard. The world awaits.");
-        setEngine(eng);
-        setPhase("game");
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -126,6 +141,18 @@ export const InkApp: React.FC<InkAppProps> = ({
                     initialOutput={initialOutput}
                     locationNameResolver={locationNameResolver}
                 />
+            )}
+
+            {phase === "startup-error" && startupError && (
+                <Box flexDirection="column" paddingX={4}>
+                    <Text color="red" bold>
+                        Startup failed
+                    </Text>
+                    <Text color="white">{startupError}</Text>
+                    <Text color="gray" dimColor>
+                        Exiting application…
+                    </Text>
+                </Box>
             )}
         </Box>
     );

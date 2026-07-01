@@ -44,11 +44,9 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
             borderStyle="single"
             borderColor="gray"
             paddingX={1}
-            gap={3}
-            flexWrap="wrap"
         >
             {/* Time & Location */}
-            <Box flexDirection="column" gap={0}>
+            <Box flexDirection="column">
                 <Text color="cyan" bold>
                     {timeIcon(timeOfDay)} {timeStr}{" "}
                     <Text color="gray" dimColor>({timeOfDay})</Text>
@@ -59,21 +57,21 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
             </Box>
 
             {/* Divider */}
-            <Text color="gray" dimColor>│</Text>
+            <Text color="gray" dimColor>   │   </Text>
 
             {/* Resources */}
-            <Box flexDirection="column" gap={0}>
-                <Box flexDirection="row" gap={1}>
+            <Box flexDirection="column">
+                <Box flexDirection="row">
                     <Text color="red">❤  </Text>
                     <Text color={barColor(res.health, 100)}>{resourceBar(res.health, 100)}</Text>
                     <Text color="gray" dimColor> {res.health}</Text>
                 </Box>
-                <Box flexDirection="row" gap={1}>
+                <Box flexDirection="row">
                     <Text color="blue">✦  </Text>
                     <Text color={barColor(res.mana, 100)}>{resourceBar(res.mana, 100)}</Text>
                     <Text color="gray" dimColor> {res.mana}</Text>
                 </Box>
-                <Box flexDirection="row" gap={1}>
+                <Box flexDirection="row">
                     <Text color="green">⚡ </Text>
                     <Text color={barColor(res.stamina, 100)}>{resourceBar(res.stamina, 100)}</Text>
                     <Text color="gray" dimColor> {res.stamina}</Text>
@@ -81,16 +79,17 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
             </Box>
 
             {/* Divider */}
-            <Text color="gray" dimColor>│</Text>
+            <Text color="gray" dimColor>   │   </Text>
 
             {/* Character Stats */}
-            <Box flexDirection="row" gap={2}>
-                <Box flexDirection="column" gap={0}>
+            <Box flexDirection="row">
+                <Box flexDirection="column">
                     <Text color="gray" dimColor>INT <Text color="white">{chr.intelligence}</Text></Text>
                     <Text color="gray" dimColor>STR <Text color="white">{chr.strength}</Text></Text>
                     <Text color="gray" dimColor>AGI <Text color="white">{chr.agility}</Text></Text>
                 </Box>
-                <Box flexDirection="column" gap={0}>
+                <Box width={2} />
+                <Box flexDirection="column">
                     <Text color="gray" dimColor>CHA <Text color="white">{chr.charisma}</Text></Text>
                     <Text color="gray" dimColor>DEX <Text color="white">{chr.dexterity}</Text></Text>
                     <Text color="gray" dimColor>WIS <Text color="white">{chr.wisdom}</Text></Text>
@@ -98,10 +97,10 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
             </Box>
 
             {/* Divider */}
-            <Text color="gray" dimColor>│</Text>
+            <Text color="gray" dimColor>   │   </Text>
 
             {/* Player name */}
-            <Box flexDirection="column" gap={0}>
+            <Box flexDirection="column">
                 <Text color="magenta" bold>{player.name}</Text>
                 <Text color="gray" dimColor>{player.archetype} · Yr {state.currentYear}</Text>
             </Box>

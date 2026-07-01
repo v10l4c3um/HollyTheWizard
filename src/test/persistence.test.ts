@@ -84,7 +84,7 @@ describe("JsonPersistenceRepository", () => {
 		// 		// Call private method via type casting for testing edge case
 		// 		(repository as any)._resolveFilePath(unsafeFilename);
 		// 	}).toThrow("Invalid save filename");
-		});
+		// });
 
 		it("creates saves directory if it doesn't exist", async () => {
 			const testFilename = `test-save-${Date.now()}`;
