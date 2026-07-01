@@ -1,21 +1,18 @@
 class NPC {
-	id: string;
-	name: string;
-	dialogue: string[];
-	affinity: number;
-	tag_description: string;
+	id: string; // unique identifier for the NPC
+	name: string; // display name for the NPC
+	dialogue: string[]; // a style guide how npc talks
+	tag_description: string; // a short tag based description for broader traits
 
 	constructor(
 		id: string,
 		name: string = "NPC",
 		dialogue: string[] = [],
-		affinity: number = 0,
 		tag_description: string = "",
 	) {
 		this.id = id;
 		this.name = name;
 		this.dialogue = dialogue;
-		this.affinity = affinity;
 		this.tag_description = tag_description;
 	}
 }

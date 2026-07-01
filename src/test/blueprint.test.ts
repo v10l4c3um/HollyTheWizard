@@ -30,7 +30,7 @@ function buildRegistry(): Registry {
 	registry.registerLocation(
 		new Location("forest", "Forest", "desc", ["startingVillage"]),
 	);
-	registry.registerNPC(new NPC("mentor_npc", "Mentor", ["hello"], 0));
+	registry.registerNPC(new NPC("mentor_npc", "Mentor", ["hello"]));
 	return registry;
 }
 

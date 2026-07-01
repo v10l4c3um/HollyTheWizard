@@ -1,24 +1,22 @@
-import { AttributeId } from "../player/Attributes";
+import { RelationshipDelta } from "../npc/Relationship";
+import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
 
 export type GameEffect =
 	| { type: "ProgressDelta"; track: string; delta: number; reason: string }
 	| {
 			type: "AttributeDelta";
-			attributeId: AttributeId;
-			delta: number;
+			delta: AttributeStatsDelta;
 			reason: string;
 	  }
 	| {
 			type: "ResourceDelta";
-			resourceId: string;
-			delta: number;
+			delta: ResourceStatsDelta;
 			reason: string;
 	  }
 	| {
 			type: "RelationshipDelta";
 			npcId: string;
-			axis: string;
-			delta: number;
+			delta: RelationshipDelta;
 			reason: string;
 	  }
 	| {
@@ -42,28 +40,29 @@ export function progressDelta(
 }
 
 export function attributeDelta(
-	attributeId: AttributeId,
-	delta: number,
+	delta: AttributeStatsDelta,
 	reason: string,
 ): GameEffect {
-	return { type: "AttributeDelta", attributeId, delta, reason };
+	return {
+		type: "AttributeDelta",
+		delta,
+		reason,
+	};
 }
 
 export function resourceDelta(
-	resourceId: string,
-	delta: number,
+	delta: ResourceStatsDelta,
 	reason: string,
 ): GameEffect {
-	return { type: "ResourceDelta", resourceId, delta, reason };
+	return { type: "ResourceDelta", delta, reason };
 }
 
 export function relationshipDelta(
 	npcId: string,
-	axis: string,
-	delta: number,
+	delta: RelationshipDelta,
 	reason: string,
 ): GameEffect {
-	return { type: "RelationshipDelta", npcId, axis, delta, reason };
+	return { type: "RelationshipDelta", npcId, delta, reason };
 }
 
 export function flagSet(

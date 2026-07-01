@@ -31,9 +31,8 @@ function timeIcon(timeOfDay: string): string {
 
 export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
     const { player, worldClock } = state;
-    const stats = player.stats;
-    const res = stats.resources;
-    const chr = stats.character;
+    const stats = player.attributes;
+    const res = player.resources;
 
     const timeStr = worldClock.getCurrentTime();
     const timeOfDay = worldClock.timeOfDay;
@@ -73,8 +72,8 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
                 </Box>
                 <Box flexDirection="row">
                     <Text color="green">⚡ </Text>
-                    <Text color={barColor(res.stamina, 100)}>{resourceBar(res.stamina, 100)}</Text>
-                    <Text color="gray" dimColor> {res.stamina}</Text>
+                    <Text color={barColor(res.energy, 100)}>{resourceBar(res.energy, 100)}</Text>
+                    <Text color="gray" dimColor> {res.energy}</Text>
                 </Box>
             </Box>
 
@@ -82,7 +81,8 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
             <Text color="gray" dimColor>   │   </Text>
 
             {/* Character Stats */}
-            <Box flexDirection="row">
+            {/* TODO: Rework for new attributes */}
+            {/* <Box flexDirection="row">
                 <Box flexDirection="column">
                     <Text color="gray" dimColor>INT <Text color="white">{chr.intelligence}</Text></Text>
                     <Text color="gray" dimColor>STR <Text color="white">{chr.strength}</Text></Text>
@@ -94,7 +94,7 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
                     <Text color="gray" dimColor>DEX <Text color="white">{chr.dexterity}</Text></Text>
                     <Text color="gray" dimColor>WIS <Text color="white">{chr.wisdom}</Text></Text>
                 </Box>
-            </Box>
+            </Box> */}
 
             {/* Divider */}
             <Text color="gray" dimColor>   │   </Text>

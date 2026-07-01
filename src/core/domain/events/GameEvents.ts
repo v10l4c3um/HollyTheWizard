@@ -1,5 +1,5 @@
 import { SubjectType, SchoolYear } from "../quest/Curriculum";
-import { AttributeId } from "../player/Attributes";
+import { AttributeId } from "../player/PlayerStats";
 import { TypedBus } from "../../engine/EventBus";
 
 export type GameEvents = {

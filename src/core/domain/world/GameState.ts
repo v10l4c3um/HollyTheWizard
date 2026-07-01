@@ -15,6 +15,7 @@ import {
 	YearProgress,
 	createEmptyYearProgress,
 } from "../campaign/YearBlueprint";
+import { RelationshipStats } from "../npc/Relationship";
 
 class GameState {
 	metadata: {
@@ -39,7 +40,7 @@ class GameState {
 	/** Generic numeric resources (energy, stress, reputation, ...) mutated via `ResourceDelta` effects. */
 	resources: Record<string, number>;
 	/** npcId -> axis (trust/affinity/...) -> value, mutated via `RelationshipDelta` effects. */
-	relationships: Record<string, Record<string, number>>;
+	relationships: Record<string, RelationshipStats>;
 	knownNPCIds: string[];
 	recentEvents: string[];
 	output: string;

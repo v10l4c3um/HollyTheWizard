@@ -1,11 +1,11 @@
-import { AttributesSet } from "../player/Attributes";
+import { AttributeStats } from "../player/PlayerStats";
 
 class Exam {
-	attributes: AttributesSet;
+	attributes: AttributeStats;
 	description: string;
 	name: string;
 
-	constructor(name: string, description: string, attributes: AttributesSet) {
+	constructor(name: string, description: string, attributes: AttributeStats) {
 		this.name = name;
 		this.description = description;
 		this.attributes = attributes;

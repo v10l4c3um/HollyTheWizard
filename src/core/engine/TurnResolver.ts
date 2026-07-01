@@ -314,7 +314,9 @@ class TurnResolver {
 		const effects: GameEffect[] = [];
 		if (lesson.rewards.attributes) {
 			for (const attrId of lesson.rewards.attributes) {
-				effects.push(attributeDelta(attrId, 1, `lesson:${lesson.id}`));
+				effects.push(
+					attributeDelta({ [attrId]: 1 }, `lesson:${lesson.id}`),
+				);
 			}
 		}
 		if (lesson.rewards.subjectKnowledge) {

@@ -3,6 +3,12 @@ import Item from "../world/Item";
 import { GameEffect } from "./GameEffects";
 import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
+import {
+	AttributeStats,
+	AttributeStatsDelta,
+	ResourceStats,
+	ResourceStatsDelta,
+} from "../player/PlayerStats";
 
 /**
  * Central state-mutation path for `GameEffect`s.
@@ -35,19 +41,14 @@ function applyEffect(
 			applyProgressDelta(state, effect.track, effect.delta);
 			break;
 		case "AttributeDelta":
-			state.academicState.attributes[effect.attributeId] =
-				(state.academicState.attributes[effect.attributeId] ?? 0) +
-				effect.delta;
+			state.player.attributes.applyDelta(effect.delta);
 			break;
-		case "ResourceDelta": // energy/stress/reputation
-			state.resources[effect.resourceId] =
-				(state.resources[effect.resourceId] ?? 0) + effect.delta;
+		case "ResourceDelta":
+			state.player.resources.applyDelta(effect.delta);
 			break;
-		case "RelationshipDelta": {
-			const axes = (state.relationships[effect.npcId] ??= {});
-			axes[effect.axis] = (axes[effect.axis] ?? 0) + effect.delta;
+		case "RelationshipDelta":
+			state.relationships[effect.npcId]?.applyDelta(effect.delta);
 			break;
-		}
 		case "FlagSet":
 			state.flags[effect.flagId] = effect.value;
 			break;

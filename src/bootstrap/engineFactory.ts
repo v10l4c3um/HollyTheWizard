@@ -56,12 +56,9 @@ export function buildRegistry(onProgress?: StartupProgressReporter): Registry {
 		),
 	);
 	registry.registerNPC(
-		new NPC(
-			"villager",
-			"Villager",
-			["A friendly villager who seems eager to chat."],
-			0,
-		),
+		new NPC("villager", "Villager", [
+			"A friendly villager who seems eager to chat.",
+		]),
 	);
 
 	onProgress?.({
@@ -146,31 +143,34 @@ export async function engineFactory(
 		status: "done",
 	});
 
-	await engine.initializeCampaignBlueprint(undefined, (milestoneId, status) => {
-		switch (milestoneId) {
-			case "ollama-check":
-				onProgress?.({
-					id: "ollama-check",
-					label: "Checking Ollama availability",
-					status,
-				});
-				break;
-			case "campaign-blueprint":
-				onProgress?.({
-					id: "campaign-blueprint",
-					label: "Generating campaign blueprint",
-					status,
-				});
-				break;
-			case "year-blueprint":
-				onProgress?.({
-					id: "year-blueprint",
-					label: "Generating year blueprint",
-					status,
-				});
-				break;
-		}
-	});
+	await engine.initializeCampaignBlueprint(
+		undefined,
+		(milestoneId, status) => {
+			switch (milestoneId) {
+				case "ollama-check":
+					onProgress?.({
+						id: "ollama-check",
+						label: "Checking Ollama availability",
+						status,
+					});
+					break;
+				case "campaign-blueprint":
+					onProgress?.({
+						id: "campaign-blueprint",
+						label: "Generating campaign blueprint",
+						status,
+					});
+					break;
+				case "year-blueprint":
+					onProgress?.({
+						id: "year-blueprint",
+						label: "Generating year blueprint",
+						status,
+					});
+					break;
+			}
+		},
+	);
 	return engine;
 }
 

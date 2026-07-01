@@ -1,5 +1,3 @@
-import { AttributesSet } from "../player/Attributes";
-
 export interface SpellDefinition {
 	id: string;
 	name: string;

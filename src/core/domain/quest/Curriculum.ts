@@ -1,4 +1,4 @@
-import { AttributeId, AttributesSet } from "../player/Attributes";
+import { AttributeId } from "../player/PlayerStats";
 
 export type SchoolYear = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 

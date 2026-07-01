@@ -1,5 +1,5 @@
 import Item from "../world/Item";
-import PlayerStats from "./PlayerStats";
+import { AttributeStats, ResourceStats } from "./PlayerStats";
 
 class Player {
 	name: string;
@@ -11,7 +11,8 @@ class Player {
 	inventory: Item[];
 	health: number;
 
-	stats: PlayerStats;
+	attributes: AttributeStats = new AttributeStats();
+	resources: ResourceStats = new ResourceStats();
 
 	constructor() {
 		this.name = "Player";
@@ -21,7 +22,6 @@ class Player {
 		this.archetype = "default";
 		this.faction = "default";
 		this.inventory = [];
-		this.stats = new PlayerStats();
 		this.health = 100;
 	}
 }

@@ -1,6 +1,6 @@
 import { TimeCost } from "./TimeCost";
 import { SubjectType } from "../domain/quest/Curriculum";
-import { AttributeId } from "../domain/player/Attributes";
+import { AttributeId } from "../domain/player/PlayerStats";
 import { GameEffect } from "../domain/effects/GameEffects";
 
 export interface TurnResult {
