@@ -1,6 +1,7 @@
 import { OllamaConfig } from "./OllamaConfig";
 
 export const OLLAMA_REQUEST_TIMEOUT_MS = 5000;
+export const OLLAMA_RESOLVER_TIMEOUT_MS = 15000; // Resolver needs more time for JSON parsing
 export const OLLAMA_HEALTHCHECK_TIMEOUT_MS = 10000;
 export const OLLAMA_CONNECTIVITY_TIMEOUT_MS = 1000;
 export const OLLAMA_MAX_RETRIES = 3;
@@ -11,6 +12,7 @@ type OllamaRequestErrorCode =
 	| "unavailable"
 	| "http"
 	| "invalid_response"
+	| "empty_response"
 	| "unknown";
 
 export class OllamaRequestError extends Error {
@@ -39,8 +41,12 @@ function sleep(ms: number): Promise<void> {
 async function fetchWithTimeout(
 	endpoint: string,
 	init: RequestInit,
-	timeoutMs: number,
+	timeoutMs?: number,
 ): Promise<Response> {
+	if (timeoutMs === undefined) {
+		return fetch(endpoint, init);
+	}
+
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -52,6 +58,13 @@ async function fetchWithTimeout(
 	} finally {
 		clearTimeout(timeoutId);
 	}
+}
+
+function resolveTimeout(
+	timeoutMs: number,
+	config: OllamaConfig,
+): number | undefined {
+	return config.debugMode ? undefined : timeoutMs;
 }
 
 function normalizeError(
@@ -135,14 +148,22 @@ export async function generateWithOllama(
 
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
+			const body = buildGenerateBody(config, prompt, format);
+			if (context === "resolver" && config.debugMode) {
+				console.debug(`[Ollama] ${context} request body:`, body);
+				if (format) {
+					console.debug(`[Ollama] format schema:`, format);
+				}
+			}
+
 			const response = await fetchWithTimeout(
 				config.endpoint,
 				{
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: buildGenerateBody(config, prompt, format),
+					body,
 				},
-				timeoutMs,
+				resolveTimeout(timeoutMs, config),
 			);
 
 			if (!response.ok) {
@@ -163,10 +184,26 @@ export async function generateWithOllama(
 					config.endpoint,
 				);
 			}
+			
+			if (context === "resolver" && config.debugMode) {
+				console.debug(`[Ollama] ${context} response structure:`, data);
+			}
+
 			if (typeof data.response !== "string") {
 				throw new OllamaRequestError(
-					"Ollama returned an invalid response",
+					`Ollama returned invalid response type: ${typeof data.response} (expected string). Full response: ${JSON.stringify(data)}`,
 					"invalid_response",
+					config.endpoint,
+				);
+			}
+
+			if (data.response.trim() === "") {
+				if (context === "resolver") {
+					console.warn(`[Ollama] Empty response for resolver request with format: ${format ? JSON.stringify(format) : "none"}`);
+				}
+				throw new OllamaRequestError(
+					"Ollama returned an empty response. Model may have failed to generate output with the requested format constraints.",
+					"empty_response",
 					config.endpoint,
 				);
 			}
@@ -174,6 +211,14 @@ export async function generateWithOllama(
 			return data.response;
 		} catch (error) {
 			lastError = normalizeError(error, config.endpoint);
+
+			// Empty responses are deterministic for a given format constraint—
+			// retrying with the same schema would just produce the same empty
+			// result, so bail out immediately and let the caller handle it.
+			if (lastError.code === "empty_response") {
+				throw lastError;
+			}
+
 			const isFinalAttempt = attempt === maxRetries;
 
 			if (isFinalAttempt) {
@@ -207,7 +252,7 @@ export async function probeOllamaConnection(
 	await probeOllamaConnectivity(config);
 	await generateWithOllama(config, "Respond with OK.", {
 		context: "startup health check",
-		timeoutMs: OLLAMA_HEALTHCHECK_TIMEOUT_MS,
+		timeoutMs: resolveTimeout(OLLAMA_HEALTHCHECK_TIMEOUT_MS, config),
 	});
 }
 
@@ -222,7 +267,7 @@ export async function probeOllamaConnectivity(
 			{
 				method: "GET",
 			},
-			OLLAMA_CONNECTIVITY_TIMEOUT_MS,
+			resolveTimeout(OLLAMA_CONNECTIVITY_TIMEOUT_MS, config),
 		);
 
 		if (!response.ok) {

@@ -91,6 +91,53 @@ describe("OllamaClient", () => {
 		await expectation;
 	});
 
+	it("does not arm request timeout when debug mode is enabled", async () => {
+		jest.useFakeTimers();
+		let resolveFetch: ((value: unknown) => void) | undefined;
+		(global.fetch as jest.Mock).mockImplementation(
+			(_url: string, init?: RequestInit) =>
+				new Promise((resolve, reject) => {
+					const signal = init?.signal as AbortSignal | undefined;
+					signal?.addEventListener("abort", () => {
+						reject(
+							Object.assign(new Error("Aborted"), {
+								name: "AbortError",
+							}),
+						);
+					});
+					resolveFetch = resolve;
+				}),
+		);
+
+		const promise = generateWithOllama(
+			{
+				...TEST_CONFIG,
+				debugMode: true,
+			},
+			"hello",
+			{
+				timeoutMs: 10,
+				maxRetries: 0,
+			},
+		);
+
+		await Promise.resolve();
+		await jest.advanceTimersByTimeAsync(100);
+
+		const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+			string,
+			RequestInit,
+		];
+		expect(init.signal).toBeUndefined();
+
+		resolveFetch?.({
+			ok: true,
+			json: async () => ({ response: "resolved text" }),
+		});
+
+		await expect(promise).resolves.toBe("resolved text");
+	});
+
 	it("retries with backoff and succeeds on a later attempt", async () => {
 		jest.useFakeTimers();
 		(global.fetch as jest.Mock)

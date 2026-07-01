@@ -1,22 +1,14 @@
+import { z } from "zod";
 import { Command } from "../../ui/cli/commands/Command";
 import { OllamaConfig } from "./OllamaConfig";
-import { generateWithOllama } from "./OllamaClient";
-
-/** All command intents the parser can recognize. */
-const INTENT_TYPES = [
-	"MOVE",
-	"TALK",
-	"STUDY",
-	"ATTEND_CLASS",
-	"PRACTICE",
-	"INTERACT",
-	"REST",
-	"SAVE",
-	"LOAD",
-	"ADVANCE_YEAR",
-] as const;
-
-type IntentType = (typeof INTENT_TYPES)[number];
+import { generateWithOllama, OLLAMA_RESOLVER_TIMEOUT_MS } from "./OllamaClient";
+import {
+	INTENT_TYPES,
+	IntentType,
+	IntentResponseSchema,
+	ARGUMENT_SCHEMAS,
+	ParsedArguments,
+} from "./ResolverSchemas";
 
 /** One-line summaries used to help the model pick the right intent. */
 const INTENT_SUMMARIES: Record<IntentType, string> = {
@@ -35,129 +27,8 @@ const INTENT_SUMMARIES: Record<IntentType, string> = {
 		'Advance to the next school year (e.g., "advance to next year", "end the school year")',
 };
 
-/** Flattened argument shape returned by the second-stage extraction call. */
-interface ParsedArguments {
-	target?: string;
-	duration?: number;
-	conversationTopic?: string;
-	actionType?: string;
-}
-
-/** Per-intent JSON schema for the argument-extraction call. `null` means no arguments are needed. */
-const ARGUMENT_SCHEMAS: Record<IntentType, object | null> = {
-	MOVE: {
-		type: "object",
-		properties: {
-			target: {
-				type: "string",
-				description: "The destination location id",
-			},
-		},
-		required: ["target"],
-	},
-	TALK: {
-		type: "object",
-		properties: {
-			target: { type: "string", description: "The NPC id to talk to" },
-			conversationTopic: {
-				type: "string",
-				description: "The topic of conversation, if one is mentioned",
-			},
-		},
-		required: ["target"],
-	},
-	STUDY: {
-		type: "object",
-		properties: {
-			target: { type: "string", description: "The subject id to study" },
-			duration: {
-				type: "number",
-				description: "Hours to study, default 1",
-			},
-		},
-		required: ["target"],
-	},
-	ATTEND_CLASS: {
-		type: "object",
-		properties: {
-			target: {
-				type: "string",
-				description: "The subject id for the class",
-			},
-			duration: {
-				type: "number",
-				description: "Hours to attend, default 1",
-			},
-		},
-		required: ["target"],
-	},
-	PRACTICE: {
-		type: "object",
-		properties: {
-			target: { type: "string", description: "The spell id to practice" },
-			duration: {
-				type: "number",
-				description: "Hours to practice, default 1",
-			},
-		},
-		required: ["target"],
-	},
-	INTERACT: {
-		type: "object",
-		properties: {
-			target: {
-				type: "string",
-				description: "The item id to interact with",
-			},
-			actionType: {
-				type: "string",
-				description: 'The action to perform, e.g. "use" or "open"',
-			},
-		},
-		required: ["target"],
-	},
-	REST: {
-		type: "object",
-		properties: {
-			target: {
-				type: "string",
-				description: "The location id to rest at, if specified",
-			},
-			duration: {
-				type: "number",
-				description: "Hours to rest, default 1",
-			},
-		},
-	},
-	SAVE: {
-		type: "object",
-		properties: {
-			target: { type: "string", description: "The save filename" },
-		},
-	},
-	LOAD: {
-		type: "object",
-		properties: {
-			target: { type: "string", description: "The filename to load" },
-		},
-	},
-	// ADVANCE_YEAR takes no arguments, so no second LLM call is needed for it.
-	ADVANCE_YEAR: null,
-};
-
 class Resolver {
 	private config: OllamaConfig;
-	private intentSchema = {
-		type: "object",
-		properties: {
-			intent: {
-				type: "string",
-				enum: INTENT_TYPES as unknown as string[],
-				description: "The single best-matching command intent",
-			},
-		},
-		required: ["intent"],
-	};
 
 	constructor(config: OllamaConfig) {
 		this.config = config;
@@ -166,15 +37,14 @@ class Resolver {
 	/**
 	 * Resolves free-form player input into a structured `Command` using a
 	 * two-stage pipeline:
-	 *   1. Intent parsing - classify the input into one of a small, fixed
+	 *   1. Intent parsing — classify the input into one of a small, fixed
 	 *      set of intents (cheap, single-field JSON response).
-	 *   2. Argument parsing - given the intent, extract only the fields
-	 *      relevant to that intent using a narrowly scoped schema.
+	 *   2. Argument parsing — given the intent, extract only the fields
+	 *      relevant to that intent, validated with Zod.
 	 *
-	 * Splitting the work this way keeps each individual LLM call small and
-	 * focused, which is both faster and more consistent than asking a
-	 * single call to pick a type AND fill in a large union of possible
-	 * fields at once.
+	 * Both stages use `format: "json"` (basic JSON mode), which is reliably
+	 * supported by all Ollama models. Zod validates and coerces the response;
+	 * a repair pass handles nested or loosely-structured output.
 	 */
 	async resolve(input: string): Promise<Command> {
 		try {
@@ -204,15 +74,8 @@ class Resolver {
 
 	private async _classifyIntent(input: string): Promise<IntentType> {
 		const prompt = this._buildIntentPrompt(input);
-		const parsed = (await this._generate(prompt, this.intentSchema)) as {
-			intent?: string;
-		};
-
-		const intent = parsed.intent as IntentType;
-		if (!INTENT_TYPES.includes(intent)) {
-			throw new Error(`Unrecognized intent: ${parsed.intent}`);
-		}
-		return intent;
+		const parsed = await this._generate(prompt, IntentResponseSchema, OLLAMA_RESOLVER_TIMEOUT_MS);
+		return parsed.intent;
 	}
 
 	private async _extractArguments(
@@ -220,20 +83,151 @@ class Resolver {
 		intent: IntentType,
 	): Promise<ParsedArguments> {
 		const schema = ARGUMENT_SCHEMAS[intent];
-		if (!schema) {
-			return {};
-		}
+		if (!schema) return {};
 
 		const prompt = this._buildArgumentPrompt(input, intent);
-		return (await this._generate(prompt, schema)) as ParsedArguments;
+		return (await this._generate(prompt, schema, OLLAMA_RESOLVER_TIMEOUT_MS)) as ParsedArguments;
 	}
 
-	private async _generate(prompt: string, format: object): Promise<unknown> {
+	/**
+	 * Requests JSON from Ollama and validates the response with the given Zod
+	 * schema. On validation failure, attempts a repair pass before giving up:
+	 *
+	 *  1. Direct parse + Zod validate.
+	 *  2. Deep-flatten (lifts nested keys to top level) + re-validate.
+	 *     Handles responses like `{ data: { intent: "MOVE" } }`.
+	 *  3. Enum-scan repair for `invalid_value` issues: finds the first string
+	 *     value anywhere in the response that matches an allowed enum value.
+	 *  4. Throw — outer `resolve()` returns `{ type: "REST" }`.
+	 */
+	private async _generate<T>(
+		prompt: string,
+		schema: z.ZodType<T>,
+		timeoutMs?: number,
+	): Promise<T> {
 		const responseText = await generateWithOllama(this.config, prompt, {
 			context: "resolver",
-			format,
+			format: "json",
+			timeoutMs,
 		});
-		return JSON.parse(responseText);
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(responseText);
+		} catch {
+			throw new Error(`Ollama returned non-JSON response: "${responseText}"`);
+		}
+
+		// 1. Direct validate
+		const direct = schema.safeParse(parsed);
+		if (direct.success) {
+			// If schema allows an empty object (e.g. all-optional fields), try
+			// flatten repair once to recover nested fields like { result: { duration: 2 } }.
+			if (
+				typeof parsed === "object" &&
+				parsed !== null &&
+				!Array.isArray(parsed) &&
+				typeof direct.data === "object" &&
+				direct.data !== null &&
+				!Array.isArray(direct.data) &&
+				Object.keys(direct.data as Record<string, unknown>).length === 0 &&
+				Object.keys(parsed as Record<string, unknown>).length > 0
+			) {
+				const flattened = this._deepFlatten(parsed);
+				const flattenedResult = schema.safeParse(flattened);
+				if (
+					flattenedResult.success &&
+					Object.keys(flattenedResult.data as Record<string, unknown>).length > 0
+				) {
+					console.debug(
+						"[Resolver] Repaired via deep-flatten after empty direct parse:",
+						flattenedResult.data,
+					);
+					return flattenedResult.data;
+				}
+			}
+			return direct.data;
+		}
+
+		// 2. Deep-flatten repair
+		console.warn("[Resolver] Zod validation failed; attempting repair");
+		const flattened = this._deepFlatten(parsed);
+		const afterFlatten = schema.safeParse(flattened);
+		if (afterFlatten.success) {
+			console.debug("[Resolver] Repaired via deep-flatten:", afterFlatten.data);
+			return afterFlatten.data;
+		}
+
+		// 3. Enum-scan repair for remaining invalid_value issues
+		const enumRepaired = this._repairEnumFields(parsed, schema, afterFlatten.error.issues);
+		if (enumRepaired !== undefined) {
+			console.debug("[Resolver] Repaired via enum scan:", enumRepaired);
+			return enumRepaired;
+		}
+
+		throw new Error(
+			`Zod validation failed: ${afterFlatten.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+		);
+	}
+
+	/**
+	 * Recursively merges all nested object keys into a single flat object.
+	 * Shallower (top-level) keys win on collision so the model's top-level
+	 * answer is preferred over anything buried inside.
+	 */
+	private _deepFlatten(value: unknown): Record<string, unknown> {
+		if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+		const obj = value as Record<string, unknown>;
+		const result: Record<string, unknown> = {};
+		for (const v of Object.values(obj)) {
+			if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+				Object.assign(result, this._deepFlatten(v));
+			}
+		}
+		Object.assign(result, obj); // top-level keys overwrite nested
+		return result;
+	}
+
+	/**
+	 * For each `invalid_value` issue (Zod v4 enum failure), scans all string
+	 * values in the original parsed response for a match against the allowed
+	 * values, then re-validates the patched object.
+	 */
+	private _repairEnumFields<T>(
+		parsed: unknown,
+		schema: z.ZodType<T>,
+		issues: z.ZodIssue[],
+	): T | undefined {
+		const enumIssues = issues.filter(
+			(i) =>
+				i.code === "invalid_value" &&
+				i.path.length === 1 &&
+				Array.isArray((i as { values?: unknown }).values),
+		);
+		if (enumIssues.length === 0) return undefined;
+
+		const allStrings = this._collectAllStrings(parsed);
+		const patch: Record<string, unknown> = {
+			...(typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {}),
+		};
+
+		for (const issue of enumIssues) {
+			const key = String(issue.path[0]);
+			const allowed = (issue as { values: string[] }).values;
+			const found = allStrings.find((s) => allowed.includes(s));
+			if (found) patch[key] = found;
+		}
+
+		const result = schema.safeParse(patch);
+		return result.success ? result.data : undefined;
+	}
+
+	private _collectAllStrings(value: unknown): string[] {
+		if (typeof value === "string") return [value];
+		if (typeof value !== "object" || value === null) return [];
+		return Object.values(value as Record<string, unknown>).flatMap((v) =>
+			this._collectAllStrings(v),
+		);
 	}
 
 	private _buildIntentPrompt(input: string): string {
