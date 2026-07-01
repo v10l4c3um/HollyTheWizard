@@ -9,8 +9,8 @@ import {
 	DEFAULT_BLUEPRINT_OLLAMA_CONFIG,
 	DEFAULT_RENDERER_OLLAMA_CONFIG,
 	DEFAULT_RESOLVER_OLLAMA_CONFIG,
-} from "./OllamaConfig";
-import { probeOllamaConnection } from "./OllamaClient";
+} from "../../ai/OllamaConfig";
+import { probeOllamaConnection } from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
 import { createGameBus, GameBus } from "../domain/events/GameEvents";
 import { BlueprintLLMProvider } from "../../ai/providers/BlueprintLLMProvider";
@@ -69,11 +69,7 @@ class GameEngine implements IGameEngine {
 		this.state.output =
 			"Welcome to Holly the Wizard! Type a command to begin.";
 
-		this.startupConfigs = [
-			resolverConfig,
-			rendererConfig,
-			blueprintConfig,
-		];
+		this.startupConfigs = [resolverConfig, rendererConfig, blueprintConfig];
 
 		const blueprintLLMProvider = new BlueprintLLMProvider(blueprintConfig);
 		this.generateCampaignBlueprint = new GenerateCampaignBlueprint(

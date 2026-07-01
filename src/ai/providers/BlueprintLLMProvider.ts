@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { OllamaConfig } from "../../core/engine/OllamaConfig";
-import { generateWithOllama } from "../../core/engine/OllamaClient";
+import { OllamaConfig } from "../OllamaConfig";
+import { generateWithOllama } from "../OllamaClient";
 
 type GenerateAttempt<T> =
 	| { ok: true; value: T }

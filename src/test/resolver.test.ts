@@ -1,5 +1,5 @@
 import Resolver from "../core/engine/Resolver";
-import { OllamaConfig } from "../core/engine/OllamaConfig";
+import { OllamaConfig } from "../ai/OllamaConfig";
 
 const TEST_CONFIG: OllamaConfig = {
 	endpoint: "http://localhost:11434/api/generate",
@@ -97,7 +97,9 @@ describe("Resolver", () => {
 			const result = await resolver.resolve("move to the forest");
 
 			expect(result).toEqual({ type: "MOVE", destinationId: "forest" });
-			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Zod validation failed"));
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("Zod validation failed"),
+			);
 		});
 
 		it("repairs a deeply nested args response via deep-flatten", async () => {
@@ -109,7 +111,11 @@ describe("Resolver", () => {
 			const resolver = new Resolver(TEST_CONFIG);
 			const result = await resolver.resolve("rest a while");
 
-			expect(result).toEqual({ type: "REST", duration: 2, locationId: undefined });
+			expect(result).toEqual({
+				type: "REST",
+				duration: 2,
+				locationId: undefined,
+			});
 		});
 
 		it("repairs enum via string scan when intent is buried in unrecognized key", async () => {
@@ -140,4 +146,3 @@ describe("Resolver", () => {
 		});
 	});
 });
-

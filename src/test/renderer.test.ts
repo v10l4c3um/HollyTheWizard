@@ -1,5 +1,5 @@
 import Renderer from "../core/engine/Renderer";
-import { OllamaConfig } from "../core/engine/OllamaConfig";
+import { OllamaConfig } from "../ai/OllamaConfig";
 import { RenderContext } from "../core/engine/RenderContext";
 
 const TEST_CONFIG: OllamaConfig = {

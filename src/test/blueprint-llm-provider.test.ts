@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { BlueprintLLMProvider } from "../ai/providers/BlueprintLLMProvider";
-import { OllamaConfig } from "../core/engine/OllamaConfig";
+import { OllamaConfig } from "../ai/OllamaConfig";
 
 const TEST_CONFIG: OllamaConfig = {
 	endpoint: "http://localhost:11434/api/generate",

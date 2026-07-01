@@ -2,8 +2,8 @@ import {
 	generateWithOllama,
 	probeOllamaConnectivity,
 	probeOllamaConnection,
-} from "../core/engine/OllamaClient";
-import { OllamaConfig } from "../core/engine/OllamaConfig";
+} from "../ai/OllamaClient";
+import { OllamaConfig } from "../ai/OllamaConfig";
 
 const TEST_CONFIG: OllamaConfig = {
 	endpoint: "http://localhost:11434/api/generate",
@@ -35,9 +35,9 @@ describe("OllamaClient", () => {
 			json: async () => ({ response: "resolved text" }),
 		});
 
-		await expect(
-			generateWithOllama(TEST_CONFIG, "hello"),
-		).resolves.toBe("resolved text");
+		await expect(generateWithOllama(TEST_CONFIG, "hello")).resolves.toBe(
+			"resolved text",
+		);
 	});
 
 	it("disables thinking by default in generate requests", async () => {
@@ -220,9 +220,8 @@ describe("OllamaClient", () => {
 			maxRetries: 2,
 			retryBaseDelayMs: 10,
 		});
-		const expectation = expect(promise).rejects.toThrow(
-			"Ollama unavailable",
-		);
+		const expectation =
+			expect(promise).rejects.toThrow("Ollama unavailable");
 
 		await jest.advanceTimersByTimeAsync(30);
 
@@ -240,7 +239,9 @@ describe("OllamaClient", () => {
 				json: async () => ({ response: "OK" }),
 			});
 
-		await expect(probeOllamaConnection(TEST_CONFIG)).resolves.toBeUndefined();
+		await expect(
+			probeOllamaConnection(TEST_CONFIG),
+		).resolves.toBeUndefined();
 		expect(global.fetch).toHaveBeenCalledTimes(2);
 		expect(global.fetch).toHaveBeenNthCalledWith(
 			1,

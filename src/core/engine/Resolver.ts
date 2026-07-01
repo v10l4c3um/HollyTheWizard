@@ -1,7 +1,10 @@
 import { z } from "zod";
 import { Command } from "../../ui/cli/commands/Command";
-import { OllamaConfig } from "./OllamaConfig";
-import { generateWithOllama, OLLAMA_RESOLVER_TIMEOUT_MS } from "./OllamaClient";
+import { OllamaConfig } from "../../ai/OllamaConfig";
+import {
+	generateWithOllama,
+	OLLAMA_RESOLVER_TIMEOUT_MS,
+} from "../../ai/OllamaClient";
 import {
 	INTENT_TYPES,
 	IntentType,
@@ -74,7 +77,11 @@ class Resolver {
 
 	private async _classifyIntent(input: string): Promise<IntentType> {
 		const prompt = this._buildIntentPrompt(input);
-		const parsed = await this._generate(prompt, IntentResponseSchema, OLLAMA_RESOLVER_TIMEOUT_MS);
+		const parsed = await this._generate(
+			prompt,
+			IntentResponseSchema,
+			OLLAMA_RESOLVER_TIMEOUT_MS,
+		);
 		return parsed.intent;
 	}
 
@@ -86,7 +93,11 @@ class Resolver {
 		if (!schema) return {};
 
 		const prompt = this._buildArgumentPrompt(input, intent);
-		return (await this._generate(prompt, schema, OLLAMA_RESOLVER_TIMEOUT_MS)) as ParsedArguments;
+		return (await this._generate(
+			prompt,
+			schema,
+			OLLAMA_RESOLVER_TIMEOUT_MS,
+		)) as ParsedArguments;
 	}
 
 	/**
@@ -115,7 +126,9 @@ class Resolver {
 		try {
 			parsed = JSON.parse(responseText);
 		} catch {
-			throw new Error(`Ollama returned non-JSON response: "${responseText}"`);
+			throw new Error(
+				`Ollama returned non-JSON response: "${responseText}"`,
+			);
 		}
 
 		// 1. Direct validate
@@ -130,14 +143,16 @@ class Resolver {
 				typeof direct.data === "object" &&
 				direct.data !== null &&
 				!Array.isArray(direct.data) &&
-				Object.keys(direct.data as Record<string, unknown>).length === 0 &&
+				Object.keys(direct.data as Record<string, unknown>).length ===
+					0 &&
 				Object.keys(parsed as Record<string, unknown>).length > 0
 			) {
 				const flattened = this._deepFlatten(parsed);
 				const flattenedResult = schema.safeParse(flattened);
 				if (
 					flattenedResult.success &&
-					Object.keys(flattenedResult.data as Record<string, unknown>).length > 0
+					Object.keys(flattenedResult.data as Record<string, unknown>)
+						.length > 0
 				) {
 					console.debug(
 						"[Resolver] Repaired via deep-flatten after empty direct parse:",
@@ -154,12 +169,19 @@ class Resolver {
 		const flattened = this._deepFlatten(parsed);
 		const afterFlatten = schema.safeParse(flattened);
 		if (afterFlatten.success) {
-			console.debug("[Resolver] Repaired via deep-flatten:", afterFlatten.data);
+			console.debug(
+				"[Resolver] Repaired via deep-flatten:",
+				afterFlatten.data,
+			);
 			return afterFlatten.data;
 		}
 
 		// 3. Enum-scan repair for remaining invalid_value issues
-		const enumRepaired = this._repairEnumFields(parsed, schema, afterFlatten.error.issues);
+		const enumRepaired = this._repairEnumFields(
+			parsed,
+			schema,
+			afterFlatten.error.issues,
+		);
 		if (enumRepaired !== undefined) {
 			console.debug("[Resolver] Repaired via enum scan:", enumRepaired);
 			return enumRepaired;
@@ -176,7 +198,8 @@ class Resolver {
 	 * answer is preferred over anything buried inside.
 	 */
 	private _deepFlatten(value: unknown): Record<string, unknown> {
-		if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+		if (typeof value !== "object" || value === null || Array.isArray(value))
+			return {};
 		const obj = value as Record<string, unknown>;
 		const result: Record<string, unknown> = {};
 		for (const v of Object.values(obj)) {
@@ -208,7 +231,9 @@ class Resolver {
 
 		const allStrings = this._collectAllStrings(parsed);
 		const patch: Record<string, unknown> = {
-			...(typeof parsed === "object" && parsed !== null ? (parsed as Record<string, unknown>) : {}),
+			...(typeof parsed === "object" && parsed !== null
+				? (parsed as Record<string, unknown>)
+				: {}),
 		};
 
 		for (const issue of enumIssues) {

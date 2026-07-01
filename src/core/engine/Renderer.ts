@@ -1,5 +1,5 @@
-import { OllamaConfig } from "./OllamaConfig";
-import { generateWithOllama } from "./OllamaClient";
+import { OllamaConfig } from "../../ai/OllamaConfig";
+import { generateWithOllama } from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
 
 class Renderer {
