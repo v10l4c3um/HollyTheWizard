@@ -8,6 +8,13 @@ import { SpellRevealService } from "../domain/magic/SpellRevealService";
 import { applySpellUse } from "../domain/magic/SpellProgressionService";
 import { SubjectType } from "../domain/quest/Curriculum";
 import { GameBus } from "../domain/events/GameEvents";
+import { applyEffects } from "../domain/effects/EffectApplier";
+import {
+	GameEffect,
+	progressDelta,
+	attributeDelta,
+	subjectKnowledgeTrack,
+} from "../domain/effects/GameEffects";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -19,6 +26,29 @@ class TurnResolver {
 	}
 
 	apply(command: Command, state: GameState, registry: Registry): TurnResult {
+		const result = this._dispatch(command, state, registry);
+
+		// Generic "something happened" hook for cross-cutting systems
+		// (docs/event-effect-conversion-plan.md, Step 6). A failed/no-op
+		// branch always returns an empty `events` array and `timeCost: "none"`.
+		const outcome: "success" | "failure" =
+			result.events.length === 0 && result.timeCost.type === "none"
+				? "failure"
+				: "success";
+		this.bus.emit("ActionResolved", {
+			actionType: command.type,
+			locationId: state.currentLocationId,
+			outcome,
+		});
+
+		return result;
+	}
+
+	private _dispatch(
+		command: Command,
+		state: GameState,
+		registry: Registry,
+	): TurnResult {
 		switch (command.type) {
 			case "MOVE":
 				return this._move(command.destinationId, state, registry);
@@ -189,11 +219,17 @@ class TurnResolver {
 		const knowledgeGain = 10 * duration;
 		const subject: SubjectType = subjectId as SubjectType;
 
-		this.curriculumService.addSubjectKnowledge(
-			subject,
-			knowledgeGain,
-			state.academicState,
-		);
+		// Cause event carries the delta only (no totals); the actual state
+		// mutation happens via `ProgressDelta` through `applyEffects` (Steps
+		// 2 & 7 of the conversion plan).
+		const effects: GameEffect[] = [
+			progressDelta(
+				subjectKnowledgeTrack(subject),
+				knowledgeGain,
+				"study",
+			),
+		];
+		applyEffects(state, effects, this.bus);
 
 		const revealed = this.spellRevealService.updateSpellAvailability(
 			registry,
@@ -208,8 +244,6 @@ class TurnResolver {
 		this.bus.emit("SubjectStudied", {
 			subjectId: subject,
 			knowledgeGain,
-			totalKnowledge:
-				state.academicState.subjects[subject]?.knowledge ?? 0,
 		});
 
 		for (const spellId of revealed) {
@@ -230,6 +264,7 @@ class TurnResolver {
 			briefOutput: output,
 			events: [`Studied ${subject} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
+			effects,
 			stateChanges: {
 				subjectKnowledgeGains: { [subject]: knowledgeGain } as Partial<
 					Record<SubjectType, number>
@@ -272,7 +307,30 @@ class TurnResolver {
 			};
 		}
 
-		this.curriculumService.applyLessonRewards(lesson, state.academicState);
+		// Lesson rewards become effects instead of being mutated directly and
+		// re-announced as `AttributeGained` events (Steps 2 & 4B of the
+		// conversion plan). Applied before spell-reveal checks below, since
+		// reveal requirements may depend on the updated attributes/knowledge.
+		const effects: GameEffect[] = [];
+		if (lesson.rewards.attributes) {
+			for (const attrId of lesson.rewards.attributes) {
+				effects.push(attributeDelta(attrId, 1, `lesson:${lesson.id}`));
+			}
+		}
+		if (lesson.rewards.subjectKnowledge) {
+			for (const [subj, amount] of Object.entries(
+				lesson.rewards.subjectKnowledge,
+			)) {
+				effects.push(
+					progressDelta(
+						subjectKnowledgeTrack(subj),
+						amount as number,
+						`lesson:${lesson.id}`,
+					),
+				);
+			}
+		}
+		applyEffects(state, effects, this.bus);
 
 		const spellOpportunities =
 			this.curriculumService.getLessonSpellOpportunities(lesson);
@@ -304,16 +362,6 @@ class TurnResolver {
 			lessonTitle: lesson.title,
 		});
 
-		if (lesson.rewards.attributes) {
-			for (const attrId of lesson.rewards.attributes) {
-				this.bus.emit("AttributeGained", {
-					attributeId: attrId,
-					delta: 1,
-					newValue: state.academicState.attributes[attrId],
-				});
-			}
-		}
-
 		for (const spellId of revealedSpells) {
 			this.bus.emit("SpellRevealed", { spellId, source: "class" });
 		}
@@ -344,6 +392,7 @@ class TurnResolver {
 			briefOutput: output,
 			events: [`Attended ${subject} class - ${lesson.title}`],
 			timeCost: { type: "minutes", amount: 60 },
+			effects,
 			stateChanges: {
 				subjectKnowledgeGains: lesson.rewards
 					.subjectKnowledge as Partial<Record<SubjectType, number>>,
@@ -356,6 +405,14 @@ class TurnResolver {
 		};
 	}
 
+	/**
+	 * Not yet converted to the effect model: spell proficiency updates
+	 * (practice points, reliability, mastery tier, diminishing returns) are
+	 * not a plain delta, so this keeps mutating `SpellBook` directly via
+	 * `SpellProgressionService` for now. `SpellMastered` is still derived
+	 * from an actual state transition rather than emitted unconditionally.
+	 * See docs/event-effect-conversion-plan.md, Step 9.
+	 */
 	private _practice(
 		spellId: string,
 		duration: number,

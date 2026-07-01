@@ -21,15 +21,35 @@ export type GameEvents = {
 		lessonTitle: string;
 	};
 	LessonSkipped: { subjectId: SubjectType; lessonId: string };
+	/**
+	 * Cause event only: carries what happened, not resulting totals. Totals
+	 * live in `GameState` and are mutated via the `ProgressDelta` effect
+	 * (see docs/event-effect-conversion-plan.md, Steps 4B/7).
+	 */
 	SubjectStudied: {
 		subjectId: SubjectType;
 		knowledgeGain: number;
-		totalKnowledge: number;
 	};
+	/**
+	 * @deprecated Prefer the `AttributeDelta` effect (applied via
+	 * `applyEffects`). Kept for now in case other listeners still rely on it.
+	 */
 	AttributeGained: {
 		attributeId: AttributeId;
 		delta: number;
 		newValue: number;
+	};
+	/**
+	 * Generic hook emitted for every resolved command
+	 * (docs/event-effect-conversion-plan.md, Step 6). Lets cross-cutting
+	 * systems (rumors, suspicion, analytics, achievements, ...) react to any
+	 * action without the resolver having to know about them.
+	 */
+	ActionResolved: {
+		actionType: string;
+		locationId: string;
+		outcome: "success" | "failure";
+		tags?: string[];
 	};
 	LocationVisited: { locationId: string; isFirstVisit: boolean };
 	LocationDiscovered: { locationId: string };

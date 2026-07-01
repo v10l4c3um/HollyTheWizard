@@ -34,6 +34,12 @@ class GameState {
 		active: string[];
 		completed: string[];
 	};
+	/** Generic key/value flags set via `FlagSet` effects (see EffectApplier). */
+	flags: Record<string, boolean | number | string>;
+	/** Generic numeric resources (energy, stress, reputation, ...) mutated via `ResourceDelta` effects. */
+	resources: Record<string, number>;
+	/** npcId -> axis (trust/affinity/...) -> value, mutated via `RelationshipDelta` effects. */
+	relationships: Record<string, Record<string, number>>;
 	knownNPCIds: string[];
 	recentEvents: string[];
 	output: string;
@@ -66,6 +72,9 @@ class GameState {
 			active: [],
 			completed: [],
 		};
+		this.flags = {};
+		this.resources = {};
+		this.relationships = {};
 		this.knownNPCIds = [];
 		this.recentEvents = [];
 		this.output = "";
@@ -160,6 +169,9 @@ class GameState {
 		state.inventory = data.inventory;
 		state.discoveredLocationIds = data.discoveredLocationIds;
 		state.questFlags = data.questFlags;
+		state.flags = data.flags ?? {};
+		state.resources = data.resources ?? {};
+		state.relationships = data.relationships ?? {};
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
 		state.output = data.output;
