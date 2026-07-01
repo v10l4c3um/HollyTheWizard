@@ -5,6 +5,7 @@ import { MainMenu, MenuOption } from "./components/MainMenu";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { GameScreen } from "./components/GameScreen";
 import { IGameEngine } from "../../types";
+import { StartupProgressUpdate } from "../../bootstrap/engineFactory";
 
 // ─── App phases ───────────────────────────────────────────────────────────────
 type Phase = "menu" | "loading" | "game" | "startup-error";
@@ -37,11 +38,39 @@ const MENU_OPTIONS: MenuOption[] = [
     },
 ];
 
-const LOADING_STEPS = [
-    { label: "Loading spell packs", durationMs: 900 },
-    { label: "Loading NPC packs", durationMs: 700 },
-    { label: "Loading school data", durationMs: 800 },
-    { label: "Building world state", durationMs: 600 },
+const INITIAL_STARTUP_MILESTONES: StartupProgressUpdate[] = [
+    {
+        id: "content-packs",
+        label: "Loading content packs",
+        status: "pending",
+        completed: 0,
+        total: 0,
+    },
+    {
+        id: "school-data",
+        label: "Loading school data",
+        status: "pending",
+    },
+    {
+        id: "spellbook",
+        label: "Preparing spellbook state",
+        status: "pending",
+    },
+    {
+        id: "ollama-check",
+        label: "Checking Ollama availability",
+        status: "pending",
+    },
+    {
+        id: "campaign-blueprint",
+        label: "Generating campaign blueprint",
+        status: "pending",
+    },
+    {
+        id: "year-blueprint",
+        label: "Generating year blueprint",
+        status: "pending",
+    },
 ];
 
 // ─── Options screen (minimal) ─────────────────────────────────────────────────
@@ -70,7 +99,9 @@ const OptionsScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 interface InkAppProps {
     /** Called by the app when it needs the engine to be ready.
      *  The promise resolves with the initialised engine. */
-    engineFactory: () => Promise<IGameEngine>;
+    engineFactory: (
+        onProgress?: (update: StartupProgressUpdate) => void,
+    ) => Promise<IGameEngine>;
     locationNameResolver: (id: string) => string;
 }
 
@@ -82,23 +113,33 @@ export const InkApp: React.FC<InkAppProps> = ({
     const [phase, setPhase] = useState<Phase>("menu");
     const [engine, setEngine] = useState<IGameEngine | null>(null);
     const [initialOutput, setInitialOutput] = useState<string>("");
-    const [menuChoice, setMenuChoice] = useState<string | null>(null);
     const [showOptions, setShowOptions] = useState(false);
     const [startupError, setStartupError] = useState<string | null>(null);
+    const [loadingMilestones, setLoadingMilestones] = useState<StartupProgressUpdate[]>(
+        INITIAL_STARTUP_MILESTONES,
+    );
 
-    // ── Menu selection ────────────────────────────────────────────────────────
-    const handleMenuSelect = async (value: string) => {
-        if (value === "quit") { exit(); return; }
-        if (value === "options") { setShowOptions(true); return; }
-        setMenuChoice(value);
-        setPhase("loading");
+    const updateLoadingMilestone = (update: StartupProgressUpdate) => {
+        setLoadingMilestones((current) =>
+            current.map((milestone) =>
+                milestone.id === update.id
+                    ? {
+                        ...milestone,
+                        ...update,
+                    }
+                    : milestone,
+            ),
+        );
     };
 
-    // ── Loading complete ──────────────────────────────────────────────────────
-    const handleLoadingComplete = async () => {
+    const startLoading = async (choice: string) => {
+        setStartupError(null);
+        setLoadingMilestones(INITIAL_STARTUP_MILESTONES);
+        setPhase("loading");
+
         try {
-            const eng = await engineFactory();
-            if (menuChoice === "continue" || menuChoice === "load") {
+            const eng = await engineFactory(updateLoadingMilestone);
+            if (choice === "continue" || choice === "load") {
                 try {
                     await eng.handleCommand("load autosave");
                 } catch { /* ignore, fall through to fresh state */ }
@@ -113,6 +154,13 @@ export const InkApp: React.FC<InkAppProps> = ({
             setPhase("startup-error");
             setTimeout(() => exit(), 1800);
         }
+    };
+
+    // ── Menu selection ────────────────────────────────────────────────────────
+    const handleMenuSelect = async (value: string) => {
+        if (value === "quit") { exit(); return; }
+        if (value === "options") { setShowOptions(true); return; }
+        await startLoading(value);
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -130,8 +178,7 @@ export const InkApp: React.FC<InkAppProps> = ({
 
             {phase === "loading" && (
                 <LoadingScreen
-                    steps={LOADING_STEPS}
-                    onComplete={handleLoadingComplete}
+                    milestones={loadingMilestones}
                 />
             )}
 

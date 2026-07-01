@@ -12,6 +12,12 @@ interface ContentPackManifest {
 	npcs?: NPC[];
 }
 
+export interface ContentPackLoadProgress {
+	processedPacks: number;
+	totalPacks: number;
+	currentPackName?: string;
+}
+
 class ContentLoader {
 	private packDirectory: string;
 
@@ -21,15 +27,29 @@ class ContentLoader {
 		this.packDirectory = packDirectory;
 	}
 
-	loadSpellPack(packName: string, registry: Registry): void {
-		const packPath = path.join(this.packDirectory, `${packName}.json`);
+	private listPackFiles(): string[] {
+		if (!fs.existsSync(this.packDirectory)) {
+			return [];
+		}
 
+		return fs
+			.readdirSync(this.packDirectory)
+			.filter((file) => file.endsWith(".json"))
+			.sort();
+	}
+
+	private loadPackManifest(packName: string): ContentPackManifest {
+		const packPath = path.join(this.packDirectory, `${packName}.json`);
 		if (!fs.existsSync(packPath)) {
-			throw new Error(`Spell pack not found: ${packPath}`);
+			throw new Error(`Content pack not found: ${packPath}`);
 		}
 
 		const content = fs.readFileSync(packPath, "utf-8");
-		const manifest: ContentPackManifest = JSON.parse(content);
+		return JSON.parse(content) as ContentPackManifest;
+	}
+
+	loadSpellPack(packName: string, registry: Registry): void {
+		const manifest = this.loadPackManifest(packName);
 
 		if (!manifest.spells || !Array.isArray(manifest.spells)) {
 			console.warn(`No spells found in pack: ${packName}`);
@@ -46,14 +66,7 @@ class ContentLoader {
 	}
 
 	loadNpcPack(packName: string, registry: Registry): void {
-		const packPath = path.join(this.packDirectory, `${packName}.json`);
-
-		if (!fs.existsSync(packPath)) {
-			throw new Error(`NPC pack not found: ${packPath}`);
-		}
-
-		const content = fs.readFileSync(packPath, "utf-8");
-		const manifest: ContentPackManifest = JSON.parse(content);
+		const manifest = this.loadPackManifest(packName);
 
 		if (!manifest.npcs || !Array.isArray(manifest.npcs)) {
 			console.warn(`No NPCs found in pack: ${packName}`);
@@ -69,6 +82,64 @@ class ContentLoader {
 		);
 	}
 
+	loadAllPacks(
+		registry: Registry,
+		onProgress?: (progress: ContentPackLoadProgress) => void,
+	): void {
+		const files = this.listPackFiles();
+
+		if (!fs.existsSync(this.packDirectory)) {
+			console.warn(
+				`Content pack directory not found: ${this.packDirectory}`,
+			);
+			onProgress?.({
+				processedPacks: 0,
+				totalPacks: 0,
+			});
+			return;
+		}
+
+		if (files.length === 0) {
+			console.warn("No content pack files found");
+			onProgress?.({
+				processedPacks: 0,
+				totalPacks: 0,
+			});
+			return;
+		}
+
+		let processedPacks = 0;
+		for (const file of files) {
+			const packName = file.replace(".json", "");
+			try {
+				const manifest = this.loadPackManifest(packName);
+				const spells =
+					Array.isArray(manifest.spells) ? manifest.spells : [];
+				const npcs = Array.isArray(manifest.npcs) ? manifest.npcs : [];
+
+				for (const spell of spells) {
+					registry.registerSpell(spell);
+				}
+				for (const npc of npcs) {
+					registry.registerNPC(npc);
+				}
+
+				console.log(
+					`Loaded content pack '${manifest.name}' with ${spells.length} spells and ${npcs.length} NPCs`,
+				);
+			} catch (error) {
+				console.error(`Failed to load content pack '${packName}':`, error);
+			} finally {
+				processedPacks++;
+				onProgress?.({
+					processedPacks,
+					totalPacks: files.length,
+					currentPackName: packName,
+				});
+			}
+		}
+	}
+
 	loadAllSpellPacks(registry: Registry): void {
 		if (!fs.existsSync(this.packDirectory)) {
 			console.warn(
@@ -77,9 +148,7 @@ class ContentLoader {
 			return;
 		}
 
-		const files = fs
-			.readdirSync(this.packDirectory)
-			.filter((f) => f.endsWith(".json"));
+		const files = this.listPackFiles();
 
 		if (files.length === 0) {
 			console.warn("No spell pack files found");
@@ -107,9 +176,7 @@ class ContentLoader {
 			return;
 		}
 
-		const files = fs
-			.readdirSync(this.packDirectory)
-			.filter((f) => f.endsWith(".json"));
+		const files = this.listPackFiles();
 
 		if (files.length === 0) {
 			console.warn("No NPC pack files found");

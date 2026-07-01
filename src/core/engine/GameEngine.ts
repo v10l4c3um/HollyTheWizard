@@ -28,6 +28,12 @@ export interface GameEngineConfig {
 	persistenceRepository?: PersistenceRepository;
 }
 
+type StartupMilestoneId =
+	| "ollama-check"
+	| "campaign-blueprint"
+	| "year-blueprint";
+type StartupMilestoneStatus = "in_progress" | "done";
+
 class GameEngine implements IGameEngine {
 	public state: GameState;
 	private registry: Registry;
@@ -95,16 +101,26 @@ class GameEngine implements IGameEngine {
 	 */
 	async initializeCampaignBlueprint(
 		seed: string = `seed-${Date.now()}`,
+		onProgress?: (
+			milestoneId: StartupMilestoneId,
+			status: StartupMilestoneStatus,
+		) => void,
 	): Promise<void> {
+		onProgress?.("ollama-check", "in_progress");
 		await this._verifyOllamaConnections();
+		onProgress?.("ollama-check", "done");
+		onProgress?.("campaign-blueprint", "in_progress");
 		this.state.campaignBlueprint =
 			await this.generateCampaignBlueprint.execute(seed);
+		onProgress?.("campaign-blueprint", "done");
+		onProgress?.("year-blueprint", "in_progress");
 		this.state.yearBlueprints[this.state.currentYear] =
 			await this.generateYearBlueprint.execute(
 				this.state.currentYear,
 				this.state.campaignBlueprint,
 				this.state,
 			);
+		onProgress?.("year-blueprint", "done");
 	}
 
 	async handleCommand(input: string): Promise<GameState> {

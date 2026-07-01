@@ -8,7 +8,26 @@ import ContentLoader from "../core/content/ContentLoader";
 import { SchoolDataLoader } from "../core/content/SchoolDataLoader";
 import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
 
-export function buildRegistry(): Registry {
+export type StartupProgressStatus = "pending" | "in_progress" | "done";
+
+export interface StartupProgressUpdate {
+	id:
+		| "content-packs"
+		| "school-data"
+		| "spellbook"
+		| "ollama-check"
+		| "campaign-blueprint"
+		| "year-blueprint";
+	label: string;
+	status: StartupProgressStatus;
+	completed?: number;
+	total?: number;
+	detail?: string;
+}
+
+type StartupProgressReporter = (update: StartupProgressUpdate) => void;
+
+export function buildRegistry(onProgress?: StartupProgressReporter): Registry {
 	const registry = new Registry();
 	const contentLoader = new ContentLoader();
 
@@ -45,17 +64,47 @@ export function buildRegistry(): Registry {
 		),
 	);
 
-	contentLoader.loadAllSpellPacks(registry);
-	contentLoader.loadAllNpcPacks(registry);
+	onProgress?.({
+		id: "content-packs",
+		label: "Loading content packs",
+		status: "in_progress",
+	});
+	contentLoader.loadAllPacks(registry, (progress) => {
+		onProgress?.({
+			id: "content-packs",
+			label: "Loading content packs",
+			status:
+				progress.processedPacks === progress.totalPacks
+					? "done"
+					: "in_progress",
+			completed: progress.processedPacks,
+			total: progress.totalPacks,
+			detail: progress.currentPackName
+				? `Loaded ${progress.currentPackName}`
+				: undefined,
+		});
+	});
 
 	const schoolDataLoader = new SchoolDataLoader();
+	onProgress?.({
+		id: "school-data",
+		label: "Loading school data",
+		status: "in_progress",
+	});
 	registry.registerSchoolData(schoolDataLoader.loadSchoolData());
+	onProgress?.({
+		id: "school-data",
+		label: "Loading school data",
+		status: "done",
+	});
 
 	return registry;
 }
 
-export async function engineFactory(): Promise<IGameEngine> {
-	const registry = buildRegistry();
+export async function engineFactory(
+	onProgress?: StartupProgressReporter,
+): Promise<IGameEngine> {
+	const registry = buildRegistry(onProgress);
 	const bus = createGameBus();
 	const engine = new GameEngine(registry, {}, bus);
 
@@ -80,14 +129,48 @@ export async function engineFactory(): Promise<IGameEngine> {
 			engine.state.questFlags.completed.push(flag);
 	});
 
+	onProgress?.({
+		id: "spellbook",
+		label: "Preparing spellbook state",
+		status: "in_progress",
+	});
 	for (const spellId of registry.getAllSpellIds()) {
 		engine.state.spellbook.setSpellState(
 			spellId,
 			createHiddenSpellState(spellId),
 		);
 	}
+	onProgress?.({
+		id: "spellbook",
+		label: "Preparing spellbook state",
+		status: "done",
+	});
 
-	await engine.initializeCampaignBlueprint();
+	await engine.initializeCampaignBlueprint(undefined, (milestoneId, status) => {
+		switch (milestoneId) {
+			case "ollama-check":
+				onProgress?.({
+					id: "ollama-check",
+					label: "Checking Ollama availability",
+					status,
+				});
+				break;
+			case "campaign-blueprint":
+				onProgress?.({
+					id: "campaign-blueprint",
+					label: "Generating campaign blueprint",
+					status,
+				});
+				break;
+			case "year-blueprint":
+				onProgress?.({
+					id: "year-blueprint",
+					label: "Generating year blueprint",
+					status,
+				});
+				break;
+		}
+	});
 	return engine;
 }
 

@@ -1,5 +1,6 @@
 import {
 	generateWithOllama,
+	probeOllamaConnectivity,
 	probeOllamaConnection,
 } from "../core/engine/OllamaClient";
 import { OllamaConfig } from "../core/engine/OllamaConfig";
@@ -134,12 +135,50 @@ describe("OllamaClient", () => {
 	});
 
 	it("probes the Ollama endpoint with a health-check request", async () => {
-		(global.fetch as jest.Mock).mockResolvedValue({
-			ok: true,
-			json: async () => ({ response: "OK" }),
-		});
+		(global.fetch as jest.Mock)
+			.mockResolvedValueOnce({
+				ok: true,
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ response: "OK" }),
+			});
 
 		await expect(probeOllamaConnection(TEST_CONFIG)).resolves.toBeUndefined();
+		expect(global.fetch).toHaveBeenCalledTimes(2);
+		expect(global.fetch).toHaveBeenNthCalledWith(
+			1,
+			"http://localhost:11434/api/tags",
+			expect.objectContaining({
+				method: "GET",
+				signal: expect.any(AbortSignal),
+			}),
+		);
+		expect(global.fetch).toHaveBeenNthCalledWith(
+			2,
+			"http://localhost:11434/api/generate",
+			expect.objectContaining({
+				method: "POST",
+				signal: expect.any(AbortSignal),
+			}),
+		);
+	});
+
+	it("probes Ollama connectivity on /api/tags", async () => {
+		(global.fetch as jest.Mock).mockResolvedValue({
+			ok: true,
+		});
+
+		await expect(
+			probeOllamaConnectivity(TEST_CONFIG),
+		).resolves.toBeUndefined();
 		expect(global.fetch).toHaveBeenCalledTimes(1);
+		expect(global.fetch).toHaveBeenCalledWith(
+			"http://localhost:11434/api/tags",
+			expect.objectContaining({
+				method: "GET",
+				signal: expect.any(AbortSignal),
+			}),
+		);
 	});
 });

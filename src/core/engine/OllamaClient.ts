@@ -1,7 +1,8 @@
 import { OllamaConfig } from "./OllamaConfig";
 
 export const OLLAMA_REQUEST_TIMEOUT_MS = 5000;
-export const OLLAMA_HEALTHCHECK_TIMEOUT_MS = 3000;
+export const OLLAMA_HEALTHCHECK_TIMEOUT_MS = 10000;
+export const OLLAMA_CONNECTIVITY_TIMEOUT_MS = 1000;
 export const OLLAMA_MAX_RETRIES = 3;
 export const OLLAMA_RETRY_BASE_DELAY_MS = 250;
 
@@ -105,6 +106,18 @@ function buildGenerateBody(
 	});
 }
 
+function buildConnectivityEndpoint(endpoint: string): string {
+	try {
+		const url = new URL(endpoint);
+		url.pathname = "/api/tags";
+		url.search = "";
+		url.hash = "";
+		return url.toString();
+	} catch {
+		return endpoint;
+	}
+}
+
 export async function generateWithOllama(
 	config: OllamaConfig,
 	prompt: string,
@@ -191,8 +204,35 @@ export async function generateWithOllama(
 export async function probeOllamaConnection(
 	config: OllamaConfig,
 ): Promise<void> {
+	await probeOllamaConnectivity(config);
 	await generateWithOllama(config, "Respond with OK.", {
 		context: "startup health check",
 		timeoutMs: OLLAMA_HEALTHCHECK_TIMEOUT_MS,
 	});
+}
+
+export async function probeOllamaConnectivity(
+	config: OllamaConfig,
+): Promise<void> {
+	const connectivityEndpoint = buildConnectivityEndpoint(config.endpoint);
+
+	try {
+		const response = await fetchWithTimeout(
+			connectivityEndpoint,
+			{
+				method: "GET",
+			},
+			OLLAMA_CONNECTIVITY_TIMEOUT_MS,
+		);
+
+		if (!response.ok) {
+			throw new OllamaRequestError(
+				`Ollama returned ${response.status} ${response.statusText || "Unknown Error"}`,
+				"http",
+				config.endpoint,
+			);
+		}
+	} catch (error) {
+		throw normalizeError(error, config.endpoint);
+	}
 }
