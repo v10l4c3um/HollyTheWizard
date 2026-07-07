@@ -4,6 +4,8 @@ class NPC {
 	dialogue: string[]; // a style guide how npc talks
 	tag_description: string; // a short tag based description for broader traits
 
+	// TODO add mood as temporary state for the NPC, which can be used to influence dialogue and behavior
+
 	constructor(
 		id: string,
 		name: string = "NPC",

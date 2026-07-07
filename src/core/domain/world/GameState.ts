@@ -41,6 +41,19 @@ class GameState {
 	resources: Record<string, number>;
 	/** npcId -> axis (trust/affinity/...) -> value, mutated via `RelationshipDelta` effects. */
 	relationships: Record<string, RelationshipStats>;
+	/** npcId -> list of unlocked topic ids, mutated via `TopicUnlocked` effects. */
+	unlockedTopicsByNpc: Record<string, string[]>;
+	/** clueId -> discovery record, mutated via `ClueRevealed` effects. */
+	clues: Record<string, { discovered: boolean; sourceNpcId?: string }>;
+	/** rumorId -> known record, mutated via `RumorLearned` effects. */
+	rumors: Record<string, { known: boolean; sourceNpcId?: string }>;
+	/** Pending scene invitations, mutated via `SceneInvitationCreated` effects. */
+	sceneInvitations: Array<{
+		invitationId: string;
+		npcId: string;
+		sceneType: string;
+		validUntilMinutes?: number;
+	}>;
 	knownNPCIds: string[];
 	recentEvents: string[];
 	output: string;
@@ -76,6 +89,10 @@ class GameState {
 		this.flags = {};
 		this.resources = {};
 		this.relationships = {};
+		this.unlockedTopicsByNpc = {};
+		this.clues = {};
+		this.rumors = {};
+		this.sceneInvitations = [];
 		this.knownNPCIds = [];
 		this.recentEvents = [];
 		this.output = "";
@@ -173,6 +190,10 @@ class GameState {
 		state.flags = data.flags ?? {};
 		state.resources = data.resources ?? {};
 		state.relationships = data.relationships ?? {};
+		state.unlockedTopicsByNpc = data.unlockedTopicsByNpc ?? {};
+		state.clues = data.clues ?? {};
+		state.rumors = data.rumors ?? {};
+		state.sceneInvitations = data.sceneInvitations ?? [];
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
 		state.output = data.output;

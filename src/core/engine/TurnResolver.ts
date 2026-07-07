@@ -15,6 +15,10 @@ import {
 	attributeDelta,
 	subjectKnowledgeTrack,
 } from "../domain/effects/GameEffects";
+import {
+	evaluateConversation,
+	ConversationContext,
+} from "../domain/npc/Conversation";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -176,26 +180,59 @@ class TurnResolver {
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
-		// Note: Removed the check for known NPCs to allow talking to any NPC, even if not known yet.
-		// if (!state.knownNPCIds.includes(npcId)) {
-		// 	return {
-		// 		briefOutput: `You don't know anyone with id "${npcId}" here.`,
-		// 		events: [],
-		// 		timeCost: { type: "none" },
-		// 		stateChanges: {},
-		// 	};
-		// }
-
 		const npc = registry.getNPC(npcId);
 		const npcName = npc?.name ?? npcId;
-		const topicSuffix = topic ? ` about ${topic}` : "";
+
+		const relationship = state.relationships[npcId];
+		if (!relationship) {
+			// First contact: no relationship record yet — treat as a neutral greeting
+			// and establish one. The evaluator needs a snapshot, so we use zeroed stats.
+		}
+
+		const lockedTopics = state.unlockedTopicsByNpc[npcId] ?? [];
+		if (topic && !lockedTopics.includes(topic)) {
+			// Topic may simply be unlockable — the evaluator decides outcome;
+			// a locked-and-sensitive topic produces deflection or refusal naturally.
+		}
+
+		const ctx: ConversationContext = {
+			npcId,
+			topic,
+			isPrivate: isPrivateLocation(state.currentLocationId),
+			relationship: relationship ?? {
+				trust: 0,
+				affection: 0,
+				respect: 0,
+				comfort: 0,
+				attraction: 0,
+				loyalty: 0,
+				resentment: 0,
+				fear: 0,
+				envy: 0,
+				applyDelta: () => {},
+			},
+			flags: state.flags,
+		};
+
+		const outcome = evaluateConversation(ctx);
+		applyEffects(state, outcome.effects, this.bus);
 
 		this.bus.emit("NpcTalkedTo", { npcId, topic });
+		this.bus.emit("ConversationResolved", {
+			npcId,
+			topic,
+			result: outcome.result,
+			narrationTags: outcome.narrationTags ?? [],
+		});
+
+		const topicSuffix = topic ? ` about ${topic}` : "";
+		const briefOutput = buildConversationOutput(npcName, topicSuffix, outcome.result);
 
 		return {
-			briefOutput: `You talked to ${npcName}${topicSuffix}. They seem interested in what you have to say.`,
-			events: [`Talked to ${npcId}`],
+			briefOutput,
+			events: [`Talked to ${npcId}${topicSuffix} [${outcome.result}]`],
 			timeCost: { type: "minutes", amount: 15 },
+			effects: outcome.effects,
 			stateChanges: {},
 		};
 	}
@@ -559,3 +596,45 @@ class TurnResolver {
 }
 
 export default TurnResolver;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const PRIVATE_LOCATION_KEYWORDS = [
+	"dormitory",
+	"room",
+	"private",
+	"study",
+	"quarters",
+	"office",
+	"garden",
+];
+
+function isPrivateLocation(locationId: string): boolean {
+	const lower = locationId.toLowerCase();
+	return PRIVATE_LOCATION_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+import { ConversationResult } from "../domain/npc/Conversation";
+
+function buildConversationOutput(
+	npcName: string,
+	topicSuffix: string,
+	result: ConversationResult,
+): string {
+	switch (result) {
+		case "success":
+			return `You had a pleasant conversation with ${npcName}${topicSuffix}.`;
+		case "partial":
+			return `${npcName} answered cautiously${topicSuffix}. You learned something, though not everything.`;
+		case "refusal":
+			return `${npcName} refused to engage${topicSuffix}. The conversation ended poorly.`;
+		case "deflection":
+			return `${npcName} deflected your question${topicSuffix} with practiced ease.`;
+		case "reveal":
+			return `${npcName} opened up${topicSuffix}. You learned something significant.`;
+		case "invitation":
+			return `${npcName} suggested meeting again${topicSuffix}. An invitation has been extended.`;
+	}
+}

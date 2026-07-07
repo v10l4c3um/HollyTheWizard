@@ -54,6 +54,12 @@ export type GameEvents = {
 	LocationVisited: { locationId: string; isFirstVisit: boolean };
 	LocationDiscovered: { locationId: string };
 	NpcTalkedTo: { npcId: string; topic: string | undefined };
+	ConversationResolved: {
+		npcId: string;
+		topic: string | undefined;
+		result: "success" | "partial" | "refusal" | "deflection" | "reveal" | "invitation";
+		narrationTags: string[];
+	};
 	QuestFlagSet: { flagId: string; active: boolean };
 	QuestActivated: { questId: string };
 	QuestCompleted: { questId: string };

@@ -3,12 +3,6 @@ import Item from "../world/Item";
 import { GameEffect } from "./GameEffects";
 import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
-import {
-	AttributeStats,
-	AttributeStatsDelta,
-	ResourceStats,
-	ResourceStatsDelta,
-} from "../player/PlayerStats";
 
 /**
  * Central state-mutation path for `GameEffect`s.
@@ -54,6 +48,34 @@ function applyEffect(
 			break;
 		case "InventoryDelta":
 			applyInventoryDelta(state, effect.itemId, effect.delta);
+			break;
+		case "TopicUnlocked": {
+			const topics = state.unlockedTopicsByNpc[effect.npcId] ?? [];
+			if (!topics.includes(effect.topicId)) {
+				topics.push(effect.topicId);
+			}
+			state.unlockedTopicsByNpc[effect.npcId] = topics;
+			break;
+		}
+		case "ClueRevealed":
+			state.clues[effect.clueId] = {
+				discovered: true,
+				sourceNpcId: effect.sourceNpcId,
+			};
+			break;
+		case "RumorLearned":
+			state.rumors[effect.rumorId] = {
+				known: true,
+				sourceNpcId: effect.sourceNpcId,
+			};
+			break;
+		case "SceneInvitationCreated":
+			state.sceneInvitations.push({
+				invitationId: effect.invitationId,
+				npcId: effect.npcId,
+				sceneType: effect.sceneType,
+				validUntilMinutes: effect.validUntilMinutes,
+			});
 			break;
 	}
 }

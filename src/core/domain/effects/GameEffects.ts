@@ -25,8 +25,41 @@ export type GameEffect =
 			value: boolean | number | string;
 			reason: string;
 	  }
-	| { type: "InventoryDelta"; itemId: string; delta: number; reason: string };
+	| { type: "InventoryDelta"; itemId: string; delta: number; reason: string }
 
+	// New social/content effects
+	| {
+			type: "TopicUnlocked";
+			npcId: string;
+			topicId: string;
+			reason: string;
+	  }
+	| {
+			type: "ClueRevealed";
+			clueId: string;
+			sourceNpcId?: string;
+			reason: string;
+	  }
+	| {
+			type: "RumorLearned";
+			rumorId: string;
+			sourceNpcId?: string;
+			reason: string;
+	  }
+	| {
+			type: "SceneInvitationCreated";
+			invitationId: string;
+			npcId: string;
+			sceneType:
+				| "study"
+				| "walk"
+				| "meeting"
+				| "duel"
+				| "letter"
+				| "private_talk";
+			validUntilMinutes?: number;
+			reason: string;
+	  };
 // ---------------------------------------------------------------------------
 // Helper constructors (see docs/event-effect-conversion-plan.md, Step 1)
 // ---------------------------------------------------------------------------
@@ -89,4 +122,45 @@ export function subjectKnowledgeTrack(subjectId: string): string {
 /** Track helper: "spell.<id>.proficiency" */
 export function spellProficiencyTrack(spellId: string): string {
 	return `spell.${spellId}.proficiency`;
+}
+
+export function topicUnlocked(
+	npcId: string,
+	topicId: string,
+	reason: string,
+): GameEffect {
+	return { type: "TopicUnlocked", npcId, topicId, reason };
+}
+
+export function clueRevealed(
+	clueId: string,
+	reason: string,
+	sourceNpcId?: string,
+): GameEffect {
+	return { type: "ClueRevealed", clueId, sourceNpcId, reason };
+}
+
+export function rumorLearned(
+	rumorId: string,
+	reason: string,
+	sourceNpcId?: string,
+): GameEffect {
+	return { type: "RumorLearned", rumorId, sourceNpcId, reason };
+}
+
+export function sceneInvitationCreated(
+	invitationId: string,
+	npcId: string,
+	sceneType: "study" | "walk" | "meeting" | "duel" | "letter" | "private_talk",
+	reason: string,
+	validUntilMinutes?: number,
+): GameEffect {
+	return {
+		type: "SceneInvitationCreated",
+		invitationId,
+		npcId,
+		sceneType,
+		validUntilMinutes,
+		reason,
+	};
 }
