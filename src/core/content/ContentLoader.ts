@@ -3,6 +3,7 @@ import * as path from "path";
 import Registry from "../Registry";
 import { Spell } from "../domain/magic/Spell";
 import NPC from "../domain/npc/Npc";
+import { NpcConversationProfile } from "../domain/npc/NpcProfile";
 
 interface ContentPackManifest {
 	name: string;
@@ -10,6 +11,7 @@ interface ContentPackManifest {
 	description?: string;
 	spells?: Spell[];
 	npcs?: NPC[];
+	profiles?: NpcConversationProfile[];
 }
 
 export interface ContentPackLoadProgress {
@@ -82,6 +84,23 @@ class ContentLoader {
 		);
 	}
 
+	loadNpcProfilePack(packName: string, registry: Registry): void {
+		const manifest = this.loadPackManifest(packName);
+
+		if (!manifest.profiles || !Array.isArray(manifest.profiles)) {
+			console.warn(`No NPC profiles found in pack: ${packName}`);
+			return;
+		}
+
+		for (const profile of manifest.profiles) {
+			registry.registerNpcProfile(profile);
+		}
+
+		console.log(
+			`Loaded NPC profile pack '${manifest.name}' with ${manifest.profiles.length} profiles`,
+		);
+	}
+
 	loadAllPacks(
 		registry: Registry,
 		onProgress?: (progress: ContentPackLoadProgress) => void,
@@ -116,6 +135,8 @@ class ContentLoader {
 				const spells =
 					Array.isArray(manifest.spells) ? manifest.spells : [];
 				const npcs = Array.isArray(manifest.npcs) ? manifest.npcs : [];
+				const profiles =
+					Array.isArray(manifest.profiles) ? manifest.profiles : [];
 
 				for (const spell of spells) {
 					registry.registerSpell(spell);
@@ -123,9 +144,12 @@ class ContentLoader {
 				for (const npc of npcs) {
 					registry.registerNPC(npc);
 				}
+				for (const profile of profiles) {
+					registry.registerNpcProfile(profile);
+				}
 
 				console.log(
-					`Loaded content pack '${manifest.name}' with ${spells.length} spells and ${npcs.length} NPCs`,
+					`Loaded content pack '${manifest.name}' with ${spells.length} spells, ${npcs.length} NPCs, and ${profiles.length} NPC profiles`,
 				);
 			} catch (error) {
 				console.error(`Failed to load content pack '${packName}':`, error);

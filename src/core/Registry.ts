@@ -7,10 +7,12 @@ import {
 	SubjectType,
 	SubjectCurriculum,
 } from "./domain/quest/Curriculum";
+import { NpcConversationProfile } from "./domain/npc/NpcProfile";
 
 class Registry {
 	private locations = new Map<string, Location>();
 	private npcs = new Map<string, NPC>();
+	private npcProfiles = new Map<string, NpcConversationProfile>();
 	private items = new Map<string, Item>();
 	private spells = new Map<string, Spell>();
 	private schoolData: SchoolData | null = null;
@@ -21,6 +23,14 @@ class Registry {
 
 	registerNPC(npc: NPC): void {
 		this.npcs.set(npc.id, npc);
+	}
+
+	registerNpcProfile(profile: NpcConversationProfile): void {
+		this.npcProfiles.set(profile.npcId, profile);
+	}
+
+	getNpcProfile(id: string): NpcConversationProfile | undefined {
+		return this.npcProfiles.get(id);
 	}
 
 	registerItem(item: Item): void {

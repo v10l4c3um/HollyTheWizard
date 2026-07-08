@@ -1,5 +1,6 @@
 import { RelationshipDelta } from "../npc/Relationship";
 import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
+import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
 export type GameEffect =
 	| { type: "ProgressDelta"; track: string; delta: number; reason: string }
@@ -59,6 +60,11 @@ export type GameEffect =
 				| "private_talk";
 			validUntilMinutes?: number;
 			reason: string;
+	  }
+	| {
+			type: "ConversationMemoryRecorded";
+			npcId: string;
+			entry: ConversationMemoryEntry;
 	  };
 // ---------------------------------------------------------------------------
 // Helper constructors (see docs/event-effect-conversion-plan.md, Step 1)
@@ -163,4 +169,11 @@ export function sceneInvitationCreated(
 		validUntilMinutes,
 		reason,
 	};
+}
+
+export function conversationMemoryRecorded(
+	npcId: string,
+	entry: ConversationMemoryEntry,
+): GameEffect {
+	return { type: "ConversationMemoryRecorded", npcId, entry };
 }

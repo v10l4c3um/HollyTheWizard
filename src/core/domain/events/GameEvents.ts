@@ -59,6 +59,20 @@ export type GameEvents = {
 		topic: string | undefined;
 		result: "success" | "partial" | "refusal" | "deflection" | "reveal" | "invitation";
 		narrationTags: string[];
+		score: number;
+	};
+	TopicDiscussed: {
+		npcId: string;
+		topicId: string;
+		category: string;
+	};
+	BoundaryHit: {
+		npcId: string;
+		topicId: string;
+	};
+	RevealTriggered: {
+		npcId: string;
+		topicId: string;
 	};
 	QuestFlagSet: { flagId: string; active: boolean };
 	QuestActivated: { questId: string };

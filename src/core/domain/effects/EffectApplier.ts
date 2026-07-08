@@ -77,6 +77,16 @@ function applyEffect(
 				validUntilMinutes: effect.validUntilMinutes,
 			});
 			break;
+		case "ConversationMemoryRecorded": {
+			const history = state.conversationHistory[effect.npcId] ?? [];
+			history.push(effect.entry);
+			// Cap at 20 entries per NPC (drop oldest)
+			if (history.length > 20) {
+				history.splice(0, history.length - 20);
+			}
+			state.conversationHistory[effect.npcId] = history;
+			break;
+		}
 	}
 }
 

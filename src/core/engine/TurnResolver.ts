@@ -18,7 +18,9 @@ import {
 import {
 	evaluateConversation,
 	ConversationContext,
+	ConversationResult,
 } from "../domain/npc/Conversation";
+import { resolveTopic } from "../domain/npc/TopicRegistry";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -184,21 +186,23 @@ class TurnResolver {
 		const npcName = npc?.name ?? npcId;
 
 		const relationship = state.relationships[npcId];
-		if (!relationship) {
-			// First contact: no relationship record yet — treat as a neutral greeting
-			// and establish one. The evaluator needs a snapshot, so we use zeroed stats.
-		}
+		// First contact: no relationship record yet — evaluator treats as zeroed stats.
 
-		const lockedTopics = state.unlockedTopicsByNpc[npcId] ?? [];
-		if (topic && !lockedTopics.includes(topic)) {
-			// Topic may simply be unlockable — the evaluator decides outcome;
-			// a locked-and-sensitive topic produces deflection or refusal naturally.
-		}
+		const locationId = state.currentLocationId;
+		const topicDef = resolveTopic(topic);
+		const npcProfile = registry.getNpcProfile(npcId);
+		const recentHistory = state.conversationHistory[npcId] ?? [];
+		// Take the last 10 global event strings for mood-modifier phase
+		const recentEvents = state.recentEvents.slice(-10);
+		const turnIndex = state.worldClock.getMinutesOfDay();
 
 		const ctx: ConversationContext = {
 			npcId,
 			topic,
-			isPrivate: isPrivateLocation(state.currentLocationId),
+			topicDef,
+			npcProfile,
+			isPrivate: isPrivateLocation(locationId),
+			locationId,
 			relationship: relationship ?? {
 				trust: 0,
 				affection: 0,
@@ -212,6 +216,9 @@ class TurnResolver {
 				applyDelta: () => {},
 			},
 			flags: state.flags,
+			recentHistory,
+			recentEvents,
+			turnIndex,
 		};
 
 		const outcome = evaluateConversation(ctx);
@@ -223,7 +230,19 @@ class TurnResolver {
 			topic,
 			result: outcome.result,
 			narrationTags: outcome.narrationTags ?? [],
+			score: outcome.score,
 		});
+		this.bus.emit("TopicDiscussed", {
+			npcId,
+			topicId: topic ?? "general",
+			category: topicDef.category,
+		});
+		if (outcome.result === "refusal" && npcProfile?.hardBoundaries.includes(topic ?? "")) {
+			this.bus.emit("BoundaryHit", { npcId, topicId: topic ?? "general" });
+		}
+		if (outcome.result === "reveal" || outcome.result === "invitation") {
+			this.bus.emit("RevealTriggered", { npcId, topicId: topic ?? "general" });
+		}
 
 		const topicSuffix = topic ? ` about ${topic}` : "";
 		const briefOutput = buildConversationOutput(npcName, topicSuffix, outcome.result);
@@ -615,8 +634,6 @@ function isPrivateLocation(locationId: string): boolean {
 	const lower = locationId.toLowerCase();
 	return PRIVATE_LOCATION_KEYWORDS.some((kw) => lower.includes(kw));
 }
-
-import { ConversationResult } from "../domain/npc/Conversation";
 
 function buildConversationOutput(
 	npcName: string,

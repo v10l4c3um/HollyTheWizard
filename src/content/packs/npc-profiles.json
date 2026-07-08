@@ -1,0 +1,130 @@
+{
+  "name": "NPC Conversation Profiles",
+  "version": "1.0.0",
+  "description": "Authored conversation metadata for core NPCs",
+  "profiles": [
+    {
+      "npcId": "professor_snape",
+      "traits": ["strict", "sarcastic", "knowledgeable", "secretly_caring", "academic"],
+      "hardBoundaries": ["dark_arts", "personal_history"],
+      "topicAffinities": {
+        "academic_performance": 2,
+        "potions": 2,
+        "school_gossip": -2,
+        "romance": -3,
+        "daily_chat": -1,
+        "magical_creatures": -1,
+        "wizarding_lore": 1
+      },
+      "locationModifiers": {
+        "classroom": 1,
+        "dungeons": 1,
+        "hallway": -1,
+        "grounds": -1,
+        "common_room": -2
+      }
+    },
+    {
+      "npcId": "hagrid",
+      "traits": ["warm", "enthusiastic", "loyal", "nature_lover", "protective"],
+      "hardBoundaries": ["voldemort"],
+      "topicAffinities": {
+        "magical_creatures": 3,
+        "dark_arts": -2,
+        "quidditch": 1,
+        "daily_chat": 2,
+        "school_gossip": 1,
+        "academic_performance": -1
+      },
+      "locationModifiers": {
+        "hagrid_hut": 2,
+        "forbidden_forest": 2,
+        "grounds": 1,
+        "classroom": -1,
+        "dungeons": -2
+      }
+    },
+    {
+      "npcId": "dumbledore",
+      "traits": ["wise", "patient", "mysterious", "benevolent", "academic", "political"],
+      "hardBoundaries": [],
+      "topicAffinities": {
+        "wizarding_lore": 2,
+        "academic_performance": 1,
+        "voldemort": -1,
+        "dark_arts": -1,
+        "daily_chat": 1,
+        "personal_history": -1
+      },
+      "locationModifiers": {
+        "headmaster_office": 2,
+        "great_hall": 1,
+        "classroom": 1,
+        "dungeons": -1
+      }
+    },
+    {
+      "npcId": "harry_potter",
+      "traits": ["brave", "impulsive", "loyal", "determined"],
+      "hardBoundaries": ["dark_arts"],
+      "topicAffinities": {
+        "quidditch": 3,
+        "voldemort": -2,
+        "daily_chat": 2,
+        "school_gossip": 1,
+        "academic_performance": -1,
+        "romance": 1,
+        "magical_creatures": 1
+      },
+      "locationModifiers": {
+        "quidditch_pitch": 2,
+        "common_room": 1,
+        "classroom": -1,
+        "dungeons": -2
+      }
+    },
+    {
+      "npcId": "hermione_granger",
+      "traits": ["studious", "logical", "caring", "academic", "principled"],
+      "hardBoundaries": ["romance"],
+      "topicAffinities": {
+        "academic_performance": 3,
+        "wizarding_lore": 2,
+        "potions": 1,
+        "school_gossip": -1,
+        "quidditch": -1,
+        "magical_creatures": 1,
+        "daily_chat": 1
+      },
+      "locationModifiers": {
+        "library": 2,
+        "classroom": 2,
+        "common_room": 1,
+        "quidditch_pitch": -1,
+        "dungeons": 0
+      }
+    },
+    {
+      "npcId": "ron_weasley",
+      "traits": ["loyal", "humorous", "food_lover", "insecure", "brave"],
+      "hardBoundaries": [],
+      "topicAffinities": {
+        "quidditch": 3,
+        "school_gossip": 2,
+        "daily_chat": 2,
+        "academic_performance": -1,
+        "romance": 1,
+        "dark_arts": -2,
+        "magical_creatures": 1
+      },
+      "locationModifiers": {
+        "common_room": 2,
+        "quidditch_pitch": 2,
+        "great_hall": 1,
+        "library": -1,
+        "classroom": -1,
+        "dungeons": -2
+      }
+    }
+  ]
+}

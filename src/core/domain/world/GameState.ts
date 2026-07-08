@@ -16,6 +16,7 @@ import {
 	createEmptyYearProgress,
 } from "../campaign/YearBlueprint";
 import { RelationshipStats } from "../npc/Relationship";
+import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
 class GameState {
 	metadata: {
@@ -54,6 +55,8 @@ class GameState {
 		sceneType: string;
 		validUntilMinutes?: number;
 	}>;
+	/** npcId → last-20 conversation entries, mutated via `ConversationMemoryRecorded` effects. */
+	conversationHistory: Record<string, ConversationMemoryEntry[]>;
 	knownNPCIds: string[];
 	recentEvents: string[];
 	output: string;
@@ -93,6 +96,7 @@ class GameState {
 		this.clues = {};
 		this.rumors = {};
 		this.sceneInvitations = [];
+		this.conversationHistory = {};
 		this.knownNPCIds = [];
 		this.recentEvents = [];
 		this.output = "";
@@ -194,6 +198,7 @@ class GameState {
 		state.clues = data.clues ?? {};
 		state.rumors = data.rumors ?? {};
 		state.sceneInvitations = data.sceneInvitations ?? [];
+		state.conversationHistory = data.conversationHistory ?? {};
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
 		state.output = data.output;
