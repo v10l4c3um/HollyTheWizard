@@ -1,6 +1,6 @@
 # AI / Ollama Integration
 
-Files: `src/ai/OllamaClient.ts` (272 lines), `src/ai/OllamaConfig.ts` (36), `src/ai/providers/BlueprintLLMProvider.ts` (104), `src/ai/narration/BlueprintPromptBuilder.ts` (66). Callers: `Resolver` (03), `Renderer` (05), blueprint use cases (15), `GameEngine._verifyOllamaConnections` (02). Tests: `ollama-client.test.ts` (10 cases), `blueprint-llm-provider.test.ts`.
+Files: `src/ai/OllamaClient.ts` (272 lines), `src/ai/OllamaConfig.ts` (36), `src/ai/providers/BlueprintLLMProvider.ts` (104), `src/ai/narration/BlueprintPromptBuilder.ts` (66). Callers: `Resolver` (03), `Renderer` (05), blueprint use cases (15), `GameEngine._verifyOllamaConnections` (02). Tests: `ollama-client.test.ts` (11 cases), `blueprint-llm-provider.test.ts`.
 
 ## What it does
 

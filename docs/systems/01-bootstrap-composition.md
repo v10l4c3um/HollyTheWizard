@@ -1,0 +1,63 @@
+# Bootstrap & Composition Root
+
+Files: `src/bootstrap/engineFactory.ts` (~190 lines), `src/types.ts` (`IGameEngine`), the constructor of `GameEngine` (second-level wiring, see 02), entry `src/ui/ink/entry.ts`. Test: `src/test/engine-factory.test.ts` (1 case: startup fails when Ollama is unreachable). The older `src/bootstrap.ts` is dead (see 22).
+
+## What it does
+
+Builds a ready-to-play game: loads content into a `Registry`, creates the event bus and the `GameEngine`, wires bus listeners, initialises the spellbook, and generates the campaign and year-1 blueprints. The Ink UI calls it as `engineFactory(onProgress)` and shows the progress as six loading milestones.
+
+## How it works
+
+`engineFactory(onProgress)`:
+
+1. `buildRegistry`: creates a `Registry`; **hard-codes** three locations and one NPC (`villager`); `ContentLoader.loadAllPacks` (spells, NPCs, profiles); `SchoolDataLoader.loadSchoolData` (subjects, curriculum, timetables). Progress is reported for content packs and school data.
+2. `createGameBus()` and `new GameEngine(registry, {}, bus)`. The engine itself constructs the resolver, turn resolver, renderer, blueprint use cases, progress service and persistence repository (see 02), and a fresh `GameState`.
+3. Registers four `bus.on` listeners that translate events into quest flags (see 07).
+4. Sets every registered spell to `hidden` in `engine.state.spellbook`.
+5. `engine.initializeCampaignBlueprint()`: Ollama health check for each distinct model, then generate the campaign and year blueprints (see 15, 18). Any failure throws and aborts startup.
+6. Returns the engine as `IGameEngine`. Separately, `locationNameResolver(id)` lazily builds a **second** registry just to look up display names for the UI.
+
+## Strengths
+
+- **There is a composition root.** One function builds the object graph, so construction is not scattered through the UI and domain code.
+- **Dependency inversion at the UI edge:** the UI takes `engineFactory` as a prop and sees only `IGameEngine`, so it can be tested with a fake.
+- **Progress reporting is structured** (typed ids, labels, counts), which gives the loading screen real information.
+- **The bus is created outside the engine and shared,** so listeners can be attached at the root.
+- **Fail-fast startup** with a clear message when the LLM is unavailable.
+- **The startup path is covered by a test** for its main failure mode.
+
+## Weaknesses
+
+1. **It is not really the root.** `GameEngine`'s constructor creates the resolver, renderer, use cases, services, a `GameState` and a `JsonPersistenceRepository` by itself, from three Ollama config constants. The factory passes `{}` as config, so nothing about the object graph (models, persistence, RNG, clock, logger) can be chosen at the root. The engine also imports from `ai/` and `infastructure/`, so the core depends on outer layers (see 02).
+2. **The world is defined in code here.** Locations and the `villager` NPC are constructed inline (see 09), which makes `buildRegistry` content, not wiring. It also sits next to the content loaders, so there are two content sources with different rules.
+3. **Game rules are wired in the factory.** The four listeners that make campaign milestones work live here (see 07). Any other way of building an engine (tests, a different front end) silently loses story progress.
+4. **Spellbook initialisation is a startup side effect on a state it does not own.** The factory reaches into `engine.state.spellbook` after construction. Because it runs only at startup, a loaded save is missing any spell added to the content since that save (no `hidden` entry), so new spells never appear for existing saves, and `getSpellState` returns `undefined` for them. State creation (new game vs. loaded) is also mixed up with engine creation.
+5. **New game and load are the same path.** The UI's `choice` (new, continue, load) is not passed to the factory. Every start generates a new campaign and year blueprint through the LLM, and the loaded save then overwrites them (see 19). Startup cost is paid even when the result is discarded.
+6. **Startup requires the LLM** (Ollama probe + blueprint generation), contradicting the invariant that the game degrades gracefully without it. A "no LLM" mode is impossible by construction (see 18).
+7. **Milestones are declared in three places:** the `StartupProgressUpdate` id union, the `INITIAL_STARTUP_MILESTONES` list in `InkApp.tsx`, and the `switch` that maps engine milestone ids to progress updates here. Adding a step means editing all three, and the UI imports the type from `bootstrap`.
+8. **A second registry.** `locationNameResolver` calls `buildRegistry()` again (re-reading all content and printing the pack-loading logs) instead of using the engine's registry. If content differs or loading fails differently, the UI and engine disagree on names.
+9. **No player setup.** There is no character creation step; the `Player` is the constructor default (see 10), and the seed is generated inside the engine from `Date.now()`, so runs are not reproducible (see 15).
+10. **Global and implicit configuration.** Paths are `__dirname`/`cwd` based, Ollama settings are constants, and the module-level `cachedRegistry` is global mutable state.
+11. **Console output during startup** (pack loading, Ollama debug) writes into the Ink screen (see 20).
+12. **Thin test coverage:** only one failure case; no test of a successful build with a fake LLM, listener wiring, or content loading.
+
+## Rework ideas
+
+- **Make `engineFactory` the single composition root.** It receives (or reads) a `GameConfig` and builds every collaborator: `LlmClient`, `Resolver`, `Renderer`, `PersistenceRepository`, clock, RNG, logger, content registry. `GameEngine` takes them through its constructor and builds nothing itself (see 02, 18).
+- **Separate three concerns:**
+  1. *Content*: `loadContent(config) -> Registry` (pure data, validated, frozen; see 09).
+  2. *Game session*: `newGame(options)`, `loadGame(slot)` returning an initial `GameState`, including spellbook initialisation and reconciliation with the current content (add missing spells, drop removed ids).
+  3. *Services/engine*: wiring only.
+- **Move rule-level listeners into domain services** that the engine always constructs (a `ProgressionTracker`), not the factory (see 07).
+- **Distinguish new game and load:** load skips blueprint generation and the LLM health check unless narration needs it; new game runs character creation, then generates (or defers) the blueprint.
+- **Make startup LLM-optional:** probe in the background, fall back to deterministic parsing, templates and fallback blueprints, and upgrade when the model becomes available (see 05, 15, 18).
+- **Declare startup steps once** as data (`[{ id, label, run }]`), and let the UI render whatever the factory reports.
+- **Return the registry (or a read-only view)** with the engine so the UI never builds its own; replace `locationNameResolver` with a lookup on that view.
+- **Provide a `createTestEngine(overrides)`** variant with fake LLM, seeded RNG, in-memory persistence and a tiny registry, used by all scenario tests (see 21).
+- Remove globals and add typed configuration (file or environment) with sensible defaults.
+
+## Open questions
+
+- Should a game session be an explicit object (`GameSession` with state, engine, services) created by `newGame`/`loadGame`, rather than "the engine owns the state"?
+- Is a dependency-injection container worth it, or is a plain factory function enough for a project this size? (A plain factory is probably enough if it stays the only place that calls `new`.)
+- What should happen on startup when content validation fails: refuse to start, or start with the valid part and a visible warning?

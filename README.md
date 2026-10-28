@@ -8,7 +8,7 @@ The game engine is fully deterministic. A local LLM ([Ollama](https://ollama.com
 
 - Node.js 24.18.x (see `.nvmrc`)
 - Ollama on `localhost:11434` (optional but recommended). Default models:
-  - Resolver: `qwen3-4b-instruct-gguf:Q4_K_M`
+  - Resolver: `hf.co/llmware/qwen3-4b-instruct-gguf:Q4_K_M`
   - Renderer and blueprint: `llama3.1:8b-instruct-q4_K_M`
 
 ## Getting started
