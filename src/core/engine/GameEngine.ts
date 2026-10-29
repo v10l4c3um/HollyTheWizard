@@ -7,6 +7,8 @@ import Resolver from "./Resolver";
 import Renderer from "./Renderer";
 import { WorldTick, TickReport } from "./WorldTick";
 import { Autosave } from "./Autosave";
+import { applyEffects } from "../domain/effects/EffectApplier";
+import { turnRecorded } from "../domain/effects/GameEffects";
 import { buildWorldView } from "./WorldView";
 import { buildRenderContext } from "./RenderContext";
 import { Command } from "./Command";
@@ -30,6 +32,17 @@ export interface GameEngineDeps {
 	blueprintProgressService: BlueprintProgressService;
 	logger: Logger;
 }
+
+/** Commands about the world, as opposed to the game itself (save, load, undo, …). */
+const IN_WORLD = new Set<Command["type"]>([
+	"MOVE",
+	"TALK",
+	"STUDY",
+	"ATTEND_CLASS",
+	"PRACTICE",
+	"INTERACT",
+	"REST",
+]);
 
 type StartupMilestoneId = "campaign-blueprint" | "year-blueprint";
 type StartupMilestoneStatus = "in_progress" | "done";
@@ -113,6 +126,7 @@ class GameEngine implements IGameEngine {
 		try {
 			const working = this.state;
 			const clockBefore = working.worldClock.getTotalMinutes();
+			const fromLocationId = working.currentLocationId;
 			const result = await runCommand(this.handlers, command, this.session);
 
 			if (result.kind === "fail") {
@@ -148,6 +162,17 @@ class GameEngine implements IGameEngine {
 						);
 
 			this.blueprintProgressService.checkMilestones(this.state, this.bus);
+
+			// Remember what the player did, so the next sentence can say "again",
+			// "go back" or "ask her". Only in-world turns, and only on the working
+			// copy, so a rollback forgets it too.
+			if (IN_WORLD.has(command.type) && this.state === working) {
+				applyEffects(
+					this.state,
+					[turnRecorded({ input, command, fromLocationId })],
+					this.bus,
+				);
+			}
 			this.session.commit();
 		} catch (error) {
 			this.session.rollback();

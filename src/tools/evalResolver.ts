@@ -20,6 +20,8 @@ import { probeOllamaConnection } from "../ai/OllamaClient";
 interface Case {
 	input: string;
 	at: string;
+	/** Turns the player took just before this phrase (seeded into the state). */
+	after?: { input: string; command: Record<string, unknown> }[];
 	expect: Record<string, string>;
 }
 
@@ -48,6 +50,13 @@ async function main() {
 	for (const testCase of fixture.cases.filter((c) => !only || only.test(c.input))) {
 		const state = new GameState();
 		applyEffects(state, arrivalEffects(registry, state, testCase.at), bus);
+		for (const turn of testCase.after ?? []) {
+			state.recentTurns.push({
+				input: turn.input,
+				command: turn.command as never,
+				fromLocationId: testCase.at,
+			});
+		}
 		const started = Date.now();
 		const got = await resolveWith(resolver, testCase.input, registry, state);
 		const ok = Object.entries(testCase.expect).every(

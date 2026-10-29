@@ -402,6 +402,214 @@
    "expect": {
     "type": "UNKNOWN"
    }
+  },
+  {
+   "input": "ask him about the forest",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   },
+   "after": [
+    {
+     "input": "talk to Hagrid",
+     "command": {
+      "type": "TALK",
+      "npcId": "hagrid"
+     }
+    }
+   ]
+  },
+  {
+   "input": "say hello to him again",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   },
+   "after": [
+    {
+     "input": "talk to Hagrid",
+     "command": {
+      "type": "TALK",
+      "npcId": "hagrid"
+     }
+    }
+   ]
+  },
+  {
+   "input": "ask her about the exam",
+   "at": "classroom",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hermione_granger"
+   },
+   "after": [
+    {
+     "input": "talk to Hermione",
+     "command": {
+      "type": "TALK",
+      "npcId": "hermione_granger"
+     }
+    }
+   ]
+  },
+  {
+   "input": "what does she think of the lesson",
+   "at": "classroom",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hermione_granger"
+   },
+   "after": [
+    {
+     "input": "talk to Hermione",
+     "command": {
+      "type": "TALK",
+      "npcId": "hermione_granger"
+     }
+    }
+   ]
+  },
+  {
+   "input": "go back",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   },
+   "after": [
+    {
+     "input": "go to the corridor",
+     "command": {
+      "type": "MOVE",
+      "destinationId": "hallway"
+     }
+    }
+   ]
+  },
+  {
+   "input": "again",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   },
+   "after": [
+    {
+     "input": "go to the corridor",
+     "command": {
+      "type": "MOVE",
+      "destinationId": "hallway"
+     }
+    }
+   ]
+  },
+  {
+   "input": "go there",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   },
+   "after": [
+    {
+     "input": "go to the corridor",
+     "command": {
+      "type": "MOVE",
+      "destinationId": "hallway"
+     }
+    }
+   ]
+  },
+  {
+   "input": "study it for another hour",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "charms"
+   },
+   "after": [
+    {
+     "input": "study charms",
+     "command": {
+      "type": "STUDY",
+      "subjectId": "charms",
+      "duration": 1
+     }
+    }
+   ]
+  },
+  {
+   "input": "do that again",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "charms"
+   },
+   "after": [
+    {
+     "input": "study charms",
+     "command": {
+      "type": "STUDY",
+      "subjectId": "charms",
+      "duration": 1
+     }
+    }
+   ]
+  },
+  {
+   "input": "practise it again for two hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "levitate"
+   },
+   "after": [
+    {
+     "input": "practise wingardium leviosa",
+     "command": {
+      "type": "PRACTICE",
+      "spellId": "levitate",
+      "duration": 1
+     }
+    }
+   ]
+  },
+  {
+   "input": "talk to her",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "go there",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "again",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "go back",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "ask him about it",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
   }
  ]
 }
