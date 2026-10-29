@@ -6,6 +6,7 @@ import Registry from "../core/Registry";
 import GameState from "../core/domain/world/GameState";
 import Location from "../core/domain/world/Location";
 import NPC from "../core/domain/npc/Npc";
+import { buildRegistry as buildRealRegistry } from "../bootstrap/engineFactory";
 import { createGameBus } from "../core/domain/events/GameEvents";
 
 import {
@@ -357,5 +358,53 @@ describe("JsonPersistenceRepository round-trip", () => {
 		expect(
 			loaded.spellbook.getSpellState("test_spell")?.knowledgeState,
 		).toBe("learned");
+	});
+});
+
+describe("blueprint generation constrains the model to real ids", () => {
+	const originalFetch = global.fetch;
+	afterEach(() => {
+		global.fetch = originalFetch;
+	});
+
+	const reply = (body: object) => ({
+		ok: true,
+		json: async () => ({ response: JSON.stringify(body) }),
+	});
+	const sentFormat = (call: number) =>
+		JSON.parse((global.fetch as jest.Mock).mock.calls[call][1].body).format;
+
+	const base = {
+		blueprintVersion: "1",
+		seed: "s",
+		runThemes: ["mystery"],
+		toneProfile: "tense",
+		runTruths: {
+			hasHiddenMentor: true,
+			worldIsInDecline: false,
+			playerIsSuspectedOfSomething: false,
+			ancientThreatIsStirring: true,
+		},
+	};
+
+	it("the campaign request lists the real characters, and an invented one is repaired", async () => {
+		const registry = buildRealRegistry();
+		global.fetch = jest
+			.fn()
+			.mockResolvedValueOnce(reply({ ...base, longLivedRoles: { mentor: "NPC-1" } }))
+			.mockResolvedValueOnce(reply({ ...base, longLivedRoles: { mentor: "dumbledore" } })) as never;
+
+		const result = await new GenerateCampaignBlueprint(
+			new BlueprintLLMProvider({ endpoint: "http://x/api/generate", model: "m" }),
+			registry,
+			createGameBus(),
+		).execute("seed");
+
+		expect(result.longLivedRoles).toEqual({ mentor: "dumbledore" });
+		expect(result.wasFallback).toBe(false);
+		expect(sentFormat(0).properties.longLivedRoles.additionalProperties.enum).toEqual(
+			expect.arrayContaining(["dumbledore", "hagrid"]),
+		);
+		expect(global.fetch).toHaveBeenCalledTimes(2);
 	});
 });

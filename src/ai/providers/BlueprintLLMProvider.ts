@@ -67,7 +67,10 @@ export class BlueprintLLMProvider {
 		try {
 			const responseText = await generateWithOllama(this.config, prompt, {
 				context: "blueprint generation",
-				format: "json",
+				// The reply is constrained to the schema, so it cannot invent keys or
+				// ids the schema does not allow. Plain JSON mode is only the fallback
+				// for a schema that cannot be expressed as JSON Schema.
+				format: jsonSchemaFor(schema),
 				timeoutMs: OLLAMA_BLUEPRINT_TIMEOUT_MS,
 			});
 
@@ -124,5 +127,13 @@ Validation errors:
 ${errors.map((e) => `- ${e}`).join("\n")}
 
 Please respond again with ONLY corrected JSON that fixes these errors.`;
+	}
+}
+
+function jsonSchemaFor(schema: z.ZodType): object | "json" {
+	try {
+		return z.toJSONSchema(schema) as object;
+	} catch {
+		return "json";
 	}
 }

@@ -1,7 +1,7 @@
 import Registry from "../../Registry";
 import { BlueprintLLMProvider } from "../../../ai/providers/BlueprintLLMProvider";
 import { buildCampaignBasePrompt } from "../../../ai/narration/BlueprintPromptBuilder";
-import { CampaignBlueprintBaseSchema } from "../../domain/campaign/BlueprintSchemas";
+import { campaignBaseSchemaFor } from "../../domain/campaign/BlueprintSchemas";
 import { validateCampaignBaseSemantics } from "../../domain/campaign/CampaignBlueprintService";
 import { buildSafeCampaignBase } from "../../domain/campaign/DeterministicFallback";
 import { CampaignBlueprintBase } from "../../domain/campaign/CampaignBlueprint";
@@ -25,7 +25,7 @@ export class GenerateCampaignBlueprint {
 		const prompt = buildCampaignBasePrompt(seed, this.registry);
 		const generated = await this.llmProvider.generateJson(
 			prompt,
-			CampaignBlueprintBaseSchema,
+			campaignBaseSchemaFor(this.registry),
 			(value) =>
 				validateCampaignBaseSemantics(value, this.registry).errors,
 		);

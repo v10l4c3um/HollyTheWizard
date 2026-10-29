@@ -2,7 +2,7 @@ import Registry from "../../Registry";
 import GameState from "../../domain/world/GameState";
 import { BlueprintLLMProvider } from "../../../ai/providers/BlueprintLLMProvider";
 import { buildYearBlueprintPrompt } from "../../../ai/narration/BlueprintPromptBuilder";
-import { YearBlueprintSchema } from "../../domain/campaign/BlueprintSchemas";
+import { yearBlueprintSchemaFor } from "../../domain/campaign/BlueprintSchemas";
 import {
 	buildYearRecap,
 	validateYearBlueprintSemantics,
@@ -40,7 +40,7 @@ export class GenerateYearBlueprint {
 		);
 		const generated = await this.llmProvider.generateJson(
 			prompt,
-			YearBlueprintSchema,
+			yearBlueprintSchemaFor(this.registry),
 			(value) =>
 				validateYearBlueprintSemantics(
 					{ ...value, wasFallback: false },

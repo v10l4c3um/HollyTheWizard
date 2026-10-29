@@ -123,4 +123,61 @@ describe("BlueprintLLMProvider", () => {
 		);
 		expect(repairBody.prompt).toContain('Unknown id "NPC-1"');
 	});
+
+	describe("schema-constrained replies", () => {
+		const bodyOf = (call: number) =>
+			JSON.parse((global.fetch as jest.Mock).mock.calls[call][1].body);
+
+		it("sends the JSON schema as the request's format, not plain json", async () => {
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: async () => ({ response: '{"ok": true}' }),
+			});
+
+			await new BlueprintLLMProvider(TEST_CONFIG).generateJson(
+				"Generate a blueprint",
+				z.object({ ok: z.boolean() }),
+			);
+
+			const { format } = bodyOf(0);
+			expect(format).toMatchObject({ type: "object" });
+			expect(format.properties.ok).toEqual({ type: "boolean" });
+		});
+
+		it("carries allowed ids in the schema, and repairs a reply that ignores them", async () => {
+			(global.fetch as jest.Mock)
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({ response: '{"npc": "NPC-1"}' }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: async () => ({ response: '{"npc": "hagrid"}' }),
+				});
+
+			const result = await new BlueprintLLMProvider(TEST_CONFIG).generateJson(
+				"Pick",
+				z.object({ npc: z.enum(["hagrid", "dumbledore"]) }),
+			);
+
+			expect(result).toEqual({ npc: "hagrid" });
+			expect(bodyOf(0).format.properties.npc.enum).toEqual(["hagrid", "dumbledore"]);
+			expect(global.fetch).toHaveBeenCalledTimes(2);
+		});
+
+		it("falls back to plain json mode for a schema that cannot be expressed", async () => {
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: async () => ({ response: '{"x": "y"}' }),
+			});
+
+			const result = await new BlueprintLLMProvider(TEST_CONFIG).generateJson(
+				"Generate",
+				z.object({ x: z.custom<string>((v) => typeof v === "string") }),
+			);
+
+			expect(result).toEqual({ x: "y" });
+			expect(bodyOf(0).format).toBe("json");
+		});
+	});
 });
