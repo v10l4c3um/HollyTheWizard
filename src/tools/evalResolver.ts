@@ -13,6 +13,7 @@ import { arrivalEffects } from "../core/domain/world/Exploration";
 import { createGameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import Resolver from "../core/engine/Resolver";
+import { buildWorldView } from "../core/engine/WorldView";
 import { DEFAULT_RESOLVER_OLLAMA_CONFIG } from "../ai/OllamaConfig";
 import { probeOllamaConnection } from "../ai/OllamaClient";
 
@@ -21,14 +22,6 @@ interface Case {
 	at: string;
 	expect: Record<string, string>;
 }
-
-const ID_KEY: Record<string, string> = {
-	MOVE: "destinationId",
-	TALK: "npcId",
-	STUDY: "subjectId",
-	ATTEND_CLASS: "subjectId",
-	PRACTICE: "spellId",
-};
 
 async function main() {
 	const label = process.argv[2] ?? "latest";
@@ -39,9 +32,10 @@ async function main() {
 		),
 	) as { cases: Case[] };
 
-	const quiet = (m: "debug" | "warn" | "error" | "log") =>
-		jest_free_silence(m);
-	for (const m of ["debug", "warn", "error", "log"] as const) quiet(m);
+	// The resolver logs every parse; keep the report readable.
+	for (const method of ["debug", "warn", "error", "log"] as const) {
+		console[method] = () => {};
+	}
 
 	await probeOllamaConnection(DEFAULT_RESOLVER_OLLAMA_CONFIG);
 	const registry = buildRegistry();
@@ -75,28 +69,16 @@ async function main() {
 	}
 	fs.mkdirSync("eval-results", { recursive: true });
 	fs.writeFileSync(path.join("eval-results", `${label}.json`), JSON.stringify(results, null, 2));
-	void ID_KEY;
 }
 
-/** Calls `resolve`, passing the world view once the resolver supports it. */
+/** Resolves one phrase the way the engine does: with the world view of that moment. */
 async function resolveWith(
 	resolver: Resolver,
 	input: string,
 	registry: ReturnType<typeof buildRegistry>,
 	state: GameState,
 ) {
-	let view: unknown;
-	try {
-		const { buildWorldView } = require("../core/engine/WorldView");
-		view = buildWorldView(registry, state);
-	} catch {
-		view = undefined;
-	}
-	return (resolver as any).resolve(input, view);
-}
-
-function jest_free_silence(method: "debug" | "warn" | "error" | "log") {
-	(console as any)[method] = () => {};
+	return resolver.resolve(input, buildWorldView(registry, state));
 }
 
 main().catch((error) => {

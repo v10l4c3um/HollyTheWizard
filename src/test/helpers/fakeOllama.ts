@@ -20,7 +20,7 @@ export const FAKE_NARRATION = "NARRATION";
 export interface ScriptedLine {
 	intent: string;
 	args?: Record<string, unknown>;
-	/** Answer to the "which character do you mean" call; defaults to "none". */
+	/** Answer to the "which of these do you mean" call; defaults to "none". */
 	pick?: string;
 }
 
@@ -76,8 +76,8 @@ function answerResolver(prompt: string): string {
 	if (prompt.startsWith("You are an intent classifier")) {
 		return JSON.stringify({ intent: line.intent });
 	}
-	if (prompt.startsWith("You are matching a character")) {
-		return JSON.stringify({ npcId: line.pick ?? "none" });
+	if (prompt.startsWith("You are matching a name")) {
+		return JSON.stringify({ id: line.pick ?? "none" });
 	}
 	return JSON.stringify(line.args ?? {});
 }
