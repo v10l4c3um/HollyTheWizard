@@ -17,7 +17,7 @@ One class with public fields, grouped as:
 | Player | `player` (attributes, resources, name, health, own `inventory`), `spellbook`, `inventory` |
 | Academic | `academicState` (10 attribute values plus per-subject progress for 27 subjects) |
 | Social | `relationships`, `unlockedTopicsByNpc`, `conversationHistory`, `knownNPCIds` |
-| Narrative | `questFlags {active, completed}`, `flags`, `clues`, `rumors`, `sceneInvitations`, `recentEvents`, `recentTurns` (the last five in-world turns, for "again" / "go back" / "ask her"; see 03) |
+| Narrative | `questFlags {active, completed}`, `flags`, `clues`, `rumors`, `sceneInvitations`, `recentEvents`, `randomState` (where the seeded random source stands, so luck replays exactly and travels with `undo` and saves) and `recentTurns` (the last five in-world turns, for "again" / "go back" / "ask her"; see 03) |
 | Campaign | `currentYear`, `campaignBlueprint`, `yearBlueprints`, `yearProgress` |
 | Unused | `resources` (a generic numeric map) |
 

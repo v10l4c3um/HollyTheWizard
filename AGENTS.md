@@ -15,4 +15,5 @@ Guidance for anyone (human or AI agent) working in this repository.
 - `npm run eval:resolver` and `npm run eval:blueprint` measure the language-model parts against a local Ollama. They are manual and not part of `npm test`; run them when you change prompts, grounding or schemas.
 - Log through the injected `Logger` (`src/core/application/ports/Logger.ts`), never `console.*`: the Ink UI owns the terminal and a stray write corrupts it. Components that log take a `Logger` in their constructor and default to `silentLogger`; `createEngine` wires the `FileLogger`, which writes `logs/game.log`.
 - The LLM is required by design. Deterministic fallbacks exist only for tests and development.
+- Chance comes from a `Random` (`src/core/domain/random/Random.ts`), never `Math.random()` in `src/core`: the rules take the turn's `Random`, whose state is saved in the game state so luck can be replayed.
 - All game-state changes go through effects (`applyEffects`); the engine does not write state directly.

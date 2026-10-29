@@ -9,7 +9,6 @@ Scope: code, config and docs that are unused, duplicated, stubbed or misleading.
 | `src/core/domain/quest/Exam.ts` | 13 lines | Unused stub | Never instantiated; `importance: "exam"` is not read | 12 |
 | `src/core/domain/npc/Relationship.ts` → `Relationship` class | ~4 lines | Unused (`RelationshipStats` is the live class) | Nothing creates `Relationship` | 14 |
 | `CurriculumService.applyLessonRewards`, `addSubjectKnowledge` | methods | Unused; superseded by effects in `TurnResolver` and the source of the duplicate attribute store | No callers | 10, 12 |
-| `TurnResolver._save`, `_load`, and the `ADVANCE_YEAR` / `UNKNOWN` / `UNDO` branches | methods | Unreachable (the command handlers deal with these first) but `_save` / `_load` still emit `GameSaved` / `GameLoaded` | The turn handler is only registered for the in-world commands | 02, 04 |
 | `SpellRevealService.checkRevealCondition` | method | Stub that always returns `false`, so study never reveals spells | Hard-coded `return false` | 11 |
 | `SpellStateFactory.createLearnedSpellState` | function | No caller in the game (tests only) | See 11 | 11 |
 | Events never emitted: `AttributeGained`, `QuestFlagSet`, `QuestActivated`, `QuestCompleted` | types | Declared, never emitted | grep of `emit(` | 07 |
@@ -26,7 +25,7 @@ Scope: code, config and docs that are unused, duplicated, stubbed or misleading.
 ## Suggested cleanup
 
 1. **Decide per stub** whether to build or remove: `Exam.ts`, `Relationship`.
-2. **Remove the dead paths** in `TurnResolver` (`_save`, `_load` and the meta-command branches) and the unused `CurriculumService` methods.
+2. **Remove the unused `CurriculumService` methods.**
 3. **Prune the event catalog** and the unused `GameState` / `Player` fields, or implement their consumers.
 4. **Drop the references to missing plan documents** from the code comments, or add the documents.
 5. **Add a CI check for unused exports** (for example `ts-prune` or `knip`) so dead code does not accumulate again.
