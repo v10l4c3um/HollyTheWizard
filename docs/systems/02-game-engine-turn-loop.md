@@ -27,7 +27,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
    - `UNKNOWN` fails as `invalid-input`, spending no time.
 4. **World tick.** If the clock moved (and the state was not replaced by a `LOAD`), `WorldTick.run(from, to)` walks every period/day boundary crossed, so a long rest is handled boundary by boundary. The rules emit `PeriodChanged` / `DayStarted`, flag missed classes (`LessonSkipped` plus a notice, no penalty yet) and expire scene invitations; their effects go through `applyEffects`. The notices reach the narrator as `worldNotes` (and the plain fallback text).
 5. The engine then finishes the turn the same way for every command: `fail` becomes a typed `TurnOutcome` error (nothing narrated, no tick, no milestone check); `say` stores the text; `narrate` renders it from a `RenderContext` built by `buildRenderContext`. It writes no game state itself.
-6. `blueprintProgressService.checkMilestones` runs, then the session commits.
+6. `blueprintProgressService.checkMilestones` runs. For in-world commands the engine then records the turn (`TurnRecorded`: input, command, where the player stood) so the next sentence can say "again" or "ask her"; then the session commits.
 7. **Autosave.** If a calendar day began during the turn, `Autosave` writes the `autosave` slot after the turn is final. A failure is logged, never shown.
 8. Any other thrown error rolls the turn back, is caught, logged with its cause through the `Logger`, and returned as an `internal` outcome with the generic narration `Something went wrong.`
 

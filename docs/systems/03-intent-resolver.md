@@ -17,6 +17,11 @@ Everything else goes through `Resolver.resolve(input, view)`, a two-stage LLM pi
     Skipped for `ADVANCE_YEAR`. Otherwise a second prompt names the intent and asks for its fields. `ARGUMENT_SCHEMAS[intent]` validates the reply into `{ target, duration?, conversationTopic?, actionType? }`.
 3. **Command construction.** `_createCommand` maps intent + args to a `Command`, with defaults: unknown target becomes `"unknown"`, duration becomes `1`, save/load filename becomes `"autosave"`, and `STUDY` with no target becomes `"charms"`.
 
+**Follow-ups.** `GameEngine` records every in-world turn (`TurnRecorded` effect: what was typed, the command it became, where the player stood) in `GameState.recentTurns`, newest last, capped at five. Because it lives in the state, `undo`, rollback, `clone()`, saves and `load` handle it with no extra code. Three things use it, in this order:
+1. `parseFollowUp` (`FollowUp.ts`, no model): `again`, `repeat [that]`, `do that again`, `the same`, `once more` copy the last command; `back`, `go back [there]`, `head back`, `return` move to where the last MOVE started. With nothing to repeat or go back to they answer with a hint. Strict patterns only ("go back to the library" is a normal sentence).
+2. The argument prompt shows the recent turns (`"talk to Hermione" → talked to Hermione Granger (hermione_granger)`) so the model can resolve "ask her about it".
+3. A code check on the answer: if the target is still a pronoun (`him her them he she it there that this one`), it is replaced by the newest matching thing for the intent (TALK → last person, MOVE → last place, STUDY/ATTEND_CLASS → last subject, PRACTICE → last spell, INTERACT → last item). No such thing means no target, so the player is asked. There is no gender data, so "him", "her" and "them" all mean the last person.
+
 **Grounding** (`Resolver._ground`). The extracted `target` is never trusted as an id. For MOVE (places), TALK (people), STUDY/ATTEND_CLASS (subjects), PRACTICE (spells) and INTERACT (items): (1) a single clear match among the *preferred* things (exits, people here, learned spells) wins; (2) else a clear match among *all* of that kind, so the turn rules give the right refusal ("can't move there from here", "you haven't learned that spell"); (3) else the model picks from a short list (the best matches, or the preferred set) and only an offered id is accepted; (4) else the player's words are kept, and `TurnResolver` says what was not found and where the player can go. `EntityMatcher` scores ids, display names and aliases, including a full name found inside a longer sentence ("the library in main building" → Library). Durations outside 1–24 whole hours are dropped. Every resolver call is sent with `temperature: 0`, so the same input gives the same parse. Places can have `aliases` (see 16), which are matched and also shown to the intent classifier.
 
 `_generate` is a validation and repair ladder (now rarely needed, since the reply is schema-constrained):
@@ -49,7 +54,7 @@ Any throw, including Ollama being unreachable, makes `resolve` return `{ type: "
 6. **Over-fitted repair code.** The deep-flatten and enum-scan ladder is ~100 lines compensating for unreliable structured output. Flatten can merge unrelated nested keys, and enum-scan can pick a wrong string (e.g. a word in an echoed input). **Partly fixed:** both resolver calls (and the blueprint pipeline) now send the JSON schema as `format`, so the ladder is rarely reached; it is kept as a safety net and could be deleted once the one-call design below lands.
 7. **Duplicated shape definitions.** `IntentType`, `ARGUMENT_SCHEMAS`, `ParsedArguments`, `INTENT_SUMMARIES` and the `Command` union each describe the same vocabulary, and they are only loosely tied together. `ParsedArguments` is a flat bag of optionals, so a `STUDY` reply can carry `actionType` and nothing complains. `Command` is also in `ui/cli/commands/`, the legacy CLI folder, so core imports from a legacy UI path. `_createCommand` uses `as any` for `STUDY`.
 8. **Weak validation of values.** `duration` can be negative, zero, or huge (`study for 9999 hours`), and nothing clamps it. `conversationTopic` is free text that later drives `evaluateConversation`.
-9. **No conversation context.** Each input is parsed alone, so "yes", "ask her about it", or "do that again" cannot resolve.
+9. ~~**No conversation context.**~~ **Fixed for in-world follow-ups:** the game remembers the last five in-world turns (`GameState.recentTurns`), and the resolver reads them (see Follow-ups). Still not handled: yes/no answers (the game asks no questions yet), compound sentences, and long-range references beyond five turns.
 10. **Stateless model, repeated prompt.** The static intent list is rebuilt per call and the prompts have no few-shot examples. Models are told to infer from one-line hints.
 11. **Logging noise.** `console.debug/warn/error` run in the terminal UI on every command.
 12. **Test gaps.** No tests for argument defaults, intent mapping per type, invalid durations, or realistic mis-parses. Fallback behavior is tested as "REST", which locks in weakness 3.
@@ -64,7 +69,7 @@ Any throw, including Ollama being unreachable, makes `resolve` return `{ type: "
 - **One call, not two.** Request the full command in one schema-constrained reply (discriminated union by `type`), using Ollama structured outputs, and delete most of the repair ladder.
 - **Single source of truth.** Derive the Zod schemas, the intent list, and the `Command` type from one discriminated-union definition, and move `Command` out of `ui/cli`.
 - **Validate semantics** (positive, bounded durations; known topic vocabulary via `TopicRegistry`) before building the command.
-- **Pass the last turn or two** of context for pronouns and "again".
+- ~~**Pass the last turn or two** of context for pronouns and "again".~~ Done (see Follow-ups).
 - Make logging injectable.
 
 ## Open questions
