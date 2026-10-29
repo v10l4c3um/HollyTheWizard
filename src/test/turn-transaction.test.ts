@@ -117,4 +117,60 @@ describe("a turn is a transaction", () => {
 		);
 		expect(saved.worldClock.totalMinutes).toBe(clock());
 	});
+
+	describe("undo", () => {
+		const undo = () => game.engine.handleCommand("undo");
+
+		it("takes back the last turn: place, clock and flags", async () => {
+			const startClock = clock();
+			await move("hallway");
+			await say("rest", "REST", { duration: 2 });
+			expect(here()).toBe("hallway");
+
+			const outcome = await undo();
+
+			expect(outcome.error).toBeUndefined();
+			expect(outcome.narration).toBe("Undid your last action.");
+			expect(here()).toBe("hallway");
+			expect(clock()).toBe(startClock + 5);
+			expect(outcome.state).toBe(game.engine.state);
+		});
+
+		it("can go back several turns, then has nothing left", async () => {
+			const startClock = clock();
+			await move("hallway");
+			await move("classroom");
+			await undo();
+			expect(here()).toBe("hallway");
+			await undo();
+			expect(here()).toBe("great_hall");
+			expect(clock()).toBe(startClock);
+			expect(game.engine.state.questFlags.active).not.toContain("discovered:classroom");
+
+			const outcome = await undo();
+			expect(outcome.error?.kind).toBe("invalid-input");
+			expect(outcome.narration).toBe("There is nothing to undo.");
+			expect(here()).toBe("great_hall");
+		});
+
+		it("the next turn after an undo builds on the undone state", async () => {
+			await move("hallway");
+			await move("classroom");
+			await undo();
+			await move("library");
+			expect(here()).toBe("library");
+			await undo();
+			expect(here()).toBe("hallway");
+		});
+
+		it("does not run the world tick or go back past a load", async () => {
+			await move("hallway");
+			await game.engine.handleCommand("save here");
+			await move("classroom");
+			await game.engine.handleCommand("load here");
+			expect(here()).toBe("hallway");
+
+			expect((await undo()).error?.message).toBe("There is nothing to undo.");
+		});
+	});
 });

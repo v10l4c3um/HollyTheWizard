@@ -14,10 +14,12 @@ const SLOT_NAME = /^[A-Za-z0-9_-]+$/;
  *
  *   save | save game | save [game] [as|to] <name>
  *   load | load game | load [game] [from] <name>
+ *   undo
  */
 export function parseFastPath(input: string): Command | null {
 	const words = input.trim().split(/\s+/);
 	const verb = words[0]?.toLowerCase();
+	if (verb === "undo") return words.length === 1 ? { type: "UNDO" } : null;
 	if (verb !== "save" && verb !== "load") return null;
 
 	const rest = words.slice(1);

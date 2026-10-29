@@ -7,7 +7,7 @@ import { AdvanceYear } from "../../application/use-cases/AdvanceYear";
 import { PersistenceRepository } from "../../application/ports/PersistenceRepository";
 import { CommandHandlerMap } from "./types";
 
-type MetaCommandType = "SAVE" | "LOAD" | "ADVANCE_YEAR" | "UNKNOWN";
+type MetaCommandType = "SAVE" | "LOAD" | "ADVANCE_YEAR" | "UNKNOWN" | "UNDO";
 
 export interface MetaHandlerDeps {
 	registry: Registry;
@@ -33,6 +33,17 @@ export function createMetaHandlers({
 				message: `I didn't understand "${command.input}". Try saying it another way.`,
 			},
 		}),
+
+		UNDO: async (_command, session) =>
+			session.undo()
+				? { kind: "say", text: "Undid your last action." }
+				: {
+						kind: "fail",
+						error: {
+							kind: "invalid-input",
+							message: "There is nothing to undo.",
+						},
+					},
 
 		ADVANCE_YEAR: async (_command, session) => {
 			const result = await advanceYear.execute(session.state);

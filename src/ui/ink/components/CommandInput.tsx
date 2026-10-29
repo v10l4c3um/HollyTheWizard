@@ -21,6 +21,7 @@ const COMMAND_CATALOG: {
         { cmd: "talk", args: "<npc>", hint: "Speak with an NPC" },
         { cmd: "inspect", args: "[subject]", hint: "View inventory or spellbook" },
         { cmd: "spellbook", hint: "Open the spellbook view" },
+        { cmd: "undo", hint: "Take back your last action" },
         { cmd: "save", args: "<name>", hint: "Save the game" },
         { cmd: "load", args: "<name>", hint: "Load a saved game" },
         { cmd: "help", hint: "Show command list" },

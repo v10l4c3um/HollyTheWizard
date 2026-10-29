@@ -133,6 +133,7 @@ class TurnResolver {
 			case "LOAD":
 				return this._load(command.filename);
 			case "UNKNOWN":
+			case "UNDO":
 				// Handled directly by GameEngine.handleCommand; this branch only
 				// guards against direct misuse, like ADVANCE_YEAR below.
 				return {

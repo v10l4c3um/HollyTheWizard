@@ -12,6 +12,8 @@ describe("parseFastPath", () => {
 		["SAVE MyGame", save("MyGame")],
 		["save as boss_fight", save("boss_fight")],
 		["save game to slot-2", save("slot-2")],
+		["undo", { type: "UNDO" }],
+		["  Undo ", { type: "UNDO" }],
 		["load autosave", load("autosave")],
 		["LOAD autosave", load("autosave")],
 		["load game from slot1", load("slot1")],
@@ -31,6 +33,10 @@ describe("parseFastPath", () => {
 	});
 
 	it.each([
+		"undo that",
+		"undone",
+		"please undo",
+		"undo the last two",
 		"save the day",
 		"load up on potions",
 		"save hagrid please",

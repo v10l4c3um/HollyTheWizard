@@ -54,7 +54,7 @@ function buildHandlers(repo = fakeRepository()) {
 describe("the command handler map", () => {
 	it("has a handler for every command the resolver can produce", () => {
 		const { handlers } = buildHandlers();
-		const commandTypes = [...INTENT_TYPES, "UNKNOWN"] as Command["type"][];
+		const commandTypes = [...INTENT_TYPES, "UNKNOWN", "UNDO"] as Command["type"][];
 		for (const type of commandTypes) {
 			expect(typeof handlers[type]).toBe("function");
 		}
@@ -189,6 +189,28 @@ describe("meta handlers", () => {
 		const result = await handlers.LOAD({ type: "LOAD", filename: "nope" }, session);
 		expect(result).toMatchObject({ kind: "fail", error: { kind: "persistence" } });
 		expect(session.state).toBe(original);
+	});
+});
+
+describe("UNDO handler", () => {
+	it("reports whether the session could go back", async () => {
+		const { handlers } = buildHandlers();
+		const session = new GameSession(new GameState());
+
+		const nothing = await handlers.UNDO({ type: "UNDO" }, session);
+		expect(nothing).toMatchObject({
+			kind: "fail",
+			error: { kind: "invalid-input", message: "There is nothing to undo." },
+		});
+
+		session.begin();
+		session.state.currentLocationId = "hallway";
+		session.commit();
+		session.begin();
+		expect(await handlers.UNDO({ type: "UNDO" }, session)).toEqual({
+			kind: "say",
+			text: "Undid your last action.",
+		});
 	});
 });
 
