@@ -8,7 +8,9 @@ Turns free-form player text into a typed `Command` that `GameEngine` hands to `T
 
 ## How it works
 
-`Resolver.resolve(input)` is a two-stage LLM pipeline against Ollama (`format: "json"`):
+**Fast path first.** `parseFastPath` (`FastPath.ts`) parses `save` and `load` without the model: `save`, `save game`, `save [game] [as|to] <name>`, `load`, `load game`, `load [game] [from] <name>`, where `<name>` is one `[A-Za-z0-9_-]+` token. A bare `save` writes `quicksave`; a bare `load` asks for `quicksave` and falls back to `autosave`. The rules are strict on purpose: "save the day" or "load up on potions" do not match and go to the model.
+
+Everything else goes through `Resolver.resolve`, a two-stage LLM pipeline against Ollama (`format: "json"`):
 
 1. **Intent classification.** The prompt lists 10 intents with one-line examples (`INTENT_SUMMARIES`). The model returns `{ intent }`, validated by `IntentResponseSchema` (a Zod enum).
 2. **Argument extraction.** Skipped for `ADVANCE_YEAR`. Otherwise a second prompt names the intent and asks for its fields. `ARGUMENT_SCHEMAS[intent]` validates the reply into `{ target, duration?, conversationTopic?, actionType? }`.
@@ -40,7 +42,7 @@ Any throw, including Ollama being unreachable, makes `resolve` return `{ type: "
 2. **No alias or fuzzy matching.** Nothing maps display names, nicknames or typos to ids after extraction, and nothing asks the player to disambiguate. (Done for NPCs, see 1; the matcher is generic and can be reused for the other targets.)
 3. **~~Silent fallback to REST.~~ Fixed:** any failure now returns `{ type: "UNKNOWN", input }`; the engine answers "I didn't understand ..." directly (no narration, no time, no events). The original description follows. Any failure, such as a timeout, Ollama down, or unparseable reply, spends an in-game hour and narrates a rest as if the player chose it. The player gets no hint their input was not understood, which is worse than an error. `Command` has no `UNKNOWN`/`CLARIFY` variant.
 4. **Placeholder defaults hide failures.** `"unknown"` targets, `"charms"` for study, and `"autosave"` for load turn missing arguments into plausible-looking commands. `STUDY` defaulting to a specific subject is a guess presented as intent.
-5. **Always two LLM calls, serially.** Even unambiguous input like `save game1`, `rest`, or `north` costs two round trips. Latency compounds with the renderer call (see system 02).
+5. **Partly fixed:** `save` and `load` skip the model (see Fast path). Every other command still costs two serial round trips, even unambiguous ones like `rest` or `north`, and the latency compounds with the renderer call (see system 02).
 6. **Over-fitted repair code.** The deep-flatten and enum-scan ladder is ~100 lines compensating for unreliable structured output. Flatten can merge unrelated nested keys, and enum-scan can pick a wrong string (e.g. a word in an echoed input). Ollama supports schema-constrained output (`format: <JSON schema>`), which the Ollama client already supports for blueprints but the resolver does not use.
 7. **Duplicated shape definitions.** `IntentType`, `ARGUMENT_SCHEMAS`, `ParsedArguments`, `INTENT_SUMMARIES` and the `Command` union each describe the same vocabulary, and they are only loosely tied together. `ParsedArguments` is a flat bag of optionals, so a `STUDY` reply can carry `actionType` and nothing complains. `Command` is also in `ui/cli/commands/`, the legacy CLI folder, so core imports from a legacy UI path. `_createCommand` uses `as any` for `STUDY`.
 8. **Weak validation of values.** `duration` can be negative, zero, or huge (`study for 9999 hours`), and nothing clamps it. `conversationTopic` is free text that later drives `evaluateConversation`.

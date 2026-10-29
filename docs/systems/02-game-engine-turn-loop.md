@@ -44,13 +44,13 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 ## Weaknesses
 
 1. **`LOAD` swaps `this.state` wholesale.** Any holder of the old state reference goes stale. The bus listeners read `engine.state` lazily so they survive, but this is fragile. Startup-only work (spell initialisation, blueprint generation) is not re-validated on load, and `GameLoaded` is emitted but the progress and bus bookkeeping isn't reset.
-2. **LLM latency is on every turn's critical path.** Resolver (2 calls) plus Renderer (1 call) run serially for each command, including trivial ones like `SAVE` only partly avoiding it (the resolver still runs).
+2. **LLM latency is on every in-world turn's critical path.** Partly fixed: `save` and `load` are parsed by `FastPath` and skip the resolver model. Every other command still makes two serial resolver calls plus one renderer call.
 3. **State is mutated in place and returned.** `TurnOutcome.state` is the same mutable `GameState` every turn, so the UI cannot detect changes by reference and there is no undo or turn snapshot.
 
 ## Rework ideas
 
 - Make the rest of the turn explicit stages too (`parse → decide → apply → advance time → world tick → narrate → post-checks` is now the shape in `handleCommand`, but only the tick is a separate unit). New world behaviour (NPC off-screen events, timed events, curfew) is a new `TickRule`.
-- Skip the LLM for meta commands (parse `save x` / `load x` with a rule-based fast path) and consider a rule-based first pass for common commands before calling the model.
+- Extend the rule-based fast path (done for `save`/`load`) to common in-world commands (`rest`, `go to <place>`) before calling the model.
 
 ## Open questions
 
