@@ -42,19 +42,16 @@ Helper constructors (`progressDelta`, `flagSet`, ...) and track-name helpers (`s
 
 ## Weaknesses
 
-1. **Relationship effects are silently dropped.** `state.relationships[npcId]?.applyDelta(...)` does nothing when the record does not exist, and no code ever creates a `RelationshipStats` entry (`relationships` starts as `{}` and nothing writes to it). `TurnResolver._talk` even builds a throwaway zeroed relationship for "first contact". So trust, affection and the rest never change in play. The social loop that the conversation system is built around appears inert. This is the most important finding so far and should be confirmed by running a conversation.
-2. **Latent load bug.** `GameState.fromPlainObject` assigns `data.relationships` as plain JSON, which has no `applyDelta` method. If relationships ever do get created and saved, a loaded game would throw on the first relationship effect. `SpellBook` and `WorldClock` are rehydrated; relationships and player stats may not be (needs checking).
-3. **The single mutation path still has gaps.** Outside effects: `LOAD` replacing the state, `AdvanceYear`'s blueprint/year writes, `state.output`, and the spellbook seeding in `wireEngine`. `ProgressDelta` for spells (`spellProficiencyTrack`) is not wired.
-4. **`bus` parameter is dead.** The doc comment promises "derived milestone" events when a change crosses a threshold, but `applyEffects` never touches `bus`. No `AttributeGained`-style events fire from effects.
-5. **`reason` is write-only.** It is never stored, logged or surfaced. `applyEffects` returns `void`, so callers cannot get a record of what changed, old and new values, or rejected effects. The `TurnResult.effects` list is the intended carrier, but only the requested effects are passed, not the applied results.
-6. **Silent failures.** An unknown progress track only warns, a missing relationship is skipped, an unknown subject id is ignored, a negative inventory goes through a removal rule, and unknown flag ids are just written. Nothing validates ids against the `Registry`, and no effect can report failure.
-7. **Stringly-typed tracks.** `track: string` parsed by regex (`subject.<id>.knowledge`) is brittle: a typo compiles and then warns at runtime. A typed union (`{ target: "subject", id, field }`) would be safer.
-8. **No clamping or invariants at the applier.** Bounds (relationship axes -100..100, resources) depend on each `applyDelta` implementation. `ProgressDelta` can push knowledge above any cap or below zero. `FlagSet` accepts any key and has no namespace, so flags are a global untyped bag.
-9. **No exhaustiveness check.** `applyEffect`'s `switch` has no `default: never`, so adding an effect type that nobody handles fails silently.
-10. **Inventory creates ghost items.** A new item is built as `new Item(itemId, itemId, "", delta)` (name equals id, empty description) rather than from the registry's item definition.
-11. **Effects are applied immediately and one at a time,** with no batching, ordering rules or transactionality. If the third of five effects fails or throws, the first two stay applied.
-12. **Mixed responsibilities.** `ConversationMemoryRecorded` has no `reason` unlike every other effect, and `SceneInvitationCreated` carries `validUntilMinutes` but nothing enforces expiry.
-13. **No tests,** even though this is the core invariant of the architecture.
+1. **The single mutation path still has gaps.** Outside effects: `state.output` (the narrate stage and the failure path), `AdvanceYear`'s blueprint and year writes, the blueprint set at startup, and the spellbook seeding in `wireEngine`. `ProgressDelta` for spells (`spellProficiencyTrack`) is not wired.
+2. **`bus` is barely used.** `applyEffects` only emits `TimeAdvanced`. The doc comment promises "derived milestone" events when a change crosses a threshold, and none fire.
+3. **`reason` is write-only.** It is never stored, logged or surfaced. `applyEffects` returns `void`, so callers cannot get a record of what changed, old and new values, or rejected effects. The `TurnResult.effects` list is the intended carrier, but only the requested effects are passed, not the applied results.
+4. **Silent failures.** An unknown progress track only warns, an unknown subject id is ignored, a negative inventory goes through a removal rule, and unknown flag ids are just written. Nothing validates ids against the `Registry`, and no effect can report failure.
+5. **Stringly-typed tracks.** `track: string` parsed by regex (`subject.<id>.knowledge`) is brittle: a typo compiles and then warns at runtime. A typed union (`{ target: "subject", id, field }`) would be safer.
+6. **No clamping or invariants at the applier.** Bounds (relationship axes -100..100, resources) depend on each `applyDelta` implementation. `ProgressDelta` can push knowledge above any cap or below zero. `FlagSet` accepts any key and has no namespace, so flags are a global untyped bag.
+7. **No exhaustiveness check.** `applyEffect`'s `switch` has no `default: never`, so adding an effect type that nobody handles fails silently.
+8. **Inventory creates ghost items.** A new item is built as `new Item(itemId, itemId, "", delta)` (name equals id, empty description) rather than from the registry's item definition.
+9. **Mixed responsibilities.** `ConversationMemoryRecorded` has no `reason`, unlike every other effect.
+10. **Tests cover only some effects** (`effects-mutation.test.ts`: facts, quest flags, time, location). The silent-failure paths (unknown track, unknown subject, ghost items) and clamping have none.
 
 ## Rework ideas
 

@@ -27,18 +27,13 @@ Saves the whole `GameState` to disk and loads it back, so a run can be continued
 
 ## Weaknesses
 
-1. **Loaded games are likely broken in play** (see 06 and 08). Only the clock and spellbook are rebuilt on load, so the player's stat objects lose their methods, and the next attribute or resource effect throws. The round-trip tests check the clock and spellbook only, so this passes unnoticed. (Needs a confirming test.)
-2. **Autosave: partly fixed.** The `autosave` slot is written at the start of each new calendar day (a world-tick signal, after the turn is final); failures are logged, not shown, so "Continue" works after the first midnight. Still missing: autosave on quit, after milestones, rotating slots, and any autosave before the first day ends.
-3. **"Continue" runs the whole startup first.** It includes the Ollama probe and a new campaign and year blueprint generation that the load then overwrites. "Load Save" is the same action and has no slot picker.
-4. **The test suite can destroy a real save.** One test saves to the name `autosave` in the real `./saves` directory, and cleanup only deletes files that start with `test-save-`. Running `npm test` overwrites the player's actual autosave (with a default new game) and leaves it behind.
-5. **Unsafe writes.** `writeFile` overwrites in place with no temp file, atomic rename, or backup. A crash or full disk mid-write corrupts the only save. The folder is relative to the current working directory (`process.cwd()`), so running the game from another directory creates and reads a different `saves/`.
-6. **No schema, versioning or migration** (see 08). The `saveVersion` field is written and never read, `fromPlainObject(any)` trusts the file, and a hand-edited or old save fails somewhere later with an unrelated error. Content changes (a removed spell or NPC id) are not detected either: saves refer to registry ids with no check that they still exist.
-7. **The whole state is saved, including noise.** `output` (the last narration) and a deterministic copy of the blueprint all go in. Fine for now, but it will grow and it mixes durable state with session state.
-8. **Weak sanitisation semantics.** Different names collide (`a b` and `a_b` become the same file), case-insensitive file systems collapse names that differ only by case, and the player is not told which name was actually used (the message echoes the requested name).
-9. **No save management.** No list of saves, no metadata (character, location, year, in-game time, playtime, version), no delete or rename, and no slot UI. The only way to know what exists is to look in the folder.
-10. **Errors are raw.** A missing file produces a Node `ENOENT` message in the narration box, and a malformed file produces a JSON parse error.
-11. **Minor API issues.** `save(filename = "autosave", state)` declares a default on a parameter that comes before a required one, so the default can never apply. The adapter uses `var`. Duplicate save and load handlers exist in `TurnResolver` (dead code, see 04). The folders are named `infrastructure/persistence`.
-12. **Shared mutable references and no snapshot.** Save happens on the live object; because the engine is async, a save could in principle capture a partially applied turn if it ran concurrently.
+1. **Autosave: partly fixed.** The `autosave` slot is written at the start of each new calendar day (a world-tick signal, after the turn is final); failures are logged, not shown, so "Continue" works after the first midnight. Still missing: autosave on quit, after milestones, rotating slots, and any autosave before the first day ends.
+2. **"Continue" runs the whole startup first.** It includes the Ollama probe and a new campaign and year blueprint generation that the load then overwrites. "Load Save" is the same action and has no slot picker.
+3. **Unsafe writes.** `writeFile` overwrites in place with no temp file, atomic rename, or backup. A crash or full disk mid-write corrupts the only save. The folder is relative to the current working directory (`process.cwd()`), so running the game from another directory creates and reads a different `saves/`.
+4. **The whole state is saved, including noise.** `output` (the last narration) and a deterministic copy of the blueprint all go in. Fine for now, but it will grow and it mixes durable state with session state.
+5. **Weak sanitisation semantics.** Different names collide (`a b` and `a_b` become the same file), case-insensitive file systems collapse names that differ only by case, and the player is not told which name was actually used (the message echoes the requested name).
+6. **No save management.** No list of saves, no metadata (character, location, year, in-game time, playtime, version), no delete or rename, and no slot UI. The only way to know what exists is to look in the folder.
+7. **Minor API issues.** `save(filename = "autosave", state)` declares a default on a parameter that comes before a required one, so the default can never apply, and the adapter uses `var`.
 
 ## Rework ideas
 
