@@ -32,6 +32,7 @@ export class AdvanceYear {
 					"You have already completed your final year at school.",
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -71,6 +72,7 @@ export class AdvanceYear {
 			briefOutput: `You have advanced to Year ${toYear}. A new chapter begins.`,
 			events,
 			timeCost: { type: "none" },
+			outcome: "success",
 		};
 	}
 }

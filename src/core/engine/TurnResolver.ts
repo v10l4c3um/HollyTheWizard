@@ -67,17 +67,12 @@ class TurnResolver {
 		}
 		result.effects = [...(result.effects ?? []), ...bookkeeping];
 
-		// Generic "something happened" hook for cross-cutting systems
-		// (docs/event-effect-conversion-plan.md, Step 6). A failed/no-op
-		// branch always returns an empty `events` array and `timeCost: "none"`.
-		const outcome: "success" | "failure" =
-			result.events.length === 0 && result.timeCost.type === "none"
-				? "failure"
-				: "success";
+		// Generic "something happened" hook for cross-cutting systems (rumors,
+		// suspicion, achievements, ...): the rule says how the action turned out.
 		this.bus.emit("ActionResolved", {
 			actionType: command.type,
 			locationId: state.currentLocationId,
-			outcome,
+			outcome: result.outcome,
 		});
 
 		return result;
@@ -146,6 +141,7 @@ class TurnResolver {
 				briefOutput: "You seem to be nowhere. Something is wrong.",
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -156,6 +152,7 @@ class TurnResolver {
 				briefOutput: `You don't know of a place called "${destinationId}". ${whereToGo}`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -171,6 +168,7 @@ class TurnResolver {
 					`Failed to move from ${current.displayName} to ${destinationDisplayName}`,
 				],
 				timeCost: { type: "minutes", amount: 2 },
+				outcome: "blocked",
 			};
 		}
 
@@ -179,6 +177,7 @@ class TurnResolver {
 				briefOutput: `You haven't found a way to ${destinationDisplayName} yet.`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -201,6 +200,7 @@ class TurnResolver {
 				`Moved from ${current.displayName} to ${destinationDisplayName}`,
 			],
 			timeCost: { type: "minutes", amount: 5 },
+			outcome: "success",
 			effects: moveEffects,
 		};
 	}
@@ -231,6 +231,7 @@ class TurnResolver {
 				briefOutput: `You don't know anyone called "${npcId}".`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 		if (npcLocation(npc, momentOf(state, registry)) !== state.currentLocationId) {
@@ -238,6 +239,7 @@ class TurnResolver {
 				briefOutput: `${npc.name} is not here right now.`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 		const npcName = npc.name;
@@ -308,6 +310,7 @@ class TurnResolver {
 			briefOutput,
 			events: [`Talked to ${npcId}${topicSuffix} [${outcome.result}]`],
 			timeCost: { type: "minutes", amount: 15 },
+			outcome: "success",
 			effects: outcome.effects,
 		};
 	}
@@ -324,6 +327,7 @@ class TurnResolver {
 				briefOutput: "No curriculum data available.",
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -379,6 +383,7 @@ class TurnResolver {
 			briefOutput: output,
 			events: [`Studied ${subject} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
+			outcome: "success",
 			effects,
 		};
 	}
@@ -395,6 +400,7 @@ class TurnResolver {
 				briefOutput: "No curriculum data available.",
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -411,6 +417,7 @@ class TurnResolver {
 			briefOutput,
 			events: [],
 			timeCost: { type: "none" },
+			outcome: "failure",
 		});
 		if (!slot || slot.subject !== subject) {
 			return refuse(`There is no ${subjectLabel} class right now.`);
@@ -436,6 +443,7 @@ class TurnResolver {
 				briefOutput: `No more lessons available for ${subjectName}.`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -564,6 +572,7 @@ class TurnResolver {
 			briefOutput: output,
 			events: [`Attended ${subject} class - ${lesson.title}`],
 			timeCost: { type: "minutes", amount: 60 },
+			outcome: "success",
 			effects,
 		};
 	}
@@ -590,6 +599,7 @@ class TurnResolver {
 				briefOutput: `There is no spell with id "${spellId}".`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -602,6 +612,7 @@ class TurnResolver {
 				briefOutput: `You haven't learned ${spell.definition.name} yet.`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -652,6 +663,7 @@ class TurnResolver {
 			briefOutput: `You practiced ${spell.definition.name} ${totalAttempts} times. Success: ${successCount}/${totalAttempts}. Proficiency: ${Math.round(updatedState.proficiency)}/100 (${masteryTierName}).`,
 			events: [`Practiced ${spellId} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
+			outcome: "success",
 			effects: practiceEffects,
 		};
 	}
@@ -667,6 +679,7 @@ class TurnResolver {
 				briefOutput: `You don't have an item with id "${itemId}".`,
 				events: [],
 				timeCost: { type: "none" },
+				outcome: "failure",
 			};
 		}
 
@@ -674,6 +687,7 @@ class TurnResolver {
 			briefOutput: `You ${actionType} ${item.name}. Something happened!`,
 			events: [`${actionType} ${itemId}`],
 			timeCost: { type: "minutes", amount: 10 },
+			outcome: "success",
 		};
 	}
 
@@ -691,6 +705,7 @@ class TurnResolver {
 			briefOutput: `You rested for ${duration} hour(s) at ${locName}. You feel refreshed!`,
 			events: [`Rested for ${duration} hour(s) at ${locId}`],
 			timeCost: { type: "minutes", amount: 60 * duration },
+			outcome: "success",
 		};
 	}
 

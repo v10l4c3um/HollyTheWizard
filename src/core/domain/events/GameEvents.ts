@@ -7,6 +7,13 @@ import {
 import { AttributeId } from "../player/PlayerStats";
 import { TypedBus } from "../../engine/EventBus";
 
+/**
+ * How an action turned out: `success`; `blocked` (tried, did not work, time
+ * passed, e.g. a move to a place that is not connected); `failure` (not a valid
+ * request, nothing happened).
+ */
+export type ActionOutcome = "success" | "blocked" | "failure";
+
 export type GameEvents = {
 	SpellRevealed: {
 		spellId: string;
@@ -53,7 +60,7 @@ export type GameEvents = {
 	ActionResolved: {
 		actionType: string;
 		locationId: string;
-		outcome: "success" | "failure";
+		outcome: ActionOutcome;
 		tags?: string[];
 	};
 	LocationVisited: { locationId: string; isFirstVisit: boolean };
