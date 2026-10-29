@@ -1,6 +1,6 @@
 # Turn Resolver & Commands
 
-Files: `src/core/engine/TurnResolver.ts` (~780 lines), `TurnResult.ts`, `TimeCost.ts`, `src/core/domain/commands/CommandDefinitions.ts` (the `Command` type). Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
+Files: `src/core/engine/TurnResolver.ts` (the pipeline, ~100 lines), `src/core/engine/rules/` (one file per command plus `context.ts`, `results.ts`, `index.ts`), `TurnResult.ts`, `TimeCost.ts`, `src/core/domain/commands/CommandDefinitions.ts` (the `Command` type). Tests: `turn-rules.test.ts`, `turn-event-order.test.ts`, `turn-resolver.test.ts` and the scenario suites. Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
 
 ## What it does
 
@@ -8,7 +8,14 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 ## How it works
 
-`apply(command, state, registry)` takes only the seven in-world commands (`InWorldCommand`; the meta commands `SAVE`, `LOAD`, `UNDO`, `ADVANCE_YEAR` and `UNKNOWN` never get here, the type enforces it). It makes one `Random` for the turn (a seeded one resumed from `GameState.randomState`, or an injected one), runs `_dispatch()` (an exhaustive `switch`), applies the turn bookkeeping as effects (event log, clock, the new random state), and emits `ActionResolved` with the outcome the rule itself stated: `success`, `blocked` (tried, did not work, time passed, such as a move to an unconnected place) or `failure` (not a valid request, no time). Whether a place is private comes from the `Location` data.
+`apply(command, state, registry)` takes only the seven in-world commands (`InWorldCommand`; the meta commands never get here, the type enforces it) and is a short pipeline:
+
+1. It makes one `Random` for the turn (a seeded one resumed from `GameState.randomState`, or an injected one) and a `TurnContext` (state, registry, random, services, and an `apply(effects)` that runs `applyEffects`). A rule has no bus.
+2. It runs the rule for the command, `turnRules[command.type]` (`rules/index.ts`, a registry typed over the in-world commands, so a new command without a rule does not compile). A rule is a plain function `(command, ctx) => TurnResult`: it checks, applies the effects later steps depend on, and returns the text, the log entry, the time cost, the effects and the events it wants announced (`emits`). It states its own `outcome`: `success`, `blocked` (tried, did not work, time passed, such as a move to an unconnected place) or `failure` (not a valid request, no time).
+3. It applies the bookkeeping every turn shares as effects: the event log, the clock, the new random state.
+4. Only then does it emit the rule's `emits` on the bus, in order, and `ActionResolved`. A listener therefore sees the finished turn (clock advanced, log written), not a half-done one.
+
+Whether a place is private comes from the `Location` data.
 
 | Command | Behavior | Time |
 |---|---|---|
@@ -22,6 +29,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 ## Strengths
 
+- **One small rule per command,** a plain function over a `TurnContext` that has no bus: each can be tested with a fake state and a fixed `Random`, and a new in-world command without a rule does not compile.
 - **Genuinely deterministic and LLM-free**, so the rules layer is unit-testable in isolation. Chance comes from a seeded `Random` whose state is saved, so the same state and commands always play out the same.
 - **Clear contract.** Every handler returns the same `TurnResult` shape, so the engine and renderer stay generic.
 - **Mostly effect-based.** `STUDY`, `ATTEND_CLASS` and `TALK` express their changes as `GameEffect[]` with a `reason` string, which gives an audit trail.
@@ -32,28 +40,23 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 ## Weaknesses
 
-1. **One 780-line class mixes everything.** Each command is a method on one class, with string building, rule logic, event emission and effect construction inline. The result is hard to extend or test per command, and it will not scale to dueling, quests or scenes.
-2. **Events are emitted before the turn's bookkeeping.** Handlers apply their own effects and then emit their events, but the clock advance and the event log are applied after dispatch, so a listener to `LocationVisited` or `LessonAttended` still sees the old time.
-3. **Rules are shallow.**
+1. **Rules are shallow.**
    - `REST` changes nothing (no energy, health or mana), though the text says "You feel refreshed!".
    - `INTERACT` is a stub that always succeeds ("Something happened!").
    - `STUDY` has no cost (energy), diminishing returns, location or time-of-day requirement, and does not check the subject: an unknown one takes the time and reports gains that are never applied.
    - `ATTEND_CLASS` ignores the `duration` argument (always 60 minutes).
    - `PRACTICE` has no mana, energy or backfire effect even though `SpellBalance` defines `manaCost` and `backfireRisk`, and ignores `castCondition`.
    - `MOVE` has no travel-time variation, locked doors, curfew or ownership.
-4. **Messages and prose live in rules code.** Output strings such as "Something happened!" and `buildConversationOutput` are embedded in the logic, which blocks localization and makes it hard for the renderer to receive structured facts rather than a sentence it must paraphrase.
-5. **`events` are English strings.** `Talked to ${npcId} about ...` then feeds `recentEvents`, which feeds conversation mood modifiers and the render prompt. Structured data is lost; later systems must parse text.
+2. **Messages and prose live in rules code.** Output strings such as "Something happened!" and `buildConversationOutput` are embedded in the logic, which blocks localization and makes it hard for the renderer to receive structured facts rather than a sentence it must paraphrase.
+3. **`events` are English strings.** `Talked to ${npcId} about ...` then feeds `recentEvents`, which feeds conversation mood modifiers and the render prompt. Structured data is lost; later systems must parse text.
 
 ## Rework ideas
 
-- Split into **per-command handlers** (`handlers/move.ts`, `talk.ts`, ...) behind a registry keyed by command type. A handler receives a read-only world view and returns `{ effects, events, time, facts }`.
-- Emit events **after** effects are applied, derived from the effects or from a post-apply step, so listeners always see consistent state.
 - Give the explicit `outcome` a typed `reason` too (why it was blocked or refused).
 - Add **preconditions** as data: location, time window, required energy or mana (the timetable and NPC presence are checked in code today). Failures return the reason to the renderer.
 - Give `REST`, `STUDY` and `PRACTICE` real **resource effects** (energy, mana, health), and use the existing spell balance fields.
-- - Move travel time and similar facts onto `Location` data (privacy already is).
-- Return **structured facts** (`{ kind: "conversation", npc, result, tags }`) for the renderer, with deterministic fallback strings generated in a separate presentation module.
-- - Add per-handler unit tests with a fake state and fixed seed.
+- Move travel time and similar facts onto `Location` data (privacy already is).
+- Let a rule also return **structured facts** (`{ kind: "conversation", npc, result, tags }`) for the renderer, with deterministic fallback strings generated in a separate presentation module.
 
 ## Open questions
 
