@@ -88,6 +88,8 @@ export type GameEffect =
 	| { type: "EventsRecorded"; entries: string[] }
 	/** Remembers a turn so the next sentence can say "again" or "her". */
 	| { type: "TurnRecorded"; turn: RecentTurn }
+	/** Where the random source stands after this turn's rolls. */
+	| { type: "RandomStateSet"; state: number }
 	| { type: "SceneInvitationExpired"; invitationId: string }
 	/** hidden -> available only; never downgrades a known spell. */
 	| { type: "SpellRevealed"; spellId: string; atMinutes?: number }
@@ -260,4 +262,8 @@ export function sceneInvitationExpired(invitationId: string): GameEffect {
 
 export function turnRecorded(turn: RecentTurn): GameEffect {
 	return { type: "TurnRecorded", turn };
+}
+
+export function randomStateSet(state: number): GameEffect {
+	return { type: "RandomStateSet", state };
 }

@@ -1,5 +1,6 @@
 import GameState from "../core/domain/world/GameState";
 import Registry from "../core/Registry";
+import { fixedRandom } from "../core/domain/random/Random";
 import TurnResolver from "../core/engine/TurnResolver";
 import { createGameBus, GameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
@@ -21,6 +22,8 @@ let registry: Registry;
 let state: GameState;
 let bus: GameBus;
 let resolver: TurnResolver;
+/** What every roll comes out as (0 always succeeds, 0.999 always fails). */
+let roll = 0;
 
 beforeAll(() => {
 	jest.spyOn(console, "log").mockImplementation();
@@ -32,9 +35,10 @@ afterAll(() => {
 });
 
 beforeEach(() => {
+	roll = 0;
 	state = new GameState();
 	bus = createGameBus();
-	resolver = new TurnResolver(bus);
+	resolver = new TurnResolver(bus, undefined, { random: () => fixedRandom(roll) });
 	for (const spellId of registry.getAllSpellIds()) {
 		state.spellbook.setSpellState(spellId, createHiddenSpellState(spellId));
 	}
@@ -150,7 +154,7 @@ describe("attending a class teaches its spell", () => {
 
 		it("teaches when the roll succeeds", () => {
 			jest.spyOn(console, "log").mockImplementation();
-			jest.spyOn(Math, "random").mockReturnValue(0.1);
+			roll = 0.1;
 			attendPotions();
 			attendPotions();
 			expect(knowledgeOf("heal")).toBe("learned");
@@ -158,7 +162,7 @@ describe("attending a class teaches its spell", () => {
 
 		it("does not teach when the roll fails", () => {
 			jest.spyOn(console, "log").mockImplementation();
-			jest.spyOn(Math, "random").mockReturnValue(0.9);
+			roll = 0.9;
 			attendPotions();
 			attendPotions();
 			expect(knowledgeOf("heal")).toBe("hidden");

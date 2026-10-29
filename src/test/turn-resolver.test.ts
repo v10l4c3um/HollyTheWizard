@@ -7,6 +7,8 @@ import { arrivalEffects } from "../core/domain/world/Exploration";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import { moveToClass, moveToNpc } from "./helpers/placePlayer";
 import { validState } from "./helpers/validState";
+import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
+import { fixedRandom } from "../core/domain/random/Random";
 import { InWorldCommand } from "../core/domain/commands/CommandDefinitions";
 
 let registry: Registry;
@@ -120,5 +122,61 @@ describe("whether a place is private is data on the place", () => {
 		} finally {
 			place.isPrivate = false;
 		}
+	});
+});
+
+describe("chance is seeded, resumable and injectable", () => {
+	const learned = () => {
+		state.spellbook.setSpellState("levitate", createLearnedSpellState("levitate", "test"));
+	};
+	const practiceTwice = (seed: number) => {
+		state = validState(registry);
+		learned();
+		state.randomState = seed;
+		const first = resolver.apply({ type: "PRACTICE", spellId: "levitate", duration: 3 }, state, registry);
+		const second = resolver.apply({ type: "PRACTICE", spellId: "levitate", duration: 3 }, state, registry);
+		return [first.briefOutput, second.briefOutput, state.randomState];
+	};
+
+	it("the same state gives the same practice results", () => {
+		expect(practiceTwice(1234)).toEqual(practiceTwice(1234));
+	});
+
+	it("another seed gives other results", () => {
+		expect(practiceTwice(1234)).not.toEqual(practiceTwice(98765));
+	});
+
+	it("every turn that rolled moves the random state on", () => {
+		learned();
+		state.randomState = 5;
+		resolver.apply({ type: "PRACTICE", spellId: "levitate", duration: 1 }, state, registry);
+		expect(state.randomState).not.toBe(5);
+	});
+
+	it("an injected source decides every roll and is not written to the state", () => {
+		const fixed = new TurnResolver(bus, undefined, { random: () => fixedRandom(0.999) });
+		learned();
+		const before = state.randomState;
+		const result = fixed.apply({ type: "PRACTICE", spellId: "levitate", duration: 1 }, state, registry);
+		expect(result.briefOutput).toContain("Success: 0/10");
+		expect(state.randomState).toBe(before);
+
+		const lucky = new TurnResolver(bus, undefined, { random: () => fixedRandom(0) });
+		expect(
+			lucky.apply({ type: "PRACTICE", spellId: "levitate", duration: 1 }, state, registry).briefOutput,
+		).toContain("Success: 10/10");
+	});
+
+	it("takes its services from the caller", () => {
+		const attemptSpellReveal = jest.fn().mockReturnValue({ success: false });
+		const fake = new TurnResolver(bus, undefined, {
+			spellRevealService: { attemptSpellReveal, findRevealableSpells: () => [] } as never,
+		});
+		moveToClass(state, registry, "charms");
+		fake.apply({ type: "ATTEND_CLASS", subjectId: "charms", duration: 1 }, state, registry);
+		expect(attemptSpellReveal).not.toHaveBeenCalled(); // lesson 1 has no reveal
+		moveToClass(state, registry, "charms", { next: true });
+		fake.apply({ type: "ATTEND_CLASS", subjectId: "charms", duration: 1 }, state, registry);
+		expect(attemptSpellReveal).toHaveBeenCalled();
 	});
 });

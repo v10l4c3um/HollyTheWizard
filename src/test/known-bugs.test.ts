@@ -8,6 +8,7 @@ import { createGameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import { applyEffects } from "../core/domain/effects/EffectApplier";
 import { spellRevealed } from "../core/domain/effects/GameEffects";
+import { fixedRandom } from "../core/domain/random/Random";
 import { SpellRevealService } from "../core/domain/magic/SpellRevealService";
 import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
 import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
@@ -112,6 +113,7 @@ describe("spell reveal (doc 11)", () => {
 			opportunity,
 			state.academicState,
 			state.spellbook,
+			fixedRandom(0),
 		);
 		if (result.success) {
 			applyEffects(state, [spellRevealed(opportunity.spellId)]);

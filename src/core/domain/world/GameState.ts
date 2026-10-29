@@ -16,12 +16,13 @@ import {
 	YearProgress,
 	createEmptyYearProgress,
 } from "../campaign/YearBlueprint";
+import { freshRandomState } from "../random/Random";
 import { RecentTurn } from "./RecentTurn";
 import { RelationshipStats } from "../npc/Relationship";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
 /** The save file format. A save with any other value is refused. */
-export const SAVE_FORMAT_VERSION = "2";
+export const SAVE_FORMAT_VERSION = "3";
 
 /** Where a new game starts. Content is checked to contain this location. */
 export const START_LOCATION_ID = "great_hall";
@@ -72,6 +73,8 @@ class GameState {
 	recentEvents: string[];
 	/** The last few in-world turns, newest last (see `RecentTurn`). */
 	recentTurns: RecentTurn[];
+	/** Where the game's random source stands; saved, so luck replays exactly. */
+	randomState: number;
 	output: string;
 
 	settings: {
@@ -114,6 +117,7 @@ class GameState {
 		this.knownNPCIds = [];
 		this.recentEvents = [];
 		this.recentTurns = [];
+		this.randomState = freshRandomState();
 		this.output = "";
 		this.settings = {
 			narrationMode: "default",
@@ -202,6 +206,7 @@ class GameState {
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
 		state.recentTurns = data.recentTurns;
+		state.randomState = data.randomState;
 		state.output = data.output;
 		state.settings = data.settings;
 		state.currentYear = data.currentYear;

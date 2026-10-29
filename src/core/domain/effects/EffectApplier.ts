@@ -139,6 +139,9 @@ function applyEffect(
 				(invitation) => invitation.invitationId !== effect.invitationId,
 			);
 			break;
+		case "RandomStateSet":
+			state.randomState = effect.state;
+			break;
 		case "TurnRecorded":
 			state.recentTurns.push(effect.turn);
 			if (state.recentTurns.length > MAX_RECENT_TURNS) {

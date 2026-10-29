@@ -1,3 +1,4 @@
+import { Random } from "../random/Random";
 import SpellBook from "./SpellBook";
 import Registry from "../../Registry";
 import { PlayerAcademicState, Requirement, SpellRevealOpportunity, SchoolData } from "../quest/Curriculum";
@@ -76,7 +77,8 @@ export class SpellRevealService {
 	attemptSpellReveal(
 		opportunity: SpellRevealOpportunity,
 		academicState: PlayerAcademicState,
-		spellbook: SpellBook
+		spellbook: SpellBook,
+		random: Random
 	): { success: boolean; reason?: string } {
 		const meetsRequirements = this.checkRequirements(
 			opportunity.requirements,
@@ -88,7 +90,7 @@ export class SpellRevealService {
 			return { success: false, reason: "Requirements not met" };
 		}
 
-		return Math.random() <= opportunity.chance
+		return random.next() <= opportunity.chance
 			? { success: true }
 			: { success: false, reason: "Failed chance roll" };
 	}

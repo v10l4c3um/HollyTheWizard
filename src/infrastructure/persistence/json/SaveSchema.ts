@@ -140,6 +140,7 @@ export const SaveFileSchema = z.object({
 	conversationHistory: z.record(z.string(), z.array(conversationEntry)),
 	knownNPCIds: z.array(z.string()),
 	recentEvents: z.array(z.string()),
+	randomState: z.number(),
 	recentTurns: z.array(
 		z.object({
 			input: z.string(),

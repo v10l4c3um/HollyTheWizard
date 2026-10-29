@@ -1,6 +1,8 @@
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import GameState from "../../core/domain/world/GameState";
+import { Random } from "../../core/domain/random/Random";
 import TurnResolver from "../../core/engine/TurnResolver";
 import { GameEngine } from "../../core/engine/GameEngine";
 import { createGameBus } from "../../core/domain/events/GameEvents";
@@ -29,7 +31,9 @@ export interface TestGame {
  * Calls `initializeCampaignBlueprint`, which with the fake LLM takes the
  * deterministic fallback path.
  */
-export async function buildTestGame(): Promise<TestGame> {
+export async function buildTestGame(
+	options: { random?: (state: GameState) => Random } = {},
+): Promise<TestGame> {
 	const registry = buildRegistry();
 	const bus = createGameBus();
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "holly-game-"));
@@ -42,7 +46,7 @@ export async function buildTestGame(): Promise<TestGame> {
 			logged.push({ message, cause });
 		},
 	};
-	const turnResolver = new TurnResolver(bus);
+	const turnResolver = new TurnResolver(bus, undefined, { random: options.random });
 	const engine = createEngine(registry, bus, {
 		persistenceRepository: new JsonPersistenceRepository(savesDir),
 		allowBlueprintFallback: true,

@@ -37,7 +37,7 @@ describe("the save format is strict", () => {
 
 	it("writes the format version into the save", async () => {
 		await repository.save("s", new GameState());
-		expect((await readSave("s")).metadata.saveVersion).toBe("2");
+		expect((await readSave("s")).metadata.saveVersion).toBe("3");
 	});
 
 	it("round-trips a valid save", async () => {
@@ -48,7 +48,7 @@ describe("the save format is strict", () => {
 	});
 
 	it("refuses a save from another format version", async () => {
-		const error = await loadDamaged((d) => (d.metadata.saveVersion = "1"));
+		const error = await loadDamaged((d) => (d.metadata.saveVersion = "2"));
 		expect(error.problems.join()).toContain("metadata.saveVersion");
 	});
 
@@ -76,6 +76,7 @@ describe("the save format is strict", () => {
 		"knownNPCIds",
 		"recentEvents",
 		"recentTurns",
+		"randomState",
 		"settings",
 	])("refuses a save missing %s and names it", async (field) => {
 		const error = await loadDamaged((d) => delete d[field]);

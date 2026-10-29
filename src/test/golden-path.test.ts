@@ -7,6 +7,7 @@ import {
 	scriptPlayer,
 	unscriptedInputs,
 } from "./helpers/fakeOllama";
+import { fixedRandom } from "../core/domain/random/Random";
 import { buildTestGame, TestGame } from "./helpers/buildTestGame";
 import GameState from "../core/domain/world/GameState";
 import { TurnOutcome } from "../core/engine/TurnOutcome";
@@ -74,7 +75,8 @@ describe("golden path: first day at school", () => {
 		for (const method of ["log", "debug"] as const) {
 			logSpies.push(jest.spyOn(console, method).mockImplementation());
 		}
-		game = await buildTestGame();
+		// Chance always comes out in the player's favour, so the route is the same every run.
+		game = await buildTestGame({ random: () => fixedRandom(0) });
 	});
 
 	afterAll(async () => {
@@ -233,21 +235,16 @@ describe("golden path: first day at school", () => {
 		});
 
 		it("practice leads to mastery", async () => {
-			const random = jest.spyOn(Math, "random").mockReturnValue(0);
-			try {
-				for (let session = 0; session < 30; session++) {
-					await say("practice levitate for ten hours", "PRACTICE", {
-						target: "levitate",
-						duration: 10,
-					});
-					if (
-						state().spellbook.getSpellState("levitate")
-							?.knowledgeState === "mastered"
-					)
-						break;
-				}
-			} finally {
-				random.mockRestore();
+			for (let session = 0; session < 30; session++) {
+				await say("practice levitate for ten hours", "PRACTICE", {
+					target: "levitate",
+					duration: 10,
+				});
+				if (
+					state().spellbook.getSpellState("levitate")?.knowledgeState ===
+					"mastered"
+				)
+					break;
 			}
 
 			expect(

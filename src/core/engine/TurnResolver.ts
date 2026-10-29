@@ -9,6 +9,7 @@ import { applySpellUse } from "../domain/magic/SpellProgressionService";
 import { SubjectType } from "../domain/quest/Curriculum";
 import { Logger, silentLogger } from "../application/ports/Logger";
 import { GameBus } from "../domain/events/GameEvents";
+import { Random, createRandom } from "../domain/random/Random";
 import { applyEffects } from "../domain/effects/EffectApplier";
 import {
 	GameEffect,
@@ -20,6 +21,7 @@ import {
 	spellStateUpdated,
 	lessonAdvanced,
 	timeAdvanced,
+	randomStateSet,
 	eventsRecorded,
 	subjectKnowledgeTrack,
 } from "../domain/effects/GameEffects";
@@ -33,20 +35,32 @@ import { momentOf, npcLocation } from "../domain/npc/Presence";
 import { activeClass } from "../domain/quest/Timetable";
 import { arrivalEffects, undiscoveredExits } from "../domain/world/Exploration";
 
+/** What the rules use besides the bus and the logger; every one has a real default. */
+export interface TurnResolverDeps {
+	curriculumService?: CurriculumService;
+	spellRevealService?: SpellRevealService;
+	/** The source of chance for one turn. By default a seeded one resumed from the game state. */
+	random?: (state: GameState) => Random;
+}
+
 class TurnResolver {
 	private curriculumService: CurriculumService;
 	private spellRevealService: SpellRevealService;
+	private makeRandom: (state: GameState) => Random;
 
 	constructor(
 		private bus: GameBus,
 		private logger: Logger = silentLogger,
+		deps: TurnResolverDeps = {},
 	) {
-		this.curriculumService = new CurriculumService();
-		this.spellRevealService = new SpellRevealService();
+		this.curriculumService = deps.curriculumService ?? new CurriculumService();
+		this.spellRevealService = deps.spellRevealService ?? new SpellRevealService();
+		this.makeRandom = deps.random ?? ((state) => createRandom(state.randomState));
 	}
 
 	apply(command: InWorldCommand, state: GameState, registry: Registry): TurnResult {
-		const result = this._dispatch(command, state, registry);
+		const random = this.makeRandom(state);
+		const result = this._dispatch(command, state, registry, random);
 
 		// Bookkeeping common to every turn: the log, the clock.
 		const bookkeeping: GameEffect[] = [];
@@ -65,6 +79,12 @@ class TurnResolver {
 		} else {
 			applyEffects(state, bookkeeping, this.bus, this.logger);
 		}
+		// Where chance stands now, so a save (or an undo) replays the same luck.
+		if (random.state !== undefined) {
+			const rolled = [randomStateSet(random.state)];
+			applyEffects(state, rolled, this.bus, this.logger);
+			bookkeeping.push(...rolled);
+		}
 		result.effects = [...(result.effects ?? []), ...bookkeeping];
 
 		// Generic "something happened" hook for cross-cutting systems (rumors,
@@ -82,6 +102,7 @@ class TurnResolver {
 		command: InWorldCommand,
 		state: GameState,
 		registry: Registry,
+		random: Random,
 	): TurnResult {
 		switch (command.type) {
 			case "MOVE":
@@ -106,6 +127,7 @@ class TurnResolver {
 					command.duration ?? 1,
 					state,
 					registry,
+					random,
 				);
 			case "PRACTICE":
 				return this._practice(
@@ -113,6 +135,7 @@ class TurnResolver {
 					command.duration ?? 1,
 					state,
 					registry,
+					random,
 				);
 			case "INTERACT":
 				return this._interact(
@@ -393,6 +416,7 @@ class TurnResolver {
 		duration: number,
 		state: GameState,
 		registry: Registry,
+		random: Random,
 	): TurnResult {
 		const schoolData = registry.getSchoolData();
 		if (!schoolData) {
@@ -491,6 +515,7 @@ class TurnResolver {
 				opportunity,
 				state.academicState,
 				state.spellbook,
+				random,
 			);
 
 			if (!result.success) continue;
@@ -590,6 +615,7 @@ class TurnResolver {
 		duration: number,
 		state: GameState,
 		registry: Registry,
+		random: Random,
 	): TurnResult {
 		const spellState = state.spellbook.getSpellState(spellId);
 		const spell = registry.getSpell(spellId);
@@ -626,7 +652,7 @@ class TurnResolver {
 				0.3 + (updatedState.proficiency / 100) * 0.6,
 				0.95,
 			);
-			const success = Math.random() < successChance;
+			const success = random.next() < successChance;
 			if (success) successCount++;
 
 			updatedState = applySpellUse(
