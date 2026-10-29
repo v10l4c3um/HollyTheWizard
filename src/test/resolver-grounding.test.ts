@@ -72,6 +72,28 @@ describe("places", () => {
 		expect(calls()).toHaveLength(2);
 	});
 
+	it.each([
+		["Hagrid's hut", "hagrid_hut"],
+		["the hut", "hagrid_hut"],
+		["the gamekeeper's hut", "hagrid_hut"],
+		["outside", "grounds"],
+		["the woods", "forest"],
+		["the village", "startingVillage"],
+	])("grounds the nickname %p to %p without another model call", async (target, id) => {
+		model({ intent: "MOVE" }, { target });
+		expect(await resolve("go there", viewAt("grounds"))).toEqual({
+			type: "MOVE",
+			destinationId: id,
+		});
+		expect(calls()).toHaveLength(2);
+	});
+
+	it("tells the classifier a place's nicknames so \"visit Hagrid's hut\" is a move", async () => {
+		model({ intent: "MOVE" }, { target: "Hagrid's hut" });
+		await resolve("visit Hagrid's hut", viewAt("grounds"));
+		expect(bodyOf(0).prompt).toContain("Gamekeeper's Hut (also \"Hagrid's hut\"");
+	});
+
 	it("maps a display name to its id", async () => {
 		model({ intent: "MOVE" }, { target: "Main Corridor" });
 		expect(await resolve("go to the main corridor", viewAt("great_hall"))).toEqual({

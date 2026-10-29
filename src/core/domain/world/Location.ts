@@ -3,6 +3,8 @@ class Location {
 	displayName: string;
 	description: string;
 	connectedLocationsIds: string[];
+	/** Other names players use for the place; matched as whole phrases. */
+	aliases: string[];
 
 	// TODO: affiliations as an array of fraction-number pairs, like [{faction: "magesGuild", influence: 0.8}, {faction: "thievesGuild", influence: 0.2}]
 
@@ -15,11 +17,13 @@ class Location {
 		displayName: string,
 		description: string,
 		connectedLocations: string[],
+		aliases: string[] = [],
 	) {
 		this.id = id;
 		this.displayName = displayName;
 		this.description = description;
 		this.connectedLocationsIds = connectedLocations;
+		this.aliases = aliases;
 	}
 }
 

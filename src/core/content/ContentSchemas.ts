@@ -103,6 +103,8 @@ export const LocationSchema = z.strictObject({
 	displayName: z.string().min(1),
 	description: z.string(),
 	connectedLocationsIds: z.array(z.string()),
+	/** Other names players use for the place ("the hut", "outside"). */
+	aliases: z.array(z.string()).default([]),
 });
 
 export type LocationData = z.infer<typeof LocationSchema>;

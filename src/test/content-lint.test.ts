@@ -71,7 +71,7 @@ function registryOf(world: World): Registry {
 	);
 	for (const l of pack.locations ?? []) {
 		registry.registerLocation(
-			new Location(l.id, l.displayName, l.description, l.connectedLocationsIds),
+			new Location(l.id, l.displayName, l.description, l.connectedLocationsIds, l.aliases),
 		);
 	}
 	pack.npcs?.forEach((n) => registry.registerNPC(n));
@@ -99,6 +99,30 @@ describe("lintContent", () => {
 			expect(lint(world)).toContain(
 				`Start location "${START_LOCATION_ID}" does not exist`,
 			);
+		});
+
+		it("rejects two places answering to the same name", () => {
+			const world = goodWorld();
+			world.locations[0] = location(START_LOCATION_ID, ["forest"], ["the woods"]);
+			world.locations[1] = location("forest", [START_LOCATION_ID], ["The  Woods!"]);
+			expect(lint(world)).toEqual([
+				`Location "forest" alias "The  Woods!" is also a name of location "${START_LOCATION_ID}"`,
+			]);
+		});
+
+		it("rejects an alias that is another place's name", () => {
+			const world = goodWorld();
+			world.locations[0] = location(START_LOCATION_ID, ["forest"], ["forest"]);
+			expect(lint(world)).toEqual([
+				`Location "forest" id "forest" is also a name of location "${START_LOCATION_ID}"`,
+				`Location "forest" name "FOREST" is also a name of location "${START_LOCATION_ID}"`,
+			]);
+		});
+
+		it("allows a place to repeat its own name as an alias", () => {
+			const world = goodWorld();
+			world.locations[1] = location("forest", [START_LOCATION_ID], ["FOREST"]);
+			expect(lint(world)).toEqual([]);
 		});
 
 		it("rejects a connection to a place that does not exist", () => {

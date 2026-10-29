@@ -43,6 +43,7 @@ export function buildWorldView(registry: Registry, state: GameState): WorldView 
 	const named = (id: string): NamedEntity => ({
 		id,
 		name: registry.getLocation(id)?.displayName ?? id,
+		aliases: registry.getLocation(id)?.aliases ?? [],
 		description: shortDescription(registry.getLocation(id)?.description),
 	});
 
@@ -103,6 +104,7 @@ export function buildStaticWorldView(registry: Registry): WorldView {
 		places: registry.getAllLocationIds().map((id) => ({
 			id,
 			name: registry.getLocation(id)?.displayName ?? id,
+			aliases: registry.getLocation(id)?.aliases ?? [],
 			description: shortDescription(registry.getLocation(id)?.description),
 		})),
 		peopleHere: [],

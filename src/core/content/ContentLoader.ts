@@ -83,7 +83,13 @@ class ContentLoader {
 				continue;
 			}
 			registry.registerLocation(
-				new Location(l.id, l.displayName, l.description, l.connectedLocationsIds),
+				new Location(
+					l.id,
+					l.displayName,
+					l.description,
+					l.connectedLocationsIds,
+					l.aliases,
+				),
 			);
 		}
 		for (const npc of manifest.npcs ?? []) {

@@ -1,6 +1,7 @@
 import Registry from "../Registry";
 import { START_LOCATION_ID } from "../domain/world/GameState";
 import { TOPICS } from "../domain/npc/TopicRegistry";
+import { normalizeName } from "../engine/EntityMatcher";
 import { SubjectCurriculum } from "../domain/quest/Curriculum";
 
 /**
@@ -29,6 +30,8 @@ function lintMap(registry: Registry): string[] {
 		}
 	}
 
+	problems.push(...lintPlaceNames(registry));
+
 	if (!registry.getLocation(START_LOCATION_ID)) {
 		problems.push(`Start location "${START_LOCATION_ID}" does not exist`);
 		return problems;
@@ -50,6 +53,34 @@ function lintMap(registry: Registry): string[] {
 		if (!reached.has(id)) {
 			problems.push(`Location "${id}" cannot be reached from the start location`);
 		}
+	}
+	return problems;
+}
+
+/** Two places must never answer to the same name, or "go to the hut" is ambiguous. */
+function lintPlaceNames(registry: Registry): string[] {
+	const problems: string[] = [];
+	const owner = new Map<string, string>();
+
+	const claim = (placeId: string, name: string, kind: string) => {
+		const key = normalizeName(name);
+		if (key === "") return;
+		const existing = owner.get(key);
+		if (existing !== undefined && existing !== placeId) {
+			problems.push(
+				`Location "${placeId}" ${kind} "${name}" is also a name of location "${existing}"`,
+			);
+		} else {
+			owner.set(key, placeId);
+		}
+	};
+
+	for (const id of registry.getAllLocationIds()) {
+		const place = registry.getLocation(id);
+		if (!place) continue;
+		claim(id, id, "id");
+		claim(id, place.displayName, "name");
+		for (const alias of place.aliases) claim(id, alias, "alias");
 	}
 	return problems;
 }

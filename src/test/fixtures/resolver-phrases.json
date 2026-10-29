@@ -342,6 +342,38 @@
    "expect": {
     "type": "REST"
    }
+  },
+  {
+   "input": "head over to the hut",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hagrid_hut"
+   }
+  },
+  {
+   "input": "go outside",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "grounds"
+   }
+  },
+  {
+   "input": "walk into the woods",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "forest"
+   }
+  },
+  {
+   "input": "step into the hall's corridor",
+   "at": "great_hall",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   }
   }
  ]
 }

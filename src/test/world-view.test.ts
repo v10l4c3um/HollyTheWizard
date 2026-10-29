@@ -52,6 +52,14 @@ describe("buildWorldView", () => {
 		expect(places.find((p) => p.id === "hallway")?.name).toBe("Main Corridor");
 	});
 
+	it("carries place aliases, for exits and for every place", () => {
+		const view = buildWorldView(registry, stateAt("grounds"));
+		expect(view.places.find((p) => p.id === "hagrid_hut")?.aliases).toEqual(
+			expect.arrayContaining(["Hagrid's hut", "the hut"]),
+		);
+		expect(view.exits.find((p) => p.id === "hagrid_hut")?.aliases).toContain("the hut");
+	});
+
 	it("lists the people who are here now, and everyone separately", () => {
 		const state = stateAt("great_hall");
 		moveToNpc(state, registry, "hagrid");

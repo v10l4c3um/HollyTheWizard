@@ -50,6 +50,16 @@ describe("pack manifest schema", () => {
 		expect(result.npcs?.[0].tag_description).toBe("");
 	});
 
+	it("gives a place no aliases unless it lists some", () => {
+		const result = PackManifestSchema.parse(
+			manifest({
+				locations: [location("hall", [], ["the big room"]), location("yard")],
+			}),
+		);
+		expect(result.locations?.[0].aliases).toEqual(["the big room"]);
+		expect(result.locations?.[1].aliases).toEqual([]);
+	});
+
 	it("keeps accepting the unused fields the shipped content carries", () => {
 		const withLegacy = manifest({
 			npcs: [npc("anna", { affinity: 85 })],

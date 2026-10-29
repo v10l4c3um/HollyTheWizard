@@ -11,6 +11,10 @@
         "forest",
         "market",
         "grounds"
+      ],
+      "aliases": [
+        "the village",
+        "the town"
       ]
     },
     {
@@ -20,6 +24,10 @@
       "connectedLocationsIds": [
         "startingVillage",
         "grounds"
+      ],
+      "aliases": [
+        "the forest",
+        "the woods"
       ]
     },
     {
@@ -28,6 +36,11 @@
       "description": "A bustling square lined with merchant stalls selling herbs, potions, and curious artifacts.",
       "connectedLocationsIds": [
         "startingVillage"
+      ],
+      "aliases": [
+        "the market",
+        "the marketplace",
+        "the stalls"
       ]
     },
     {
@@ -36,6 +49,10 @@
       "description": "A vast hall with long tables under a ceiling that mirrors the sky. The smell of breakfast drifts between the benches.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the hall",
+        "the dining hall"
       ]
     },
     {
@@ -50,6 +67,10 @@
         "common_room",
         "headmaster_office",
         "grounds"
+      ],
+      "aliases": [
+        "the corridor",
+        "the hallway"
       ]
     },
     {
@@ -58,6 +79,9 @@
       "description": "A bright classroom with rows of desks, a chalkboard and shelves of curious instruments.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the charms classroom"
       ]
     },
     {
@@ -66,6 +90,11 @@
       "description": "A cold, candlelit room below the castle, its shelves crowded with jars and cauldrons.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the dungeons",
+        "the dungeon",
+        "potions classroom"
       ]
     },
     {
@@ -74,6 +103,9 @@
       "description": "Tall shelves of old books and narrow reading tables, hushed except for the turning of pages.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the stacks"
       ]
     },
     {
@@ -82,6 +114,9 @@
       "description": "A warm room with deep armchairs and a crackling fire, where students gather in the evenings.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the common room"
       ]
     },
     {
@@ -90,6 +125,10 @@
       "description": "A round, quiet office filled with ticking instruments and portraits that pretend to doze.",
       "connectedLocationsIds": [
         "hallway"
+      ],
+      "aliases": [
+        "the headmaster's office",
+        "Dumbledore's office"
       ]
     },
     {
@@ -102,6 +141,10 @@
         "hagrid_hut",
         "forest",
         "startingVillage"
+      ],
+      "aliases": [
+        "the grounds",
+        "outside"
       ]
     },
     {
@@ -110,6 +153,10 @@
       "description": "A long glass house, damp and green, full of plants that are best not touched without gloves.",
       "connectedLocationsIds": [
         "grounds"
+      ],
+      "aliases": [
+        "the greenhouses",
+        "herbology greenhouse"
       ]
     },
     {
@@ -118,6 +165,11 @@
       "description": "A small timber hut with smoke from its chimney and the sound of something large snoring inside.",
       "connectedLocationsIds": [
         "grounds"
+      ],
+      "aliases": [
+        "Hagrid's hut",
+        "the hut",
+        "the gamekeeper's hut"
       ]
     }
   ]

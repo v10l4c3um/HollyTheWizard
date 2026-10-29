@@ -7,11 +7,13 @@ import * as path from "path";
 export const location = (
 	id: string,
 	connectedLocationsIds: string[] = [],
+	aliases?: string[],
 ) => ({
 	id,
 	displayName: id.toUpperCase(),
 	description: `The ${id}.`,
 	connectedLocationsIds,
+	...(aliases ? { aliases } : {}),
 });
 
 export const npc = (id: string, overrides: Record<string, unknown> = {}) => ({

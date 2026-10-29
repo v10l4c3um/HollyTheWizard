@@ -559,7 +559,13 @@ function playerNote(name: string): string {
  * ("the classroom", "Hagrid's hut"); attending the lesson itself is not.
  */
 function placeNote(view: WorldView): string {
-	const places = view.places.map((p) => p.name).join(", ");
+	const places = view.places
+		.map((p) =>
+			p.aliases?.length
+				? `${p.name} (also "${p.aliases.join('", "')}")`
+				: p.name,
+		)
+		.join(", ");
 	const people = view.people.map((p) => p.name).join(", ");
 	const subjects = view.subjects.map((s) => s.name).join(", ");
 	return `Places in the game: ${places}. Going, walking, entering or visiting any of these places is MOVE, even if the name sounds like a class or a person. ATTEND_CLASS is only for attending the lesson itself.
