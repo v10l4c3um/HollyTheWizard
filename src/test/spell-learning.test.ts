@@ -104,7 +104,9 @@ describe("attending a class teaches its spell", () => {
 
 		const result = attendCharms();
 		expect(knowledgeOf("levitate")).toBe("learned");
-		expect(result.stateChanges.spellsLearned).toEqual(["levitate"]);
+		expect(result.effects).toContainEqual(
+			expect.objectContaining({ type: "SpellLearned", spellId: "levitate" }),
+		);
 		expect(result.briefOutput).toContain("Learned");
 	});
 
@@ -138,7 +140,7 @@ describe("attending a class teaches its spell", () => {
 		attendCharms();
 		const result = attendCharms();
 		expect(knowledgeOf("levitate")).toBe("mastered");
-		expect(result.stateChanges.spellsLearned).toEqual([]);
+		expect(result.effects?.some((e) => e.type === "SpellLearned")).toBe(false);
 	});
 
 	describe("a lesson with a chance below 1 (potions: heal, 0.8)", () => {

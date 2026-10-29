@@ -4,7 +4,7 @@ Files: `src/core/engine/TurnResolver.ts` (657 lines), `TurnResult.ts`, `TimeCost
 
 ## What it does
 
-The deterministic rules layer. Given a typed `Command`, the current `GameState` and the `Registry`, it decides what happens and returns a `TurnResult` (`briefOutput`, `events`, `timeCost`, optional `effects`, `stateChanges`). It makes no LLM calls and does no I/O. The engine then applies the time cost and renders the prose around `briefOutput`.
+The deterministic rules layer. Given a typed `Command`, the current `GameState` and the `Registry`, it decides what happens and returns a `TurnResult` (`briefOutput`, `events`, `timeCost`, `effects`, `timePassed`). It makes no LLM calls and does no I/O. Every state change, including location, clock and event log, is applied through `applyEffects` inside `apply`; the engine then renders the prose around `briefOutput`.
 
 ## How it works
 
@@ -12,7 +12,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 | Command | Behavior | Time |
 |---|---|---|
-| `MOVE` | Validates destination exists and is connected; emits `LocationVisited`/`LocationDiscovered`; returns the new location in `stateChanges` for the engine to apply | 5 min (2 min on a blocked move) |
+| `MOVE` | Validates destination exists and is connected; emits `LocationVisited`/`LocationDiscovered`; applies a `LocationChanged` effect (which also marks the place discovered) | 5 min (2 min on a blocked move) |
 | `TALK` | Builds a `ConversationContext` (relationship or zeroed stats, topic, NPC profile, history, last 10 events, privacy), calls `evaluateConversation`, applies its effects, emits five conversation events | 15 min |
 | `STUDY` | `ProgressDelta` of `10 * hours` to subject knowledge; checks spell availability; emits `SubjectStudied`/`SpellRevealed` | 60 min per hour |
 | `ATTEND_CLASS` | Fetches current lesson, applies lesson rewards as effects, rolls each lesson's spell-reveal opportunity, advances the lesson counter, emits `LessonAttended` | fixed 60 min |
@@ -35,7 +35,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 ## Weaknesses
 
 1. **One 650-line class mixes everything.** Each command is a method on one class, with string building, rule logic, event emission and effect construction inline. The result is hard to extend or test per command, and it will not scale to dueling, quests or scenes.
-2. **Mixed mutation and a half-finished conversion.** `applyEffects` is used for study, class and talk, but `PRACTICE` writes the spellbook directly, `MOVE` returns `stateChanges` for the engine to apply, and lesson progress is advanced by `CurriculumService.advanceLesson` mutating state. `stateChanges` also carries fields nothing consumes (see system 02).
+2. ~~**Mixed mutation and a half-finished conversion.**~~ **Fixed:** movement, time, the event log, lesson progress, spell reveal and spell practice are all effects (`LocationChanged`, `TimeAdvanced`, `EventsRecorded`, `LessonAdvanced`, `SpellRevealed`, `SpellStateUpdated`); `stateChanges` is gone.
 3. **Events are emitted before the outcome is final.** `MOVE` emits `LocationVisited` / `LocationDiscovered` before the engine sets the location. Listeners see the event while state is still the old state. The event-then-state ordering is accidental.
 4. **Dead or duplicated code.** `_save`, `_load`, and the `ADVANCE_YEAR` branch are unreachable in practice, since the engine handles them first. The comment says so, and they still emit `GameSaved`/`GameLoaded`, which would double-emit if ever reached.
 5. **Rules are shallow.**
@@ -57,7 +57,6 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 ## Rework ideas
 
 - Split into **per-command handlers** (`handlers/move.ts`, `talk.ts`, ...) behind a registry keyed by command type. A handler receives a read-only world view and returns `{ effects, events, time, facts }`.
-- Make the result purely **effects + structured facts**: add `LocationChanged`, `TimeAdvanced`, `LessonAdvanced`, `SpellStateChanged` effects, delete `stateChanges`, and have the engine apply the full effect list in one place.
 - Emit events **after** effects are applied, derived from the effects or from a post-apply step, so listeners always see consistent state.
 - Return an explicit `outcome` (`success | failure | blocked`) and a typed `reason`, not a heuristic.
 - Add **preconditions** as data: location, time window, timetable, required energy or mana, NPC presence. Failures return the reason to the renderer.

@@ -6,6 +6,8 @@ import Registry from "../core/Registry";
 import TurnResolver from "../core/engine/TurnResolver";
 import { createGameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
+import { applyEffects } from "../core/domain/effects/EffectApplier";
+import { spellRevealed } from "../core/domain/effects/GameEffects";
 import { SpellRevealService } from "../core/domain/magic/SpellRevealService";
 import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
 import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
@@ -104,16 +106,24 @@ describe("spell reveal (doc 11)", () => {
 		source: "lesson",
 	} as SpellRevealOpportunity;
 
+	// The service only rolls; applying the effect is what changes the spellbook.
+	const reveal = () => {
+		const result = new SpellRevealService().attemptSpellReveal(
+			opportunity,
+			state.academicState,
+			state.spellbook,
+		);
+		if (result.success) {
+			applyEffects(state, [spellRevealed(opportunity.spellId)]);
+		}
+	};
+
 	it("control: reveal moves a hidden spell to available", () => {
 		state.spellbook.setSpellState("levitate", {
 			...createLearnedSpellState("levitate", "test"),
 			knowledgeState: "hidden",
 		});
-		new SpellRevealService().attemptSpellReveal(
-			opportunity,
-			state.academicState,
-			state.spellbook,
-		);
+		reveal();
 		expect(state.spellbook.getSpellState("levitate")?.knowledgeState).toBe(
 			"available",
 		);
@@ -124,11 +134,7 @@ describe("spell reveal (doc 11)", () => {
 			"levitate",
 			createLearnedSpellState("levitate", "test"),
 		);
-		new SpellRevealService().attemptSpellReveal(
-			opportunity,
-			state.academicState,
-			state.spellbook,
-		);
+		reveal();
 		expect(state.spellbook.getSpellState("levitate")?.knowledgeState).toBe(
 			"learned",
 		);

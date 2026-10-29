@@ -5,6 +5,8 @@ import { buildSafeCampaignBase } from "../../domain/campaign/DeterministicFallba
 import { SchoolYear } from "../../domain/quest/Curriculum";
 import { GameBus } from "../../domain/events/GameEvents";
 import { TurnResult } from "../../engine/TurnResult";
+import { applyEffects } from "../../domain/effects/EffectApplier";
+import { eventsRecorded } from "../../domain/effects/GameEffects";
 
 const FINAL_YEAR: SchoolYear = 7;
 
@@ -30,7 +32,6 @@ export class AdvanceYear {
 					"You have already completed your final year at school.",
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -62,13 +63,14 @@ export class AdvanceYear {
 		state.yearBlueprints[toYear] = newBlueprint;
 		state.yearProgress = createEmptyYearProgress(toYear);
 
+		const events = [`Advanced from Year ${fromYear} to Year ${toYear}`];
+		applyEffects(state, [eventsRecorded(events)], this.bus);
 		this.bus.emit("YearAdvanced", { fromYear, toYear });
 
 		return {
 			briefOutput: `You have advanced to Year ${toYear}. A new chapter begins.`,
-			events: [`Advanced from Year ${fromYear} to Year ${toYear}`],
+			events,
 			timeCost: { type: "none" },
-			stateChanges: {},
 		};
 	}
 }

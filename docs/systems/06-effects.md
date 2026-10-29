@@ -8,7 +8,7 @@ Defines the vocabulary of state changes (`GameEffect`) and the single function t
 
 ## How it works
 
-`GameEffect` is a discriminated union of 11 types:
+`GameEffect` is a discriminated union of 18 types:
 
 | Effect | Applied as |
 |---|---|
@@ -21,6 +21,12 @@ Defines the vocabulary of state changes (`GameEffect`) and the single function t
 | `ClueRevealed` / `RumorLearned` | Writes a record into `clues` / `rumors` |
 | `SceneInvitationCreated` | Pushes to `sceneInvitations` |
 | `ConversationMemoryRecorded` | Appends to `conversationHistory[npcId]`, capped at 20 |
+| `LocationChanged` | Sets `currentLocationId` and marks the place discovered |
+| `TimeAdvanced` | Advances the `WorldClock` and emits the `TimeAdvanced` bus event |
+| `EventsRecorded` | Appends to `recentEvents` |
+| `SpellRevealed` | `hidden` → `available` only; never downgrades |
+| `SpellStateUpdated` | Replaces a spell's state with the result of `applySpellUse` |
+| `LessonAdvanced` | Records the lesson as attended/skipped and moves to the next |
 
 Helper constructors (`progressDelta`, `flagSet`, ...) and track-name helpers (`subjectKnowledgeTrack`, `spellProficiencyTrack`) build the values. `applyEffects` is a loop over a `switch`.
 
@@ -37,7 +43,7 @@ Helper constructors (`progressDelta`, `flagSet`, ...) and track-name helpers (`s
 
 1. **Relationship effects are silently dropped.** `state.relationships[npcId]?.applyDelta(...)` does nothing when the record does not exist, and no code ever creates a `RelationshipStats` entry (`relationships` starts as `{}` and nothing writes to it). `TurnResolver._talk` even builds a throwaway zeroed relationship for "first contact". So trust, affection and the rest never change in play. The social loop that the conversation system is built around appears inert. This is the most important finding so far and should be confirmed by running a conversation.
 2. **Latent load bug.** `GameState.fromPlainObject` assigns `data.relationships` as plain JSON, which has no `applyDelta` method. If relationships ever do get created and saved, a loaded game would throw on the first relationship effect. `SpellBook` and `WorldClock` are rehydrated; relationships and player stats may not be (needs checking).
-3. **The "single mutation path" is not true.** Spell practice mutates the spellbook directly, lesson advancement mutates academic state in `CurriculumService`, and the engine sets location, discovered locations, time, and output itself. `ProgressDelta` for spells (`spellProficiencyTrack`) exists but is not wired. Effects for movement, time, lesson progress, spell state, and `recentEvents` do not exist.
+3. ~~**The "single mutation path" is not true.**~~ **Fixed for turns:** location, time, the event log, lesson progress and spell state now go through effects. Still outside effects: `LOAD` replacing the state, `AdvanceYear`'s blueprint/year writes, `state.output`, and the `Spellbook` seeding in `wireEngine`. `ProgressDelta` for spells (`spellProficiencyTrack`) is still not wired.
 4. **`bus` parameter is dead.** The doc comment promises "derived milestone" events when a change crosses a threshold, but `applyEffects` never touches `bus`. No `AttributeGained`-style events fire from effects.
 5. **`reason` is write-only.** It is never stored, logged or surfaced. `applyEffects` returns `void`, so callers cannot get a record of what changed, old and new values, or rejected effects. The `TurnResult.effects` list is the intended carrier, but only the requested effects are passed, not the applied results.
 6. **Silent failures.** An unknown progress track only warns, a missing relationship is skipped, an unknown subject id is ignored, a negative inventory goes through a removal rule, and unknown flag ids are just written. Nothing validates ids against the `Registry`, and no effect can report failure.

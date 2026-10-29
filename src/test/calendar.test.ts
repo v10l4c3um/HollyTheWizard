@@ -34,11 +34,12 @@ describe("absolute timestamps", () => {
 	it("a conversation is remembered with the total minutes, not the minute of the day", () => {
 		state.worldClock.advanceTime(MINUTES_PER_DAY + 60); // day 2
 		moveToNpc(state, registry, "hagrid");
+		const startedAt = state.worldClock.getTotalMinutes();
 
 		resolver.apply({ type: "TALK", npcId: "hagrid" }, state, registry);
 
 		const [entry] = state.conversationHistory["hagrid"];
-		expect(entry.turnIndex).toBe(state.worldClock.getTotalMinutes());
+		expect(entry.turnIndex).toBe(startedAt);
 		expect(entry.turnIndex).toBeGreaterThan(MINUTES_PER_DAY);
 	});
 

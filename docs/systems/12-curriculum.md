@@ -10,7 +10,7 @@ Is meant to be the academic backbone of the game: subjects, a lesson sequence pe
 
 - **Types:** 27 `SubjectType`s, `SchoolYear` 1 to 7, `SubjectCurriculum` (subject + year + ordered `LessonDefinition[]`), `WeeklyTimetable` (21 slots: day x morning/afternoon/evening, each `class | free | curfew`), `PlayerAcademicState` (attributes + per-subject `SubjectProgress`).
 - **Lessons** carry an `order`, `title`, `topic`, an `importance` tag, `rewards`, and optional `revealOpportunities` (spell id, chance, requirements).
-- **`ATTEND_CLASS`:** `CurriculumService.getCurrentLesson` finds the lesson in the subject's current year whose `order` equals `currentLessonOrder`. The resolver applies the rewards as effects, rolls the spell reveals, then `advanceLesson` appends the lesson id to `attendedLessons` and increments the pointer.
+- **`ATTEND_CLASS`:** `CurriculumService.getCurrentLesson` finds the lesson in the subject's current year whose `order` equals `currentLessonOrder`. The resolver applies the rewards as effects, rolls the spell reveals, then a `LessonAdvanced` effect appends the lesson id to `attendedLessons` and increments the pointer.
 - **`STUDY`:** adds `10 * hours` knowledge to a subject, with no lesson involved.
 - **Content shipped:** 11 lessons in total (charms 5, defense 3, potions 3), all year 1. `subjects.json` defines 5 subjects (charms, potions, defense, transfiguration, herbology), though the type allows 27.
 

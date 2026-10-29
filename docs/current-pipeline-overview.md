@@ -32,7 +32,7 @@ Player types text
       → evaluateConversation / CurriculumService / SpellRevealService
       → applyEffects(state, effects[], bus)   ← only sanctioned mutation path
       → emit GameEvents on bus
-  → GameEngine applies stateChanges + advances WorldClock
+  → (time and the event log are applied as effects inside TurnResolver.apply)
   → Renderer (LLM #2: produce 3–5 sentence prose paragraph)
   → BlueprintProgressService.checkMilestones
   → InkApp re-renders with state.output
@@ -154,7 +154,7 @@ The LLM does not decide conversation outcomes. It only renders prose around them
 
 **Spell state** (per-player, lives in `SpellBook`): `knowledgeState` (`hidden → available → learned → mastered`), `masteryTier`, `proficiency` (0–100), `practicePoints`, `stability`, `reliability`.
 
-**SpellProgressionService** — `applySpellUse(spell, state)` calculates proficiency gain, stability, reliability, and mastery tier transitions after each practice attempt. Currently mutates `SpellBook` directly (not yet ported to the effect model — known TODO).
+**SpellProgressionService** — `applySpellUse(spell, state)` calculates proficiency gain, stability, reliability, and mastery tier transitions after each practice attempt. The result is written with a `SpellStateUpdated` effect.
 
 **SpellRevealService** — unlocks spells from `hidden` to `available` based on `revealCondition` checks + chance rolls. `checkRevealCondition` currently always returns `false` (wired but not fully implemented).
 
@@ -167,7 +167,7 @@ The LLM does not decide conversation outcomes. It only renders prose around them
 - `currentLessonOrder` (lesson index within the year curriculum)
 - `attendedLessons` / `skippedLessons` counts
 
-`CurriculumService.getCurrentLesson(state, subjectId)` returns the current `LessonDefinition`. `advanceLesson` increments the counter. Each lesson definition can carry `SpellRevealOpportunity` entries (spell id + success probability).
+`CurriculumService.getCurrentLesson(state, subjectId)` returns the current `LessonDefinition`. The `LessonAdvanced` effect increments the counter. Each lesson definition can carry `SpellRevealOpportunity` entries (spell id + success probability).
 
 ---
 
@@ -239,7 +239,6 @@ React + Ink state machine:
 |---|---|
 | NPC schedules | Presence is derived from NPC schedules (`Presence.ts`); no autonomous NPC simulation |
 | SpellRevealService condition checks | `checkRevealCondition` always returns false |
-| SpellProgressionService → effect model | Still mutates SpellBook directly |
 | Full quest system | Only `questFlags` string lists, no structured quests |
 | Scene invitations / special encounters | Data model exists, no handler |
 | Dueling / combat | Not started |

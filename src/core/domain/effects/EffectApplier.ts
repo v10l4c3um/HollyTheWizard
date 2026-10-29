@@ -106,6 +106,50 @@ function applyEffect(
 			state.conversationHistory[effect.npcId] = history;
 			break;
 		}
+		case "LocationChanged":
+			state.currentLocationId = effect.locationId;
+			if (!state.discoveredLocationIds.includes(effect.locationId)) {
+				state.discoveredLocationIds.push(effect.locationId);
+			}
+			break;
+		case "TimeAdvanced":
+			state.worldClock.advanceTime(effect.minutes);
+			bus?.emit("TimeAdvanced", {
+				minutesDelta: effect.minutes,
+				newMinutesOfDay: state.worldClock.getMinutesOfDay(),
+				totalMinutes: state.worldClock.getTotalMinutes(),
+			});
+			break;
+		case "EventsRecorded":
+			state.recentEvents.push(...effect.entries);
+			break;
+		case "SpellRevealed":
+			// Only a hidden spell becomes available; a spell the player already
+			// knows of, has learned or has mastered must never be moved back.
+			if (
+				state.spellbook.getSpellState(effect.spellId)?.knowledgeState ===
+				"hidden"
+			) {
+				state.spellbook.updateSpellState(effect.spellId, {
+					knowledgeState: "available",
+					becameAvailableAt: effect.atMinutes,
+				});
+			}
+			break;
+		case "SpellStateUpdated":
+			state.spellbook.setSpellState(effect.spellId, effect.state);
+			break;
+		case "LessonAdvanced": {
+			const subject = state.academicState.subjects[effect.subject];
+			if (subject) {
+				(effect.attended
+					? subject.attendedLessons
+					: subject.skippedLessons
+				).push(effect.lessonId);
+				subject.currentLessonOrder += 1;
+			}
+			break;
+		}
 	}
 }
 

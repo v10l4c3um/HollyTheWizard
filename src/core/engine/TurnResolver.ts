@@ -15,6 +15,12 @@ import {
 	attributeDelta,
 	flagSet,
 	spellLearned,
+	spellRevealed,
+	spellStateUpdated,
+	lessonAdvanced,
+	locationChanged,
+	timeAdvanced,
+	eventsRecorded,
 	subjectKnowledgeTrack,
 } from "../domain/effects/GameEffects";
 import {
@@ -37,6 +43,25 @@ class TurnResolver {
 
 	apply(command: Command, state: GameState, registry: Registry): TurnResult {
 		const result = this._dispatch(command, state, registry);
+
+		// Bookkeeping common to every turn: the log, the clock.
+		const bookkeeping: GameEffect[] = [];
+		if (result.events.length > 0) {
+			bookkeeping.push(eventsRecorded(result.events));
+		}
+		if (result.timeCost.type === "minutes") {
+			const beforeTimeOfDay = state.worldClock.timeOfDay;
+			bookkeeping.push(timeAdvanced(result.timeCost.amount));
+			applyEffects(state, bookkeeping, this.bus);
+			result.timePassed = {
+				minutes: result.timeCost.amount,
+				beforeTimeOfDay,
+				afterTimeOfDay: state.worldClock.timeOfDay,
+			};
+		} else {
+			applyEffects(state, bookkeeping, this.bus);
+		}
+		result.effects = [...(result.effects ?? []), ...bookkeeping];
 
 		// Generic "something happened" hook for cross-cutting systems
 		// (docs/event-effect-conversion-plan.md, Step 6). A failed/no-op
@@ -114,7 +139,6 @@ class TurnResolver {
 					briefOutput: "",
 					events: [],
 					timeCost: { type: "none" },
-					stateChanges: {},
 				};
 			case "ADVANCE_YEAR":
 				// Handled directly by GameEngine.handleCommand (requires async LLM
@@ -123,7 +147,6 @@ class TurnResolver {
 					briefOutput: "",
 					events: [],
 					timeCost: { type: "none" },
-					stateChanges: {},
 				};
 		}
 	}
@@ -139,7 +162,6 @@ class TurnResolver {
 				briefOutput: "You seem to be nowhere. Something is wrong.",
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -148,7 +170,6 @@ class TurnResolver {
 				briefOutput: `There is no "${destinationId}" here.`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -164,9 +185,11 @@ class TurnResolver {
 					`Failed to move from ${current.displayName} to ${destinationDisplayName}`,
 				],
 				timeCost: { type: "minutes", amount: 2 },
-				stateChanges: {},
 			};
 		}
+
+		const moveEffects = [locationChanged(destinationId)];
+		applyEffects(state, moveEffects, this.bus);
 
 		this.bus.emit("LocationVisited", {
 			locationId: destinationId,
@@ -182,10 +205,7 @@ class TurnResolver {
 				`Moved from ${current.displayName} to ${destinationDisplayName}`,
 			],
 			timeCost: { type: "minutes", amount: 5 },
-			stateChanges: {
-				currentLocationId: destinationId,
-				newDiscoveredLocationId: isNew ? destinationId : undefined,
-			},
+			effects: moveEffects,
 		};
 	}
 
@@ -201,7 +221,6 @@ class TurnResolver {
 				briefOutput: `You don't know anyone called "${npcId}".`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 		if (npcLocation(npc, momentOf(state, registry)) !== state.currentLocationId) {
@@ -209,7 +228,6 @@ class TurnResolver {
 				briefOutput: `${npc.name} is not here right now.`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 		const npcName = npc.name;
@@ -281,7 +299,6 @@ class TurnResolver {
 			events: [`Talked to ${npcId}${topicSuffix} [${outcome.result}]`],
 			timeCost: { type: "minutes", amount: 15 },
 			effects: outcome.effects,
-			stateChanges: {},
 		};
 	}
 
@@ -297,7 +314,6 @@ class TurnResolver {
 				briefOutput: "No curriculum data available.",
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -316,12 +332,16 @@ class TurnResolver {
 		];
 		applyEffects(state, effects, this.bus);
 
-		const revealed = this.spellRevealService.updateSpellAvailability(
+		const revealed = this.spellRevealService.findRevealableSpells(
 			registry,
 			state.spellbook,
 			state.academicState,
-			state.worldClock.getTotalMinutes(),
 		);
+		const revealEffects = revealed.map((id) =>
+			spellRevealed(id, state.worldClock.getTotalMinutes()),
+		);
+		applyEffects(state, revealEffects, this.bus);
+		effects.push(...revealEffects);
 
 		const subjectName = schoolData.subjects[subject]?.name || subject;
 		let output = `You studied ${subjectName}. Gained +${knowledgeGain} knowledge.`;
@@ -350,12 +370,6 @@ class TurnResolver {
 			events: [`Studied ${subject} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
 			effects,
-			stateChanges: {
-				subjectKnowledgeGains: { [subject]: knowledgeGain } as Partial<
-					Record<SubjectType, number>
-				>,
-				spellsRevealed: revealed,
-			},
 		};
 	}
 
@@ -371,7 +385,6 @@ class TurnResolver {
 				briefOutput: "No curriculum data available.",
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -388,7 +401,6 @@ class TurnResolver {
 			briefOutput,
 			events: [],
 			timeCost: { type: "none" },
-			stateChanges: {},
 		});
 		if (!slot || slot.subject !== subject) {
 			return refuse(`There is no ${subjectLabel} class right now.`);
@@ -414,7 +426,6 @@ class TurnResolver {
 				briefOutput: `No more lessons available for ${subjectName}.`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -452,6 +463,7 @@ class TurnResolver {
 		const revealedSpells: string[] = [];
 		const learnedSpells: string[] = [];
 		const learnEffects: GameEffect[] = [];
+		const revealEffects: GameEffect[] = [];
 
 		for (const opportunity of spellOpportunities) {
 			const before = state.spellbook.getSpellState(
@@ -461,13 +473,18 @@ class TurnResolver {
 				opportunity,
 				state.academicState,
 				state.spellbook,
-				state.worldClock.getTotalMinutes(),
 			);
 
 			if (!result.success) continue;
 
-			if (before === "hidden") {
+			if (before === "hidden" && !revealedSpells.includes(opportunity.spellId)) {
 				revealedSpells.push(opportunity.spellId);
+				revealEffects.push(
+					spellRevealed(
+						opportunity.spellId,
+						state.worldClock.getTotalMinutes(),
+					),
+				);
 			}
 			// A lesson that teaches the spell does so even if the player
 			// already knew of it; it never re-teaches a learned/mastered one.
@@ -485,15 +502,14 @@ class TurnResolver {
 				);
 			}
 		}
-		applyEffects(state, learnEffects, this.bus);
-		effects.push(...learnEffects);
-
-		this.curriculumService.advanceLesson(
-			subject,
-			state.academicState,
-			lesson.id,
-			true,
-		);
+		// Reveal first: only an available spell can be taught.
+		const lessonEffects = [
+			...revealEffects,
+			...learnEffects,
+			lessonAdvanced(subject, lesson.id, true),
+		];
+		applyEffects(state, lessonEffects, this.bus);
+		effects.push(...lessonEffects);
 
 		this.bus.emit("LessonAttended", {
 			subjectId: subject,
@@ -539,16 +555,6 @@ class TurnResolver {
 			events: [`Attended ${subject} class - ${lesson.title}`],
 			timeCost: { type: "minutes", amount: 60 },
 			effects,
-			stateChanges: {
-				subjectKnowledgeGains: lesson.rewards
-					.subjectKnowledge as Partial<Record<SubjectType, number>>,
-				spellsRevealed: revealedSpells,
-				spellsLearned: learnedSpells,
-				lessonCompleted: {
-					subject: subjectId as SubjectType,
-					lessonId: lesson.id,
-				},
-			},
 		};
 	}
 
@@ -574,7 +580,6 @@ class TurnResolver {
 				briefOutput: `There is no spell with id "${spellId}".`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -587,7 +592,6 @@ class TurnResolver {
 				briefOutput: `You haven't learned ${spell.definition.name} yet.`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -611,7 +615,8 @@ class TurnResolver {
 			);
 		}
 
-		state.spellbook.setSpellState(spellId, updatedState);
+		const practiceEffects = [spellStateUpdated(spellId, updatedState)];
+		applyEffects(state, practiceEffects, this.bus);
 
 		this.bus.emit("SpellPracticed", {
 			spellId,
@@ -637,7 +642,7 @@ class TurnResolver {
 			briefOutput: `You practiced ${spell.definition.name} ${totalAttempts} times. Success: ${successCount}/${totalAttempts}. Proficiency: ${Math.round(updatedState.proficiency)}/100 (${masteryTierName}).`,
 			events: [`Practiced ${spellId} for ${duration}h`],
 			timeCost: { type: "minutes", amount: 60 * duration },
-			stateChanges: {},
+			effects: practiceEffects,
 		};
 	}
 
@@ -652,7 +657,6 @@ class TurnResolver {
 				briefOutput: `You don't have an item with id "${itemId}".`,
 				events: [],
 				timeCost: { type: "none" },
-				stateChanges: {},
 			};
 		}
 
@@ -660,7 +664,6 @@ class TurnResolver {
 			briefOutput: `You ${actionType} ${item.name}. Something happened!`,
 			events: [`${actionType} ${itemId}`],
 			timeCost: { type: "minutes", amount: 10 },
-			stateChanges: {},
 		};
 	}
 
@@ -678,7 +681,6 @@ class TurnResolver {
 			briefOutput: `You rested for ${duration} hour(s) at ${locName}. You feel refreshed!`,
 			events: [`Rested for ${duration} hour(s) at ${locId}`],
 			timeCost: { type: "minutes", amount: 60 * duration },
-			stateChanges: {},
 		};
 	}
 
@@ -688,7 +690,6 @@ class TurnResolver {
 			briefOutput: `Game saved as '${filename}'.`,
 			events: [`Game saved as ${filename ? filename : "autosave"}`],
 			timeCost: { type: "none" },
-			stateChanges: {},
 		};
 	}
 
@@ -698,7 +699,6 @@ class TurnResolver {
 			briefOutput: `Loaded game from '${filename}'.`,
 			events: [`Loaded game from ${filename}`],
 			timeCost: { type: "none" },
-			stateChanges: {},
 		};
 	}
 }

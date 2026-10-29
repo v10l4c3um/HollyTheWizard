@@ -103,7 +103,6 @@ class GameEngine implements IGameEngine {
 
 			if (command.type === "ADVANCE_YEAR") {
 				const result = await this.advanceYear.execute(this.state);
-				this.state.recentEvents.push(...result.events);
 				this.state.output = await this.renderer.render(
 					this._buildRenderContext(result.briefOutput),
 				);
@@ -163,42 +162,8 @@ class GameEngine implements IGameEngine {
 				this.registry,
 			);
 
-			this.state.recentEvents.push(...result.events);
-			if (result.stateChanges.currentLocationId !== undefined) {
-				this.state.currentLocationId =
-					result.stateChanges.currentLocationId;
-			}
-			if (result.stateChanges.newDiscoveredLocationId !== undefined) {
-				this.state.discoveredLocationIds.push(
-					result.stateChanges.newDiscoveredLocationId,
-				);
-			}
-
-			let timePassed:
-				| {
-						minutes: number;
-						beforeTimeOfDay: string;
-						afterTimeOfDay: string;
-				  }
-				| undefined;
-			if (result.timeCost.type === "minutes") {
-				const beforeTimeOfDay = this.state.worldClock.timeOfDay;
-				this.state.worldClock.advanceTime(result.timeCost.amount);
-				const afterTimeOfDay = this.state.worldClock.timeOfDay;
-				timePassed = {
-					minutes: result.timeCost.amount,
-					beforeTimeOfDay,
-					afterTimeOfDay,
-				};
-				this.bus.emit("TimeAdvanced", {
-					minutesDelta: result.timeCost.amount,
-					newMinutesOfDay: this.state.worldClock.getMinutesOfDay(),
-					totalMinutes: this.state.worldClock.getTotalMinutes(),
-				});
-			}
-
 			this.state.output = await this.renderer.render(
-				this._buildRenderContext(result.briefOutput, timePassed),
+				this._buildRenderContext(result.briefOutput, result.timePassed),
 			);
 
 			this.blueprintProgressService.checkMilestones(this.state, this.bus);

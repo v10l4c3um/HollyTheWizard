@@ -1,6 +1,8 @@
 import { RelationshipDelta } from "../npc/Relationship";
 import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
+import { SpellState } from "../magic/Spell";
+import { SubjectType } from "../quest/Curriculum";
 
 /** What taught the spell. The player never triggers learning directly. */
 export type SpellLearnSource = "class" | "item" | "trainer";
@@ -74,6 +76,22 @@ export type GameEffect =
 			type: "ConversationMemoryRecorded";
 			npcId: string;
 			entry: ConversationMemoryEntry;
+	  }
+
+	// World and turn bookkeeping: every mutation goes through effects.
+	/** Moves the player; the place counts as discovered. */
+	| { type: "LocationChanged"; locationId: string }
+	| { type: "TimeAdvanced"; minutes: number }
+	| { type: "EventsRecorded"; entries: string[] }
+	/** hidden -> available only; never downgrades a known spell. */
+	| { type: "SpellRevealed"; spellId: string; atMinutes?: number }
+	/** Replaces a spell's state with the result of a progression rule. */
+	| { type: "SpellStateUpdated"; spellId: string; state: SpellState }
+	| {
+			type: "LessonAdvanced";
+			subject: SubjectType;
+			lessonId: string;
+			attended: boolean;
 	  };
 // ---------------------------------------------------------------------------
 // Helper constructors (see docs/event-effect-conversion-plan.md, Step 1)
@@ -193,4 +211,35 @@ export function conversationMemoryRecorded(
 	entry: ConversationMemoryEntry,
 ): GameEffect {
 	return { type: "ConversationMemoryRecorded", npcId, entry };
+}
+
+export function locationChanged(locationId: string): GameEffect {
+	return { type: "LocationChanged", locationId };
+}
+
+export function timeAdvanced(minutes: number): GameEffect {
+	return { type: "TimeAdvanced", minutes };
+}
+
+export function eventsRecorded(entries: string[]): GameEffect {
+	return { type: "EventsRecorded", entries };
+}
+
+export function spellRevealed(spellId: string, atMinutes?: number): GameEffect {
+	return { type: "SpellRevealed", spellId, atMinutes };
+}
+
+export function spellStateUpdated(
+	spellId: string,
+	state: SpellState,
+): GameEffect {
+	return { type: "SpellStateUpdated", spellId, state };
+}
+
+export function lessonAdvanced(
+	subject: SubjectType,
+	lessonId: string,
+	attended: boolean,
+): GameEffect {
+	return { type: "LessonAdvanced", subject, lessonId, attended };
 }

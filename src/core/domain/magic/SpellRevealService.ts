@@ -3,36 +3,29 @@ import Registry from "../../Registry";
 import { PlayerAcademicState, Requirement, SpellRevealOpportunity, SchoolData } from "../quest/Curriculum";
 
 export class SpellRevealService {
-	updateSpellAvailability(
+	/** Hidden spells whose reveal condition is now met. Does not change state. */
+	findRevealableSpells(
 		registry: Registry,
 		spellbook: SpellBook,
-		academicState: PlayerAcademicState,
-		currentTime?: number
+		academicState: PlayerAcademicState
 	): string[] {
-		const revealed: string[] = [];
-		const allSpells = spellbook.getAllSpells();
+		const revealable: string[] = [];
 
-		for (const spellState of allSpells) {
-			if (spellState.knowledgeState === "hidden") {
-				const spell = registry.getSpell(spellState.spellId);
-				if (spell && spell.definition.revealCondition) {
-					const meetsCondition = this.checkRevealCondition(
-						spell.definition.revealCondition,
-						academicState
-					);
-
-					if (meetsCondition) {
-						spellbook.updateSpellState(spellState.spellId, {
-							knowledgeState: "available",
-							becameAvailableAt: currentTime
-						});
-						revealed.push(spellState.spellId);
-					}
-				}
+		for (const spellState of spellbook.getAllSpells()) {
+			if (spellState.knowledgeState !== "hidden") continue;
+			const spell = registry.getSpell(spellState.spellId);
+			if (
+				spell?.definition.revealCondition &&
+				this.checkRevealCondition(
+					spell.definition.revealCondition,
+					academicState
+				)
+			) {
+				revealable.push(spellState.spellId);
 			}
 		}
 
-		return revealed;
+		return revealable;
 	}
 
 	private checkRevealCondition(
@@ -76,11 +69,14 @@ export class SpellRevealService {
 		return true;
 	}
 
+	/**
+	 * Rolls whether a lesson reveals a spell. Does not change state: the caller
+	 * applies a `SpellRevealed` effect on success.
+	 */
 	attemptSpellReveal(
 		opportunity: SpellRevealOpportunity,
 		academicState: PlayerAcademicState,
-		spellbook: SpellBook,
-		currentTime?: number
+		spellbook: SpellBook
 	): { success: boolean; reason?: string } {
 		const meetsRequirements = this.checkRequirements(
 			opportunity.requirements,
@@ -92,19 +88,8 @@ export class SpellRevealService {
 			return { success: false, reason: "Requirements not met" };
 		}
 
-		const roll = Math.random();
-		if (roll <= opportunity.chance) {
-			// Only a hidden spell becomes available; a spell the player already
-			// knows of, has learned or has mastered must never be moved back.
-			if (spellbook.getSpellState(opportunity.spellId)?.knowledgeState === "hidden") {
-				spellbook.updateSpellState(opportunity.spellId, {
-					knowledgeState: "available",
-					becameAvailableAt: currentTime
-				});
-			}
-			return { success: true };
-		}
-
-		return { success: false, reason: "Failed chance roll" };
+		return Math.random() <= opportunity.chance
+			? { success: true }
+			: { success: false, reason: "Failed chance roll" };
 	}
 }

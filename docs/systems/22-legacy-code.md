@@ -21,7 +21,6 @@ Scope: files that are unused, duplicated, stubs, or misleading, found while read
 | `SpellRevealService.checkRevealCondition` | method | Stub that always returns `false`, so study never reveals spells | Hard-coded `return false` | 11 |
 | `SpellRevealService.learnSpell`, `SpellStateFactory.createLearnedSpellState` | functions | No caller in the game (only a test uses the factory) | See 11 | 11 |
 | Events never emitted: `SpellLearned`, `LessonSkipped`, `AttributeGained`, `QuestFlagSet`, `QuestActivated`, `QuestCompleted` | types | Declared, never emitted | grep of `emit(` | 07 |
-| `TurnResult.stateChanges` fields `subjectKnowledgeGains`, `attributeGains`, `spellsRevealed`, `spellsLearned`, `lessonCompleted` | fields | Written, never read | `GameEngine` reads only the two location fields | 02, 04 |
 | `GameState.resources`, `academicState.attributes`, `Player.inventory`, `Player.health` | fields | Duplicate or unused stores | See 08 and 10 | 08, 10 |
 | `GameState.knownNPCIds`, `sceneInvitations`, `settings.romanceIntensity` | fields | Never written (or never read) | See 08, 13, 14 | 08, 14 |
 | `DEFAULT_OLLAMA_CONFIG` | const | Unused duplicate of the resolver config | No importers | 18 |

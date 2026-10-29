@@ -50,7 +50,7 @@ If Ollama is unavailable or returns garbage, every LLM step has a deterministic 
 
 ## Known gaps
 
-spell reveal condition checks, spell progression still mutating the spellbook directly, no structured quest system, scene invitations lack handlers, no dueling/combat.
+spell reveal condition checks, no structured quest system, scene invitations lack handlers, no dueling/combat.
 
 ## Further reading
 

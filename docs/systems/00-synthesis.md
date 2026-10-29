@@ -10,7 +10,7 @@ The architecture's *ideas* are sound: a deterministic engine, an LLM that only p
 
 | # | Root cause | Shows up in |
 |---|---|---|
-| R1 | **The "effects are the only mutation path" rule is half applied.** Location, time, lessons, spells, the event log and output change outside effects, and `stateChanges` carries unused fields | 02, 04, 06, 11 |
+| R1 | **The "effects are the only mutation path" rule is half applied.** (Turn state changes are now all effects; see 02, 06.) Location, time, lessons, spells, the event log and output change outside effects, and `stateChanges` carries unused fields | 02, 04, 06, 11 |
 | R2 | **The social loop is not wired.** Relationship records are never created, so deltas are dropped and trust stays 0; NPCs are never "met"; presence and schedules do not exist | 06, 13, 14, 17 |
 | R3 | **Time has no calendar.** The clock stores minutes of the day and no date, so timetable, schedules, deadlines, curfew, exams and year pacing cannot exist | 12, 16, 17 |
 | R4 | **World content is tiny and not a school.** Three hard-coded locations, one year of three subjects (11 lessons), six franchise NPCs, no items, and no cross-reference validation | 09, 12, 14, 16 |

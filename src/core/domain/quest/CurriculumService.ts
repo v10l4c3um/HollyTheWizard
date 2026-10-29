@@ -61,23 +61,6 @@ export class CurriculumService {
 		}
 	}
 
-	advanceLesson(
-		subjectType: SubjectType,
-		academicState: PlayerAcademicState,
-		lessonId: string,
-		attended: boolean
-	): void {
-		const subject = academicState.subjects[subjectType];
-		if (subject) {
-			if (attended) {
-				subject.attendedLessons.push(lessonId);
-			} else {
-				subject.skippedLessons.push(lessonId);
-			}
-			subject.currentLessonOrder += 1;
-		}
-	}
-
 	getLessonSpellOpportunities(
 		lesson: LessonDefinition
 	): SpellRevealOpportunity[] {
