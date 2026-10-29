@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 
 // ────────────────────────────────────────────────────────────
-//  Known commands for suggestion / validation
+//  Known commands, used only for hints. Input is never blocked here:
+//  free text is parsed by the engine's resolver.
 // ────────────────────────────────────────────────────────────
 const COMMAND_CATALOG: {
     cmd: string;
@@ -14,6 +15,8 @@ const COMMAND_CATALOG: {
         { cmd: "study", args: "[subject]", hint: "Study a subject or your spellbook" },
         { cmd: "practice", args: "<spell>", hint: "Practice a spell" },
         { cmd: "cast", args: "<spell>", hint: "Alias for practice" },
+        { cmd: "attend", args: "[subject]", hint: "Attend the class that is on now" },
+        { cmd: "advance", hint: "Advance to the next school year" },
         { cmd: "rest", hint: "Rest and restore energy" },
         { cmd: "talk", args: "<npc>", hint: "Speak with an NPC" },
         { cmd: "inspect", args: "[subject]", hint: "View inventory or spellbook" },
@@ -23,20 +26,6 @@ const COMMAND_CATALOG: {
         { cmd: "help", hint: "Show command list" },
         { cmd: "quit", hint: "Exit the game" },
     ];
-
-function parseError(raw: string): string | null {
-    const trimmed = raw.trim();
-    if (!trimmed) return null;
-    const word = trimmed.split(/\s+/)[0]?.toLowerCase() ?? "";
-    const known = COMMAND_CATALOG.map((c) => c.cmd);
-    if (!known.includes(word)) {
-        // Suggest nearest
-        const close = known.filter((k) => k.startsWith(word[0] ?? ""));
-        const suggestion = close.length > 0 ? `  Did you mean: ${close.slice(0, 3).join(", ")}?` : "";
-        return `Unknown command "${word}".${suggestion}`;
-    }
-    return null;
-}
 
 // ────────────────────────────────────────────────────────────
 //  Component
@@ -50,7 +39,7 @@ interface CommandInputProps {
 export const CommandInput: React.FC<CommandInputProps> = ({
     onSubmit,
     disabled = false,
-    placeholder = "Enter command…",
+    placeholder = "Say what you want to do…",
 }) => {
     const [value, setValue] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -80,7 +69,7 @@ export const CommandInput: React.FC<CommandInputProps> = ({
                 setError(null);
             } else {
                 setHint(null);
-                setError(`Unknown command "${word}"`);
+                setError(null);
             }
         }
     }, [value]);
@@ -89,11 +78,6 @@ export const CommandInput: React.FC<CommandInputProps> = ({
         if (disabled) return;
 
         if (key.return) {
-            const err = parseError(value);
-            if (err) {
-                setError(err);
-                return;
-            }
             if (value.trim()) {
                 historyRef.current.unshift(value.trim());
                 histIdxRef.current = -1;

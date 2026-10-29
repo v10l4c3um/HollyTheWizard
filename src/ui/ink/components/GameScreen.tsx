@@ -88,7 +88,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({
                 <CommandInput
                     onSubmit={handleCommand}
                     disabled={busy}
-                    placeholder="move · study · practice · rest · talk · inspect · spellbook · help"
+                    placeholder="e.g. go to the classroom · attend class · talk to Hagrid · save mygame"
                 />
             </Box>
 

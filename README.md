@@ -36,6 +36,8 @@ src/
 docs/          architecture and content-authoring docs
 ```
 
+Want a guided first session? See [docs/PLAYTHROUGH.md](docs/PLAYTHROUGH.md).
+
 ## How it works
 
 Each turn: player text → LLM resolver (structured command) → deterministic `TurnResolver` → effects applied via `applyEffects` → events emitted → LLM renderer (prose). See [docs/OVERVIEW.md](docs/OVERVIEW.md) for the high-level picture and [docs/current-pipeline-overview.md](docs/current-pipeline-overview.md) for details.
