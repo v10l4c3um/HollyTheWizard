@@ -8,7 +8,7 @@ The whole player-facing experience: a title and menu, a loading screen showing s
 
 ## How it works
 
-- **`InkApp`** is a four-phase machine: `menu`, `loading`, `game`, `startup-error`. It receives `engineFactory` and `locationNameResolver` as props. Choosing New Game, Continue or Load runs `engineFactory(onProgress)`, updates six loading milestones, and, for Continue and Load, sends the text `load autosave` through the engine (see 19). A startup error is shown and the app exits after 1.8 s.
+- **`InkApp`** is a four-phase machine: `menu`, `loading`, `game`, `startup-error`. It receives `engineFactory` and `locationNameResolver` as props. Choosing New Game, Continue or Load runs `engineFactory(onProgress)`, updates six loading milestones, and, for Continue and Load, sends the text `load autosave` through the engine (see 19) and shows the reason if the save is refused. A startup error is shown and the app exits after 1.8 s.
 - **`GameScreen`** holds `state`, a list of output lines and a `busy` flag. On submit it handles `quit` and `spellbook` locally, otherwise awaits `engine.handleCommand(cmd)`, appends `▶ cmd` plus the outcome's `narration` lines (marked `✗` when `outcome.error` is set) to the log, and re-renders.
 - **`CommandInput`** is a hand-written line editor: blinking cursor, history on up/down, a catalog of 13 known commands with live hints, and an error for an unknown first word.
 - **`Hud`** shows clock, location, health/mana/energy bars, player name, archetype and year. **`SpellbookWidget`** lists non-hidden spells with state colours. **`OutputPanel`** shows the last 14 lines in a bordered box.

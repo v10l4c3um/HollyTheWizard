@@ -139,12 +139,16 @@ export const InkApp: React.FC<InkAppProps> = ({
 
         try {
             const eng = await engineFactory(updateLoadingMilestone);
+            const welcome = "Welcome, wizard. The world awaits.";
+            let firstOutput = eng.state.output || welcome;
             if (choice === "continue" || choice === "load") {
-                try {
-                    await eng.handleCommand("load autosave");
-                } catch { /* ignore, fall through to fresh state */ }
+                const outcome = await eng.handleCommand("load autosave");
+                // A save that cannot be used is reported, never hidden.
+                if (outcome.error) {
+                    firstOutput = `✗ ${outcome.narration}\nStarting a new game instead.\n${welcome}`;
+                }
             }
-            setInitialOutput(eng.state.output || "Welcome, wizard. The world awaits.");
+            setInitialOutput(firstOutput);
             setEngine(eng);
             setPhase("game");
         } catch (error) {

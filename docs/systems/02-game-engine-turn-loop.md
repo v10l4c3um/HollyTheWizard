@@ -4,7 +4,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 
 ## What it does
 
-`GameEngine` is the façade the UI talks to. It owns the live `GameState` (through a small `GameSession` holder, since `LOAD` replaces the state) and runs the common turn pipeline. What each command does lives in a command-handler map, not in the engine. It exposes two operations:
+`GameEngine` is the façade the UI talks to. It owns the live `GameState` through a `GameSession`: only `session.replace` can swap it (`LOAD`), and `engine.state` is a getter, so callers read it fresh or use `TurnOutcome.state` and runs the common turn pipeline. What each command does lives in a command-handler map, not in the engine. It exposes two operations:
 
 - `initializeCampaignBlueprint(seed, onProgress)` runs at new-game startup: generate the campaign blueprint, then the year-1 blueprint, reporting progress through two milestones. The engine receives all collaborators through `GameEngineDeps`; `createEngine` in `engineFactory` builds them and `engineFactory` probes Ollama before calling this.
 - `handleCommand(input): Promise<TurnOutcome>` processes one player turn and returns `{ state, narration, error? }`. `error.kind` is `invalid-input`, `persistence` or `internal`; `narration` is always safe to show the player.
@@ -21,7 +21,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 3. The handlers (`createCommandHandlers`, built in `createEngine`):
    - `MOVE TALK STUDY ATTEND_CLASS PRACTICE INTERACT REST` share one turn handler: `turnResolver.apply(command, state, registry)` returns a `TurnResult` (`briefOutput`, `events`, `timeCost`, `effects`, `timePassed` when the clock moved). `apply` itself changes the state: the resolver's own effects, then the turn bookkeeping (`EventsRecorded`, `TimeAdvanced`), all through `applyEffects`.
    - `ADVANCE_YEAR` runs the `AdvanceYear` use case and narrates the result (the use case records its own event).
-   - `SAVE` persists the state and emits `GameSaved`; `LOAD` replaces the session's state, re-shows the exits of the current place and emits `GameLoaded`. Persistence errors are `fail` results, and a failed load leaves the current state untouched.
+   - `SAVE` persists the state and emits `GameSaved`. `LOAD` loads the save on the side, checks it (strict format, then places, spells, characters and story blueprints against the registry) and only then calls `GameSession.replace`, so a refused load changes nothing; it then emits `GameLoaded`. Persistence and invalid-save errors are `fail` results with a precise message.
    - `UNKNOWN` fails as `invalid-input`, spending no time.
 4. **World tick.** If the clock moved (and the state was not replaced by a `LOAD`), `WorldTick.run(from, to)` walks every period/day boundary crossed, so a long rest is handled boundary by boundary. The rules emit `PeriodChanged` / `DayStarted`, flag missed classes (`LessonSkipped` plus a notice, no penalty yet) and expire scene invitations; their effects go through `applyEffects`. The notices reach the narrator as `worldNotes` (and the plain fallback text).
 5. The engine then finishes the turn the same way for every command: `fail` becomes a typed `TurnOutcome` error (nothing narrated, no tick, no milestone check); `say` stores the text; `narrate` renders it from a `RenderContext` built by `buildRenderContext`. It writes no game state itself.
@@ -36,6 +36,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 - **Startup progress callback.** The loading screen is driven by `onProgress`, which keeps UI concerns out of the engine.
 - **Commands are data, not branches.** A typed handler map plus one common pipeline: adding a command means adding a handler, and the engine has no per-command code.
 - **A world tick that handles long rests.** Rules run per boundary crossed, from the boundary's own day and period, and change state only through effects. Adding behaviour that depends on time is a new rule, not an engine change.
+- **Atomic, validated load.** A save is loaded, validated and only then swapped in; a refused load leaves the running game as it was.
 - **One mutation path.** Turn state changes are effects applied by `applyEffects`; the engine only resolves, renders and reports.
 - **Fail-soft, typed turns.** A bad turn never crashes the app, and the caller can tell a bad command from a broken system from the `TurnOutcome` error kind. Causes go to a log file, not the terminal.
 - **Time handling is centralised.** One `TimeCost` union (`none` / `minutes`) and one place that advances the clock and emits `TimeAdvanced`.
@@ -43,9 +44,8 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 
 ## Weaknesses
 
-1. **`LOAD` swaps `this.state` wholesale.** Any holder of the old state reference goes stale. The bus listeners read `engine.state` lazily so they survive, but this is fragile. Startup-only work (spell initialisation, blueprint generation) is not re-validated on load, and `GameLoaded` is emitted but the progress and bus bookkeeping isn't reset.
-2. **LLM latency is on every in-world turn's critical path.** Partly fixed: `save` and `load` are parsed by `FastPath` and skip the resolver model. Every other command still makes two serial resolver calls plus one renderer call.
-3. **State is mutated in place and returned.** `TurnOutcome.state` is the same mutable `GameState` every turn, so the UI cannot detect changes by reference and there is no undo or turn snapshot.
+1. **LLM latency is on every in-world turn's critical path.** Partly fixed: `save` and `load` are parsed by `FastPath` and skip the resolver model. Every other command still makes two serial resolver calls plus one renderer call.
+2. **State is mutated in place and returned.** `TurnOutcome.state` is the same mutable `GameState` every turn, so the UI cannot detect changes by reference and there is no undo or turn snapshot.
 
 ## Rework ideas
 

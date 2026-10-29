@@ -21,7 +21,7 @@ One class with public fields, grouped as:
 | Campaign | `currentYear`, `campaignBlueprint`, `yearBlueprints`, `yearProgress` |
 | Unused | `resources` (a generic numeric map) |
 
-The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state from parsed JSON: it copies most fields as-is and re-creates only `worldClock` and `spellbook` via `fromJSON`. Saving is `JSON.stringify(state)`.
+The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state from a save file that `SaveSchema` has already validated, so it applies no defaults; it re-creates `player`, relationships, `worldClock` and `spellbook` through their own `fromJSON`. Saving is `JSON.stringify(state)`; `metadata.saveVersion` is `SAVE_FORMAT_VERSION` and is enforced on load (see 19).
 
 ## Strengths
 
@@ -40,7 +40,7 @@ The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state fr
    - Inventory lives in `state.inventory.items` (used by effects and `INTERACT`) and `player.inventory`.
    - `state.resources` (generic map, "mutated via `ResourceDelta`") is not touched by the applier, which uses `player.resources`; `player.health` is a third place for health.
    - Which copy is authoritative is unclear, and two of the copies are dead.
-3. **No schema, no validation, no versioning.** `saveVersion` is "0.0.1" and never checked. `fromPlainObject(data: any)` trusts the file: a missing field (`data.questFlags`, `settings`, `yearProgress`, `knownNPCIds`, `recentEvents`) becomes `undefined` and fails later. There are no migrations.
+3. ~~**No schema, no validation, no versioning.**~~ **Fixed:** the format is versioned and Zod-validated, every part is required, and a save is also checked against the content on load (see 19). There are no migrations by decision.
 4. **Transient and derived data are saved.** `output` (last narration) is persisted, `recentEvents` grows without bound (only `.slice(-N)` on read), and a loaded save includes the blueprint object graph, which the class itself says nothing about validating.
 5. **Fields that nothing writes.** `knownNPCIds` is never populated, so "nearby NPCs" in the narration prompt is always empty (see 05). `resources`, `sceneInvitations` (no consumer), and `settings.romanceIntensity` are similar dead weight. Schedules and NPC presence have no state at all.
 6. **Hard-coded content in the model.** The 27 subject ids and starting attribute values are written into the `GameState` constructor, and the start location `"startingVillage"` is a string literal. Content that belongs in data is baked into code, and the subject list duplicates `SubjectType`.

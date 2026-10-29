@@ -20,7 +20,7 @@ Provides the "where" and "when" of the game: a graph of locations the player mov
 - **Time cost as data** returned by rules, applied centrally by the engine.
 - **`timeOfDay` is available to narration and the HUD,** which gives the player a sense of passing time ("Time passed: 60 minutes, morning to afternoon" is passed to the narrator).
 - **Movement is validated against a connection graph,** with distinct failure messages and a small time penalty for a bad move.
-- **Clock normalises its input** (`setMinutesOfDay` handles negatives and overflow).
+- **Clock normalises its input** (`setMinutesOfDay` handles negatives and overflow). `WorldClock.fromJSON` reads only `{ totalMinutes }`; saves from before the calendar are refused (see 19).
 - **Exploration is tracked in two lists:** `discoveredLocationIds` (found out about; you can only travel to these, and only if connected) and `visitedLocationIds` (been there). Standing in a place shows its exits, so arriving discovers them (`LocationsDiscovered`); `LocationDiscovered` / `LocationVisited` are emitted. Hidden places that something else must reveal are not authored yet.
 
 ## Weaknesses
