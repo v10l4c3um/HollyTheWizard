@@ -17,7 +17,7 @@ The architecture's *ideas* are sound: a deterministic engine, an LLM that only p
 | R5 | **Several systems are generated or modelled but never consumed.** Campaign blueprint, resource stats, attributes, spell balance data, `sensitivity`/`cooldown`, six events, timetable | 07, 10, 11, 15 |
 | R6 | **Free text is untrusted and ungrounded.** The resolver gets no world context and its raw strings are used as ids; topics are free text; the UI additionally gates the first word | 03, 13, 20 |
 | R7 | **The LLM is a hard dependency despite the fallback principle.** Startup, loading and every turn call it; the fallback narration discards the facts; timeouts are disabled by default | 02, 05, 15, 18, 19 |
-| R8 | **Wiring and state shape are brittle.** Object graph built inside the engine, rule-level listeners in the factory, class instances that do not survive save/load, duplicate stores for the same data | 01, 08, 10, 19 |
+| R8 | **Wiring and state shape are brittle.** Object graph built inside the engine, class instances that do not survive save/load, duplicate stores for the same data | 01, 08, 10, 19 |
 | R9 | **No safety net.** The rule layer has no tests, nothing is seeded, and the suite can overwrite a real autosave | 21 |
 
 ## Ranked issues
