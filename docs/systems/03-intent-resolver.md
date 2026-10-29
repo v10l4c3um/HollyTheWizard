@@ -30,6 +30,8 @@ Live accuracy on the local qwen3-4b model (`npm run eval:resolver`, 71 phrases c
 - **One definition per command.** The type, schemas, prompt list, grounding and hints all derive from `CommandDefinitions.ts`.
 - **Deterministic first.** Save, load, undo, repeat and go-back never reach the model, so they are instant, work offline and cannot be misread.
 - **The model proposes, the code decides.** Every reply is schema-constrained, then cleaned, grounded against the game's own content and validated before it becomes a command.
+- **Both ways of speaking are valid,** like telling a tabletop GM what you do: a terse command ("go library", "study charms") or a plain sentence ("Harry goes to the library in the main building"). Every action takes either; there is no mode where free text works for conversation only. The fast path and follow-ups are the terse side, the model call is the sentence side, and both end in the same `Command`.
+- **Unknown input costs nothing.** A sentence the game cannot read is answered with a question and no game time passes, by design.
 - **Never throws to the caller.** The engine always receives a command; failure is `UNKNOWN`, which costs no time.
 - **Measured.** A live eval set guards prompt and grounding changes, and the whole path is covered offline with a mocked model.
 
@@ -49,6 +51,4 @@ Live accuracy on the local qwen3-4b model (`npm run eval:resolver`, 71 phrases c
 ## Open questions
 
 - Would a dedicated LLM entity-resolution step over *all* candidates (see Rework ideas) beat the matcher plus aliases? Measure with `npm run eval:resolver` on phrases the matcher misses (paraphrases, descriptions) before building it.
-- Do we want a free-text parser at all for every action, or a hybrid: a command palette and context menus plus natural language for conversation only?
-- Should unknown input cost game time? (Proposal: never.)
 - How strong a local model are we willing to require? That decides how much deterministic scaffolding is needed around the parse.
