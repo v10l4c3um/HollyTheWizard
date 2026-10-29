@@ -22,9 +22,9 @@ export const IntentResponseSchema = z.object({
 
 export type IntentResponse = z.infer<typeof IntentResponseSchema>;
 
-/** Zod schema for "which of these characters does the player mean?". */
-export const NpcPickResponseSchema = z.object({
-	npcId: z.string(),
+/** Zod schema for "which of these options does the player mean?". */
+export const PickResponseSchema = z.object({
+	id: z.string(),
 });
 
 /** Zod schemas for the argument-extraction response, keyed by intent.

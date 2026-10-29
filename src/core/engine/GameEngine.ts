@@ -7,6 +7,7 @@ import Resolver from "./Resolver";
 import Renderer from "./Renderer";
 import { WorldTick, TickReport } from "./WorldTick";
 import { Autosave } from "./Autosave";
+import { buildWorldView } from "./WorldView";
 import { buildRenderContext } from "./RenderContext";
 import { Command } from "./Command";
 import { GameSession } from "./GameSession";
@@ -97,7 +98,10 @@ class GameEngine implements IGameEngine {
 	async handleCommand(input: string): Promise<TurnOutcome> {
 		let command: Command;
 		try {
-			command = await this.resolver.resolve(input);
+			command = await this.resolver.resolve(
+				input,
+				buildWorldView(this.registry, this.state),
+			);
 		} catch (error) {
 			return this._fail("internal", "Something went wrong.", error);
 		}

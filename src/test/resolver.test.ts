@@ -256,7 +256,7 @@ describe("Resolver", () => {
 		it("asks the model to choose among the matching candidates only", async () => {
 			mockOllamaResponses(
 				...talk("Weasley"),
-				JSON.stringify({ npcId: "percy_weasley" }),
+				JSON.stringify({ id: "percy_weasley" }),
 			);
 			const command = await new Resolver(TEST_CONFIG, registry).resolve(
 				"talk to the prefect Weasley",
@@ -273,7 +273,7 @@ describe("Resolver", () => {
 		it("offers everyone when nothing matches by name, so a description can work", async () => {
 			mockOllamaResponses(
 				...talk("the gamekeeper"),
-				JSON.stringify({ npcId: "hagrid" }),
+				JSON.stringify({ id: "hagrid" }),
 			);
 			const command = await new Resolver(TEST_CONFIG, registry).resolve(
 				"talk to the gamekeeper",
@@ -286,7 +286,7 @@ describe("Resolver", () => {
 		});
 
 		it("keeps the player's text when the model answers none", async () => {
-			mockOllamaResponses(...talk("Gandalf"), JSON.stringify({ npcId: "none" }));
+			mockOllamaResponses(...talk("Gandalf"), JSON.stringify({ id: "none" }));
 			const command = await new Resolver(TEST_CONFIG, registry).resolve(
 				"talk to Gandalf",
 			);
@@ -297,7 +297,7 @@ describe("Resolver", () => {
 		it("keeps the player's text when the model picks someone it was not offered", async () => {
 			mockOllamaResponses(
 				...talk("Weasley"),
-				JSON.stringify({ npcId: "hagrid" }),
+				JSON.stringify({ id: "hagrid" }),
 			);
 			const command = await new Resolver(TEST_CONFIG, registry).resolve(
 				"talk to Weasley",
@@ -338,7 +338,7 @@ describe("Resolver", () => {
 			);
 			mockOllamaResponses(
 				...talk("Weasley"),
-				JSON.stringify({ npcId: "percy_weasley" }),
+				JSON.stringify({ id: "percy_weasley" }),
 			);
 			await new Resolver(TEST_CONFIG, registry).resolve("talk to Weasley");
 

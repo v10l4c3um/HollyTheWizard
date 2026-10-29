@@ -1,0 +1,226 @@
+import Resolver from "../core/engine/Resolver";
+import Registry from "../core/Registry";
+import GameState from "../core/domain/world/GameState";
+import { applyEffects } from "../core/domain/effects/EffectApplier";
+import { arrivalEffects } from "../core/domain/world/Exploration";
+import { createGameBus } from "../core/domain/events/GameEvents";
+import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
+import { buildRegistry } from "../bootstrap/engineFactory";
+import { buildWorldView, WorldView } from "../core/engine/WorldView";
+import { OllamaConfig } from "../ai/OllamaConfig";
+import { moveToNpc } from "./helpers/placePlayer";
+import { validState } from "./helpers/validState";
+
+const TEST_CONFIG: OllamaConfig = {
+	endpoint: "http://localhost:11434/api/generate",
+	model: "test-model",
+};
+
+let registry: Registry;
+const originalFetch = global.fetch;
+const spies: jest.SpyInstance[] = [];
+
+beforeAll(() => {
+	for (const m of ["log", "debug", "warn", "error"] as const) {
+		spies.push(jest.spyOn(console, m).mockImplementation());
+	}
+	registry = buildRegistry();
+});
+afterAll(() => spies.forEach((s) => s.mockRestore()));
+beforeEach(() => {
+	global.fetch = jest.fn() as unknown as typeof fetch;
+});
+afterEach(() => {
+	global.fetch = originalFetch;
+});
+
+/** Each call to the model returns the next of these JSON replies. */
+function model(...replies: object[]) {
+	let call = 0;
+	(global.fetch as jest.Mock).mockImplementation(() =>
+		Promise.resolve({
+			ok: true,
+			json: async () => ({ response: JSON.stringify(replies[call++] ?? {}) }),
+		}),
+	);
+}
+const calls = () => (global.fetch as jest.Mock).mock.calls;
+const bodyOf = (i: number) => JSON.parse(calls()[i][1].body);
+
+function viewAt(locationId: string, tweak?: (s: GameState) => void): WorldView {
+	const state = validState(registry);
+	applyEffects(state, arrivalEffects(registry, state, locationId), createGameBus());
+	tweak?.(state);
+	return buildWorldView(registry, state);
+}
+
+const resolve = (input: string, view: WorldView) =>
+	new Resolver(TEST_CONFIG, registry).resolve(input, view);
+
+describe("places", () => {
+	const view = () => viewAt("hallway");
+
+	it.each([
+		["a name inside a sentence", "library in main building"],
+		["the display name with an article", "the Library"],
+		["the id", "library"],
+		["different case", "LIBRARY"],
+	])("grounds %s without another model call", async (_label, target) => {
+		model({ intent: "MOVE" }, { target });
+		const command = await resolve("go to the library", view());
+		expect(command).toEqual({ type: "MOVE", destinationId: "library" });
+		expect(calls()).toHaveLength(2);
+	});
+
+	it("maps a display name to its id", async () => {
+		model({ intent: "MOVE" }, { target: "Main Corridor" });
+		expect(await resolve("go to the main corridor", viewAt("great_hall"))).toEqual({
+			type: "MOVE",
+			destinationId: "hallway",
+		});
+	});
+
+	it("asks the model to choose when a typo is not a clear match, and accepts an offered id", async () => {
+		model({ intent: "MOVE" }, { target: "libary" }, { id: "library" });
+		expect(await resolve("go to the libary", view())).toEqual({
+			type: "MOVE",
+			destinationId: "library",
+		});
+		expect(calls()).toHaveLength(3);
+		expect(bodyOf(2).prompt).toContain("library: Library");
+	});
+
+	it("still grounds a place that is not reachable from here, so the rules can refuse it properly", async () => {
+		model({ intent: "MOVE" }, { target: "greenhouse" });
+		expect(await resolve("go to the greenhouse", view())).toEqual({
+			type: "MOVE",
+			destinationId: "greenhouse",
+		});
+	});
+
+	it("keeps the player's words when nothing fits and the model says none", async () => {
+		model({ intent: "MOVE" }, { target: "Narnia" }, { id: "none" });
+		expect(await resolve("go to Narnia", view())).toEqual({
+			type: "MOVE",
+			destinationId: "Narnia",
+		});
+	});
+
+	it("does not trust an id the model invents", async () => {
+		model({ intent: "MOVE" }, { target: "Narnia" }, { id: "wardrobe" });
+		expect(await resolve("go to Narnia", view())).toMatchObject({
+			destinationId: "Narnia",
+		});
+	});
+});
+
+describe("people, subjects, spells", () => {
+	it("grounds a person by first name, preferring who is here", async () => {
+		model({ intent: "TALK" }, { target: "Rubeus" });
+		const view = viewAt("great_hall", (s) => moveToNpc(s, registry, "hagrid"));
+		expect(await resolve("have a word with Rubeus", view)).toMatchObject({
+			type: "TALK",
+			npcId: "hagrid",
+		});
+	});
+
+	it("grounds a subject with a different spelling through the model's choice", async () => {
+		model({ intent: "ATTEND_CLASS" }, { target: "defence against the dark arts" }, {
+			id: "defense-against-the-dark-arts",
+		});
+		expect(
+			await resolve("sit in on the defence against the dark arts lesson", viewAt("classroom")),
+		).toMatchObject({
+			type: "ATTEND_CLASS",
+			subjectId: "defense-against-the-dark-arts",
+		});
+	});
+
+	it("grounds a study subject by name", async () => {
+		model({ intent: "STUDY" }, { target: "potions", duration: 2 });
+		expect(await resolve("study potions for two hours", viewAt("great_hall"))).toEqual({
+			type: "STUDY",
+			subjectId: "potions",
+			duration: 2,
+		});
+	});
+
+	it("grounds a spell by its name, learned or not", async () => {
+		model({ intent: "PRACTICE" }, { target: "wingardium leviosa" });
+		expect(await resolve("practise wingardium leviosa", viewAt("great_hall"))).toMatchObject({
+			type: "PRACTICE",
+			spellId: "levitate",
+		});
+
+		model({ intent: "PRACTICE" }, { target: "Wingardium Leviosa" });
+		const learned = viewAt("great_hall", (s) =>
+			s.spellbook.setSpellState("levitate", createLearnedSpellState("levitate", "t")),
+		);
+		expect(await resolve("practice it", learned)).toMatchObject({ spellId: "levitate" });
+	});
+});
+
+describe("what the model is told", () => {
+	it("gets a JSON schema, not free-form JSON, so it cannot invent keys", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		await resolve("go to the library", viewAt("hallway"));
+		expect(bodyOf(0).format).toMatchObject({ type: "object" });
+		expect(bodyOf(0).format.properties.intent).toBeDefined();
+		expect(bodyOf(1).format.properties.target).toBeDefined();
+	});
+
+	it("names the player so third-person sentences are read as the player acting", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		const view = { ...viewAt("hallway"), playerName: "Harry" };
+		await resolve("Harry goes to the library in main building", view);
+		for (const i of [0, 1]) {
+			expect(bodyOf(i).prompt).toContain('"Harry goes to the library"');
+		}
+	});
+
+	it("tells the classifier that going to a place is a move, whatever the place is called", async () => {
+		model({ intent: "MOVE" }, { target: "classroom" });
+		await resolve("enter the classroom", viewAt("hallway"));
+		const prompt = bodyOf(0).prompt;
+		expect(prompt).toContain("Classroom");
+		expect(prompt).toContain("Hagrid's hut".replace("Hagrid's hut", "Gamekeeper's Hut"));
+		expect(prompt).toContain("is MOVE");
+		expect(prompt).toContain("ATTEND_CLASS is only for attending the lesson itself");
+	});
+
+	it("shows the places that can be reached from here, as ids with names", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		await resolve("go to the library", viewAt("great_hall"));
+		const prompt = bodyOf(1).prompt;
+		expect(prompt).toContain("Great Hall");
+		expect(prompt).toContain("hallway = Main Corridor");
+		expect(prompt).toContain('shape: {"target"');
+	});
+
+	it("shows only the list that matters for the intent", async () => {
+		model({ intent: "TALK" }, { target: "hagrid" });
+		await resolve("talk to hagrid", viewAt("great_hall", (s) => moveToNpc(s, registry, "hagrid")));
+		const prompt = bodyOf(1).prompt;
+		expect(prompt).toContain("People here right now");
+		expect(prompt).toContain("hagrid = Rubeus Hagrid");
+		expect(prompt).not.toContain("Places they can reach");
+	});
+});
+
+describe("hours", () => {
+	it.each([[1e15], [0], [-3], [99]])("drops an absurd duration of %p", async (duration) => {
+		model({ intent: "REST" }, { duration });
+		expect(await resolve("rest", viewAt("great_hall"))).toEqual({
+			type: "REST",
+			duration: 1,
+			locationId: undefined,
+		});
+	});
+
+	it("keeps a sensible duration", async () => {
+		model({ intent: "REST" }, { duration: 3 });
+		expect(await resolve("rest three hours", viewAt("great_hall"))).toMatchObject({
+			duration: 3,
+		});
+	});
+});
