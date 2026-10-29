@@ -13,7 +13,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 
 `handleCommand`:
 
-1. `resolver.resolve(input)` returns a typed command (the fast path handles `save`, `load` and `undo`). If the model fails or answers nonsense it is `UNKNOWN`. Nothing touches the game state yet.
+1. `resolver.resolve(input, worldView)` returns a typed command (the fast path handles `save`, `load` and `undo`; everything else is grounded in a `WorldView` built from the committed state, see 03). If the model fails or answers nonsense it is `UNKNOWN`. Nothing touches the game state yet.
    - **The turn is a transaction.** `GameSession.begin()` clones the committed state and the clone is the live state for the turn; handlers, the tick and the bus listeners all read it fresh, so they write into the clone. Success ends in `commit()`; any `fail` result or thrown error ends in `rollback()`, and the untouched state is live again.
 2. `runCommand` looks up the handler for `command.type` in the `CommandHandlerMap` and runs it with the `GameSession`. The map is typed so the compiler requires an entry for every command type. A handler returns one of:
    - `narrate { briefOutput, timePassed? }`: the engine renders it with the LLM narrator.

@@ -23,6 +23,8 @@ You begin in the **Great Hall** on **Monday morning** (day 1). Charms is taught 
 
 ## Useful things to try
 
+- Write naturally: `Harry goes to the library in the main building`, `have a word with Rubeus`, `sit in on the charms lesson`, `practise wingardium leviosa`. The game matches what you wrote against the places, people, subjects and spells that exist, so names, nicknames and small typos are fine. Where the model can't tell, a refusal lists where you can go.
+- `npm run eval:resolver` measures how well your local model understands a set of such phrases.
 - `undo` takes back your last action (up to 20 turns, and not across a `load`). Time, place, spells and relationships all go back.
 - `spellbook` (or press Tab) toggles the spellbook panel.
 - `study` a subject between classes.
