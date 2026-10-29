@@ -30,6 +30,15 @@ export class JsonPersistenceRepository implements PersistenceRepository {
 		return GameState.fromPlainObject(data);
 	}
 
+	async exists(filename: string): Promise<boolean> {
+		try {
+			await fs.access(this._resolveFilePath(filename));
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	private _resolveFilePath(filename: string): string {
 		// Reject path separators/traversal so the filename can't escape
 		// the saves directory (OWASP path traversal).

@@ -33,6 +33,7 @@ function fakeRepository(): PersistenceRepository & {
 			if (!saved[name]) throw new Error(`no save ${name}`);
 			return saved[name];
 		},
+		exists: async (name) => name in saved,
 	};
 }
 
@@ -100,6 +101,34 @@ describe("meta handlers", () => {
 		expect(result).toEqual({ kind: "say", text: "Loaded game from 'old'." });
 		expect(session.state).toBe(stored);
 		expect(stored.discoveredLocationIds).toContain("hallway");
+	});
+
+	it("a bare load takes the quick save, else the autosave, else fails naming the quick save", async () => {
+		const { handlers, repo } = buildHandlers();
+		const bare = {
+			type: "LOAD" as const,
+			filename: "quicksave",
+			fallbackFilename: "autosave",
+		};
+		const session = (): GameSession => ({ state: new GameState() });
+
+		const none = await handlers.LOAD(bare, session());
+		expect(none).toMatchObject({
+			kind: "fail",
+			error: { message: "Couldn't load 'quicksave'." },
+		});
+
+		repo.saved["autosave"] = new GameState();
+		expect(await handlers.LOAD(bare, session())).toEqual({
+			kind: "say",
+			text: "Loaded game from 'autosave'.",
+		});
+
+		repo.saved["quicksave"] = new GameState();
+		expect(await handlers.LOAD(bare, session())).toEqual({
+			kind: "say",
+			text: "Loaded game from 'quicksave'.",
+		});
 	});
 
 	it("LOAD of a missing save fails and leaves the session's state alone", async () => {

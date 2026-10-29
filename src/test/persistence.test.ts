@@ -126,6 +126,15 @@ describe("JsonPersistenceRepository", () => {
 		});
 	});
 
+	describe("exists()", () => {
+		it("is false before a save and true after, for the same sanitized name", async () => {
+			expect(await repository.exists("slot1")).toBe(false);
+			await repository.save("slot1", new GameState());
+			expect(await repository.exists("slot1")).toBe(true);
+			expect(await repository.exists("other")).toBe(false);
+		});
+	});
+
 	describe("load()", () => {
 		it("loads a GameState from a file", async () => {
 			const testFilename = `test-save-${Date.now()}`;

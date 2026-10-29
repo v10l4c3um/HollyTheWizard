@@ -93,6 +93,7 @@ describe("the world tick in the turn pipeline", () => {
 			load: async () => {
 				throw new Error("unused");
 			},
+			exists: async () => false,
 		};
 		(game.engine as any).autosave = new (
 			await import("../core/engine/Autosave")

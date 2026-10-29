@@ -56,15 +56,26 @@ export function createMetaHandlers({
 		},
 
 		LOAD: async (command, session) => {
+			// A bare "load" asks for the quick save, else the autosave. If
+			// neither exists the failure names what was asked for.
+			let slot = command.filename;
+			if (
+				command.fallbackFilename &&
+				!(await persistenceRepository.exists(slot)) &&
+				(await persistenceRepository.exists(command.fallbackFilename))
+			) {
+				slot = command.fallbackFilename;
+			}
+
 			let loaded;
 			try {
-				loaded = await persistenceRepository.load(command.filename);
+				loaded = await persistenceRepository.load(slot);
 			} catch (cause) {
 				return {
 					kind: "fail",
 					error: {
 						kind: "persistence",
-						message: `Couldn't load '${command.filename}'.`,
+						message: `Couldn't load '${slot}'.`,
 						cause,
 					},
 				};
@@ -77,10 +88,10 @@ export function createMetaHandlers({
 				arrivalEffects(registry, loaded, loaded.currentLocationId),
 				bus,
 			);
-			bus.emit("GameLoaded", { filename: command.filename });
+			bus.emit("GameLoaded", { filename: slot });
 			return {
 				kind: "say",
-				text: `Loaded game from '${command.filename}'.`,
+				text: `Loaded game from '${slot}'.`,
 			};
 		},
 	};
