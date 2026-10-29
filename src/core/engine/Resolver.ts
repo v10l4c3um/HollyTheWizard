@@ -107,7 +107,11 @@ class Resolver {
 			const args = await this._extractArguments(input, intent, world);
 			// A sentence made only of command words ("study", "talk", "use") names
 			// nothing, whatever the model made of it.
-			if (!!NOUN[intent] && !mentionsAnything(input)) args.target = undefined;
+			// Pronouns alone ("talk to him", "go there") point at the newest thing of
+			// the right kind, or at nothing: never at whatever the model finds nearby.
+			if (!!NOUN[intent] && !mentionsAnything(input)) {
+				args.target = hasPronoun(input) && world ? lastReferent(intent, world)?.id : undefined;
+			}
 
 			// "her", "there", "it": the newest real thing of the right kind, or nothing.
 			const pronoun = givenTarget(args.target);
@@ -655,7 +659,8 @@ const NO_TARGET_WORDS = new Set(
 	 use uses using open opens opening take takes taking
 	 i me my we let lets please want would like need try
 	 hour hours minute minutes while some bit little long
-	 one two three four five six seven eight nine ten eleven twelve`
+	 one two three four five six seven eight nine ten eleven twelve
+	 another more again also too just`
 		.split(/\s+/)
 		.filter(Boolean),
 );
@@ -663,7 +668,19 @@ const NO_TARGET_WORDS = new Set(
 function mentionsAnything(input: string): boolean {
 	return normalizeName(input)
 		.split(" ")
-		.some((word) => word !== "" && !/^\d+$/.test(word) && !NO_TARGET_WORDS.has(word));
+		.some(
+			(word) =>
+				word !== "" &&
+				!/^\d+$/.test(word) &&
+				!NO_TARGET_WORDS.has(word) &&
+				!PRONOUNS.has(word),
+		);
+}
+
+function hasPronoun(input: string): boolean {
+	return normalizeName(input)
+		.split(" ")
+		.some((word) => PRONOUNS.has(word));
 }
 
 /** Words that point back at something said or done earlier. */

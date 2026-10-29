@@ -82,7 +82,7 @@ describe("places", () => {
 		["the village", "startingVillage"],
 	])("grounds the nickname %p to %p without another model call", async (target, id) => {
 		model({ intent: "MOVE" }, { target });
-		expect(await resolve("go there", viewAt("grounds"))).toEqual({
+		expect(await resolve(`go to ${target}`, viewAt("grounds"))).toEqual({
 			type: "MOVE",
 			destinationId: id,
 		});
@@ -179,7 +179,7 @@ describe("people, subjects, spells", () => {
 		const learned = viewAt("great_hall", (s) =>
 			s.spellbook.setSpellState("levitate", createLearnedSpellState("levitate", "t")),
 		);
-		expect(await resolve("practice it", learned)).toMatchObject({ spellId: "levitate" });
+		expect(await resolve("practice wingardium leviosa", learned)).toMatchObject({ spellId: "levitate" });
 	});
 });
 
@@ -365,6 +365,26 @@ describe("sentences that depend on what just happened", () => {
 		model({ intent }, { target });
 		expect(await resolve(input, viewAt("great_hall", past))).toMatchObject(expected);
 		expect(calls()).toHaveLength(2);
+	});
+
+	it.each([
+		["go there", "MOVE"],
+		["ask him about it", "TALK"],
+		["talk to her", "TALK"],
+	])("without history, %p is asked for even if the model finds something nearby", async (input, intent) => {
+		model({ intent }, { target: intent === "MOVE" ? "hallway" : "hagrid" });
+		expect(await resolve(input, viewAt("great_hall"))).toMatchObject({
+			type: "UNKNOWN",
+			input,
+		});
+	});
+
+	it("with history, a sentence of only pronouns means the newest matching thing", async () => {
+		model({ intent: "TALK" }, { target: "somebody else" });
+		expect(await resolve("ask him about it", viewAt("great_hall", past))).toMatchObject({
+			type: "TALK",
+			npcId: "hermione_granger",
+		});
 	});
 
 	it("keeps an id the model already worked out from the recent turns", async () => {
