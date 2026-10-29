@@ -22,7 +22,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 ## Strengths
 
-- **Genuinely deterministic and LLM-free**, so the rules layer is unit-testable in isolation, apart from two `Math.random` calls (spell practice and lesson reveal rolls).
+- **Genuinely deterministic and LLM-free**, so the rules layer is unit-testable in isolation. Chance comes from a seeded `Random` whose state is saved, so the same state and commands always play out the same.
 - **Clear contract.** Every handler returns the same `TurnResult` shape, so the engine and renderer stay generic.
 - **Mostly effect-based.** `STUDY`, `ATTEND_CLASS` and `TALK` express their changes as `GameEffect[]` with a `reason` string, which gives an audit trail.
 - **Conversation outcomes come from rules,** with the LLM only voicing them. The context passed to the evaluator is rich (profile, history, privacy, recent events).
