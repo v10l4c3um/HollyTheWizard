@@ -34,10 +34,10 @@ The whole player-facing experience: a title and menu, a loading screen showing s
 8. **UI is coupled to domain classes.** `GameScreen` and `Hud` import `GameState`, and `SpellbookWidget` imports `SpellBook` and spell types directly, contradicting the pipeline doc's claim that the UI has no direct imports of game internals. A view-model layer (plain data for the HUD, log and panels) would isolate it.
 9. **Engine output collides with rendering.** Core code writes `console.log/debug/warn/error` (pack loading, `[TIME DEBUG]`, resolver debug, Ollama request bodies) directly to stdout, which corrupts the Ink screen. There is no logger and no log pane.
 10. **A second registry.** `locationNameResolver` lazily calls `buildRegistry()` again (re-reading all content packs and printing logs) instead of asking the engine's registry for names, and it would show stale names if the engine's content differed.
-11. **Latency handling is minimal.** During the up-to-three LLM calls per turn, the user sees only a yellow border; there is no "thinking" message, elapsed time, streaming, or cancel (see 18).
+11. **Latency handling is minimal.** While the resolver and the narrator run (usually two model calls per turn), the user sees only a yellow border; there is no "thinking" message, elapsed time, streaming, or cancel (see 18).
 12. **Quit and error paths are abrupt.** Startup errors flash for 1.8 s and exit, and "quit" in game does not offer to save.
 13. **Accessibility and portability.** Colour is the only carrier for several states (spell states, bars), emoji icons assume font support, layouts assume a wide terminal, and nothing handles resize or small windows. There is no plain/no-colour mode.
-15. **No tests** for any component (Ink offers `ink-testing-library`), including the input parser.
+14. **No tests** for any component (Ink offers `ink-testing-library`), including the input parser.
 
 ## Rework ideas
 
