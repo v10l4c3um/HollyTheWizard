@@ -13,9 +13,11 @@ export interface TurnResult {
 	 */
 	effects?: GameEffect[];
 	/** Set by `TurnResolver.apply` when the turn advanced the clock. */
-	timePassed?: {
-		minutes: number;
-		beforeTimeOfDay: string;
-		afterTimeOfDay: string;
-	};
+	timePassed?: TimePassed;
+}
+
+export interface TimePassed {
+	minutes: number;
+	beforeTimeOfDay: string;
+	afterTimeOfDay: string;
 }

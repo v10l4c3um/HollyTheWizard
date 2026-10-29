@@ -11,7 +11,7 @@ Builds a ready-to-play game: loads content into a `Registry`, creates the event 
 `engineFactory(onProgress)`:
 
 1. `buildRegistry`: creates a `Registry`; **hard-codes** three locations and one NPC (`villager`); `ContentLoader.loadAllPacks` (spells, NPCs, profiles); `SchoolDataLoader.loadSchoolData` (subjects, curriculum, timetables). Progress is reported for content packs and school data.
-2. `createGameBus()` and `new GameEngine(registry, {}, bus)`. The engine itself constructs the resolver, turn resolver, renderer, blueprint use cases, progress service and persistence repository (see 02), and a fresh `GameState`.
+2. `createGameBus()` and `createEngine(registry, bus, options)`, which builds the resolver, renderer, blueprint use cases, progress service, persistence repository, logger and the command-handler map, and injects them into `GameEngine` (see 02).
 3. Registers four `bus.on` listeners that translate events into quest flags (see 07).
 4. Sets every registered spell to `hidden` in `engine.state.spellbook`.
 5. `engine.initializeCampaignBlueprint()`: Ollama health check for each distinct model, then generate the campaign and year blueprints (see 15, 18). Any failure throws and aborts startup.
@@ -28,7 +28,7 @@ Builds a ready-to-play game: loads content into a `Registry`, creates the event 
 
 ## Weaknesses
 
-1. **It is not really the root.** `GameEngine`'s constructor creates the resolver, renderer, use cases, services, a `GameState` and a `JsonPersistenceRepository` by itself, from three Ollama config constants. The factory passes `{}` as config, so nothing about the object graph (models, persistence, RNG, clock, logger) can be chosen at the root. The engine also imports from `ai/` and `infrastructure/`, so the core depends on outer layers (see 02).
+1. ~~**It is not really the root.**~~ **Fixed:** `createEngine` builds the object graph from `EngineOptions` (Ollama configs, persistence, logger, fallback flag) and `GameEngine` only receives it; the engine no longer imports `ai/` or `infrastructure/`. Still missing: a clock and RNG at the root.
 2. **The world is defined in code here.** Locations and the `villager` NPC are constructed inline (see 09), which makes `buildRegistry` content, not wiring. It also sits next to the content loaders, so there are two content sources with different rules.
 3. **Game rules are wired in the factory.** The four listeners that make campaign milestones work live here (see 07). Any other way of building an engine (tests, a different front end) silently loses story progress.
 4. **Spellbook initialisation is a startup side effect on a state it does not own.** The factory reaches into `engine.state.spellbook` after construction. Because it runs only at startup, a loaded save is missing any spell added to the content since that save (no `hidden` entry), so new spells never appear for existing saves, and `getSpellState` returns `undefined` for them. State creation (new game vs. loaded) is also mixed up with engine creation.

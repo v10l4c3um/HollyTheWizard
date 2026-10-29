@@ -14,6 +14,7 @@ import {
 } from "../ai/OllamaConfig";
 import { probeOllamaConnection } from "../ai/OllamaClient";
 import { BlueprintLLMProvider } from "../ai/providers/BlueprintLLMProvider";
+import { createCommandHandlers } from "../core/engine/handlers";
 import Resolver from "../core/engine/Resolver";
 import TurnResolver from "../core/engine/TurnResolver";
 import Renderer from "../core/engine/Renderer";
@@ -173,6 +174,8 @@ export interface EngineOptions {
 	blueprintConfig?: OllamaConfig;
 	persistenceRepository?: PersistenceRepository;
 	logger?: Logger;
+	/** Test seam: the rules engine the turn handler uses. */
+	turnResolver?: TurnResolver;
 	/** Dev/test only: use the deterministic blueprint when the LLM output is invalid. */
 	allowBlueprintFallback?: boolean;
 }
@@ -205,8 +208,15 @@ export function createEngine(
 		registry,
 		bus,
 		resolver: new Resolver(resolverConfig, registry),
-		turnResolver: new TurnResolver(bus),
 		renderer: new Renderer(rendererConfig),
+		handlers: createCommandHandlers({
+			registry,
+			bus,
+			turnResolver: options.turnResolver ?? new TurnResolver(bus),
+			advanceYear: new AdvanceYear(generateYearBlueprint, bus),
+			persistenceRepository:
+				options.persistenceRepository ?? new JsonPersistenceRepository(),
+		}),
 		generateCampaignBlueprint: new GenerateCampaignBlueprint(
 			llmProvider,
 			registry,
@@ -214,10 +224,7 @@ export function createEngine(
 			allowFallback,
 		),
 		generateYearBlueprint,
-		advanceYear: new AdvanceYear(generateYearBlueprint, bus),
 		blueprintProgressService: new BlueprintProgressService(),
-		persistenceRepository:
-			options.persistenceRepository ?? new JsonPersistenceRepository(),
 		logger: options.logger ?? new FileLogger(),
 	});
 	wireEngine(engine, registry, bus);

@@ -69,8 +69,7 @@ describe("TurnOutcome", () => {
 	});
 
 	it("reports an unexpected failure as internal, without leaking the message", async () => {
-		const turnResolver = (game.engine as any).turnResolver;
-		const spy = jest.spyOn(turnResolver, "apply").mockImplementation(() => {
+		const spy = jest.spyOn(game.turnResolver, "apply").mockImplementation(() => {
 			throw new Error("secret stack detail");
 		});
 		try {

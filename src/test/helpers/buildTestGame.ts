@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
+import TurnResolver from "../../core/engine/TurnResolver";
 import { GameEngine } from "../../core/engine/GameEngine";
 import { createGameBus } from "../../core/domain/events/GameEvents";
 import Registry from "../../core/Registry";
@@ -9,6 +10,8 @@ import { JsonPersistenceRepository } from "../../infrastructure/persistence/json
 
 export interface TestGame {
 	engine: GameEngine;
+	/** The rules engine behind the engine's turn handler. */
+	turnResolver: TurnResolver;
 	registry: Registry;
 	bus: ReturnType<typeof createGameBus>;
 	savesDir: string;
@@ -37,15 +40,18 @@ export async function buildTestGame(): Promise<TestGame> {
 			logged.push({ message, cause });
 		},
 	};
+	const turnResolver = new TurnResolver(bus);
 	const engine = createEngine(registry, bus, {
 		persistenceRepository: new JsonPersistenceRepository(savesDir),
 		allowBlueprintFallback: true,
 		logger,
+		turnResolver,
 	});
 	await engine.initializeCampaignBlueprint("test-seed");
 
 	return {
 		engine,
+		turnResolver,
 		registry,
 		bus,
 		savesDir,
