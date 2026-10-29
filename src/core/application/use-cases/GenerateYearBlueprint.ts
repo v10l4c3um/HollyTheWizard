@@ -14,15 +14,17 @@ import { SchoolYear } from "../../domain/quest/Curriculum";
 import { GameBus } from "../../domain/events/GameEvents";
 
 /**
- * Generates a YearBlueprint for the given year. Falls back to a
- * deterministic safe blueprint if the LLM fails structural or semantic
- * validation - see docs/partial-blueprint-yearly-plan.md section 5.2.
+ * Generates a YearBlueprint for the given year. Throws if the LLM fails
+ * structural or semantic validation, unless `allowFallback` (dev/test only)
+ * substitutes a deterministic safe blueprint - see docs/partial-blueprint-yearly-plan.md section 5.2.
  */
 export class GenerateYearBlueprint {
 	constructor(
 		private llmProvider: BlueprintLLMProvider,
 		private registry: Registry,
 		private bus: GameBus,
+		/** Dev/test only: substitute the safe blueprint instead of failing. */
+		private allowFallback: boolean = false,
 	) {}
 
 	async execute(
@@ -63,6 +65,11 @@ export class GenerateYearBlueprint {
 			);
 		}
 
+		if (!this.allowFallback) {
+			throw new Error(
+				`The LLM did not produce a valid blueprint for year ${year}.`,
+			);
+		}
 		const fallback = buildSafeYearBlueprint(year, campaignBase);
 		this.bus.emit("BlueprintGenerated", {
 			scope: "year",

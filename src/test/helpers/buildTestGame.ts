@@ -4,7 +4,7 @@ import * as path from "path";
 import { GameEngine } from "../../core/engine/GameEngine";
 import { createGameBus } from "../../core/domain/events/GameEvents";
 import Registry from "../../core/Registry";
-import { buildRegistry, wireEngine } from "../../bootstrap/engineFactory";
+import { buildRegistry, createEngine } from "../../bootstrap/engineFactory";
 import { JsonPersistenceRepository } from "../../infastructure/persistance/json/JsonPersistenceRepository";
 
 export interface TestGame {
@@ -29,12 +29,10 @@ export async function buildTestGame(): Promise<TestGame> {
 	const bus = createGameBus();
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "holly-game-"));
 	const savesDir = path.join(root, "saves");
-	const engine = new GameEngine(
-		registry,
-		{ persistenceRepository: new JsonPersistenceRepository(savesDir) },
-		bus,
-	);
-	wireEngine(engine, registry, bus);
+	const engine = createEngine(registry, bus, {
+		persistenceRepository: new JsonPersistenceRepository(savesDir),
+		allowBlueprintFallback: true,
+	});
 	await engine.initializeCampaignBlueprint("test-seed");
 
 	return {

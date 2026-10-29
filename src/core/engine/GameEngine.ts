@@ -4,35 +4,29 @@ import Registry from "../Registry";
 import Resolver from "./Resolver";
 import TurnResolver from "./TurnResolver";
 import Renderer from "./Renderer";
-import {
-	OllamaConfig,
-	DEFAULT_BLUEPRINT_OLLAMA_CONFIG,
-	DEFAULT_RENDERER_OLLAMA_CONFIG,
-	DEFAULT_RESOLVER_OLLAMA_CONFIG,
-} from "../../ai/OllamaConfig";
-import { probeOllamaConnection } from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
 import { npcsAt } from "../domain/npc/Presence";
-import { createGameBus, GameBus } from "../domain/events/GameEvents";
-import { BlueprintLLMProvider } from "../../ai/providers/BlueprintLLMProvider";
+import { GameBus } from "../domain/events/GameEvents";
 import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlueprint";
 import { AdvanceYear } from "../application/use-cases/AdvanceYear";
 import { BlueprintProgressService } from "../domain/campaign/BlueprintProgressService";
 import { PersistenceRepository } from "../application/ports/PersistenceRepository";
-import { JsonPersistenceRepository } from "../../infastructure/persistance/json/JsonPersistenceRepository";
 
-export interface GameEngineConfig {
-	resolverConfig?: OllamaConfig;
-	rendererConfig?: OllamaConfig;
-	blueprintConfig?: OllamaConfig;
-	persistenceRepository?: PersistenceRepository;
+export interface GameEngineDeps {
+	registry: Registry;
+	bus: GameBus;
+	resolver: Resolver;
+	turnResolver: TurnResolver;
+	renderer: Renderer;
+	generateCampaignBlueprint: GenerateCampaignBlueprint;
+	generateYearBlueprint: GenerateYearBlueprint;
+	advanceYear: AdvanceYear;
+	blueprintProgressService: BlueprintProgressService;
+	persistenceRepository: PersistenceRepository;
 }
 
-type StartupMilestoneId =
-	| "ollama-check"
-	| "campaign-blueprint"
-	| "year-blueprint";
+type StartupMilestoneId = "campaign-blueprint" | "year-blueprint";
 type StartupMilestoneStatus = "in_progress" | "done";
 
 class GameEngine implements IGameEngine {
@@ -47,49 +41,21 @@ class GameEngine implements IGameEngine {
 	private advanceYear: AdvanceYear;
 	private blueprintProgressService: BlueprintProgressService;
 	private persistenceRepository: PersistenceRepository;
-	private startupConfigs: OllamaConfig[];
 
-	constructor(
-		registry: Registry,
-		config: GameEngineConfig = {},
-		bus?: GameBus,
-	) {
-		const resolverConfig =
-			config.resolverConfig ?? DEFAULT_RESOLVER_OLLAMA_CONFIG;
-		const rendererConfig =
-			config.rendererConfig ?? DEFAULT_RENDERER_OLLAMA_CONFIG;
-		const blueprintConfig =
-			config.blueprintConfig ?? DEFAULT_BLUEPRINT_OLLAMA_CONFIG;
-
+	constructor(deps: GameEngineDeps) {
 		this.state = new GameState();
-		this.registry = registry;
-		this.bus = bus ?? createGameBus();
-		this.resolver = new Resolver(resolverConfig, this.registry);
-		this.turnResolver = new TurnResolver(this.bus);
-		this.renderer = new Renderer(rendererConfig);
+		this.registry = deps.registry;
+		this.bus = deps.bus;
+		this.resolver = deps.resolver;
+		this.turnResolver = deps.turnResolver;
+		this.renderer = deps.renderer;
+		this.generateCampaignBlueprint = deps.generateCampaignBlueprint;
+		this.generateYearBlueprint = deps.generateYearBlueprint;
+		this.advanceYear = deps.advanceYear;
+		this.blueprintProgressService = deps.blueprintProgressService;
+		this.persistenceRepository = deps.persistenceRepository;
 		this.state.output =
 			"Welcome to Holly the Wizard! Type a command to begin.";
-
-		this.startupConfigs = [resolverConfig, rendererConfig, blueprintConfig];
-
-		const blueprintLLMProvider = new BlueprintLLMProvider(blueprintConfig);
-		this.generateCampaignBlueprint = new GenerateCampaignBlueprint(
-			blueprintLLMProvider,
-			this.registry,
-			this.bus,
-		);
-		this.generateYearBlueprint = new GenerateYearBlueprint(
-			blueprintLLMProvider,
-			this.registry,
-			this.bus,
-		);
-		this.advanceYear = new AdvanceYear(
-			this.generateYearBlueprint,
-			this.bus,
-		);
-		this.blueprintProgressService = new BlueprintProgressService();
-		this.persistenceRepository =
-			config.persistenceRepository ?? new JsonPersistenceRepository();
 	}
 
 	/**
@@ -103,9 +69,6 @@ class GameEngine implements IGameEngine {
 			status: StartupMilestoneStatus,
 		) => void,
 	): Promise<void> {
-		onProgress?.("ollama-check", "in_progress");
-		await this._verifyOllamaConnections();
-		onProgress?.("ollama-check", "done");
 		onProgress?.("campaign-blueprint", "in_progress");
 		this.state.campaignBlueprint =
 			await this.generateCampaignBlueprint.execute(seed);
@@ -254,30 +217,6 @@ class GameEngine implements IGameEngine {
 			narrationMode: this.state.settings.narrationMode,
 			timePassed,
 		};
-	}
-
-	private async _verifyOllamaConnections(): Promise<void> {
-		const seen = new Set<string>();
-
-		for (const config of this.startupConfigs) {
-			const key = `${config.endpoint}::${config.model}`;
-			if (seen.has(key)) {
-				continue;
-			}
-			seen.add(key);
-
-			try {
-				await probeOllamaConnection(config);
-			} catch (error) {
-				const message =
-					error instanceof Error
-						? error.message
-						: "Ollama availability check failed";
-				throw new Error(
-					`Startup failed: ${message} at ${config.endpoint}`,
-				);
-			}
-		}
 	}
 }
 

@@ -21,6 +21,7 @@ import {
 } from "../core/domain/campaign/DeterministicFallback";
 import { YearBlueprint } from "../core/domain/campaign/YearBlueprint";
 import { BlueprintLLMProvider } from "../ai/providers/BlueprintLLMProvider";
+import { GenerateCampaignBlueprint } from "../core/application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../core/application/use-cases/GenerateYearBlueprint";
 import { AdvanceYear } from "../core/application/use-cases/AdvanceYear";
 import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
@@ -272,7 +273,7 @@ describe("AdvanceYear use-case", () => {
 		expect(result.briefOutput).toContain("Year 2");
 	});
 
-	it("falls back to a deterministic blueprint when the LLM provider fails validation", async () => {
+	it("uses the deterministic blueprint on invalid LLM output only when fallback is allowed", async () => {
 		const registry = buildRegistry();
 		const bus = createGameBus();
 		const state = new GameState();
@@ -290,6 +291,7 @@ describe("AdvanceYear use-case", () => {
 			stubProvider,
 			registry,
 			bus,
+			true,
 		);
 		const advanceYear = new AdvanceYear(generateYearBlueprint, bus);
 
@@ -297,6 +299,28 @@ describe("AdvanceYear use-case", () => {
 
 		expect(state.currentYear).toBe(2);
 		expect(state.yearBlueprints[2]?.wasFallback).toBe(true);
+	});
+
+	it("fails instead of falling back by default", async () => {
+		const registry = buildRegistry();
+		const bus = createGameBus();
+		const base = buildSafeCampaignBase("seed-123");
+		const stubProvider = {
+			generateJson: jest.fn().mockResolvedValue(null),
+		} as unknown as BlueprintLLMProvider;
+
+		await expect(
+			new GenerateCampaignBlueprint(stubProvider, registry, bus).execute(
+				"seed-123",
+			),
+		).rejects.toThrow(/campaign blueprint/);
+		await expect(
+			new GenerateYearBlueprint(stubProvider, registry, bus).execute(
+				2,
+				base,
+				new GameState(),
+			),
+		).rejects.toThrow(/year 2/);
 	});
 });
 

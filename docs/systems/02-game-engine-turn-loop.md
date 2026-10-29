@@ -6,7 +6,7 @@ Files: `src/core/engine/GameEngine.ts` (273 lines), `TimeCost.ts`, `TurnResult.t
 
 `GameEngine` is the façade the UI talks to. It owns the live `GameState`, wires every collaborator, and exposes two operations:
 
-- `initializeCampaignBlueprint(seed, onProgress)` runs at new-game startup: probe Ollama, generate the campaign blueprint, generate the year-1 blueprint, reporting progress through three milestones.
+- `initializeCampaignBlueprint(seed, onProgress)` runs at new-game startup: generate the campaign blueprint, then the year-1 blueprint, reporting progress through two milestones. The engine receives all collaborators through `GameEngineDeps`; `createEngine` in `engineFactory` builds them and `engineFactory` probes Ollama before calling this.
 - `handleCommand(input): Promise<GameState>` processes one player turn.
 
 ## How a turn works
@@ -34,7 +34,7 @@ The constructor builds the whole object graph itself: resolver, turn resolver, r
 - **Startup progress callback.** The loading screen is driven by `onProgress`, which keeps UI concerns out of the engine.
 - **Fail-soft turns.** The try/catch means a bad turn never crashes the app.
 - **Time handling is centralised.** One `TimeCost` union (`none` / `minutes`) and one place that advances the clock and emits `TimeAdvanced`.
-- **Optional dependency override** for persistence and Ollama configs makes basic testing possible.
+- **Constructor injection** (`GameEngineDeps`): every collaborator is passed in, so tests can swap any of them.
 
 ## Weaknesses
 
