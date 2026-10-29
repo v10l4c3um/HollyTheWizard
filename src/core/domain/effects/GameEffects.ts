@@ -79,8 +79,10 @@ export type GameEffect =
 	  }
 
 	// World and turn bookkeeping: every mutation goes through effects.
-	/** Moves the player; the place counts as discovered. */
+	/** Moves the player; the place counts as visited (and discovered). */
 	| { type: "LocationChanged"; locationId: string }
+	/** Places the player has now found out about, without going there. */
+	| { type: "LocationsDiscovered"; locationIds: string[] }
 	| { type: "TimeAdvanced"; minutes: number }
 	| { type: "EventsRecorded"; entries: string[] }
 	/** hidden -> available only; never downgrades a known spell. */
@@ -242,4 +244,8 @@ export function lessonAdvanced(
 	attended: boolean,
 ): GameEffect {
 	return { type: "LessonAdvanced", subject, lessonId, attended };
+}
+
+export function locationsDiscovered(locationIds: string[]): GameEffect {
+	return { type: "LocationsDiscovered", locationIds };
 }

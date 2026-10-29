@@ -25,7 +25,7 @@ You begin in the **Great Hall** on **Monday morning** (day 1). Charms is taught 
 
 - `spellbook` (or press Tab) toggles the spellbook panel.
 - `study` a subject between classes.
-- `go to the library`, `go to the village`, `go to the market`: moving to a new place discovers it.
+- `go to the library`, `go to the village`, `go to the market`: you can only travel to places you have found. Arriving somewhere shows its exits, and going there marks it visited.
 - Nonsense input is reported and costs nothing.
 - `advance` moves to the next school year (it generates the next year's blueprint).
 

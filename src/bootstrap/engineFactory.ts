@@ -25,6 +25,8 @@ import { PersistenceRepository } from "../core/application/ports/PersistenceRepo
 import { Logger } from "../core/application/ports/Logger";
 import { FileLogger } from "../infrastructure/logging/FileLogger";
 import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
+import { applyEffects } from "../core/domain/effects/EffectApplier";
+import { arrivalEffects, undiscoveredExits } from "../core/domain/world/Exploration";
 import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
 
 export type StartupProgressStatus = "pending" | "in_progress" | "done";
@@ -113,6 +115,22 @@ export function buildRegistry(
  * state. Split out of `engineFactory` so tests can wire an engine built with
  * injected dependencies the same way production does.
  */
+/** The player starts in a place they have been to and can see its exits. */
+function discoverStartingArea(
+	engine: GameEngine,
+	registry: Registry,
+	bus: GameBus,
+): void {
+	const { state } = engine;
+	const seen = undiscoveredExits(registry, state, state.currentLocationId);
+	applyEffects(
+		state,
+		arrivalEffects(registry, state, state.currentLocationId),
+		bus,
+	);
+	for (const locationId of seen) bus.emit("LocationDiscovered", { locationId });
+}
+
 export function wireEngine(
 	engine: GameEngine,
 	registry: Registry,
@@ -138,6 +156,8 @@ export function wireEngine(
 		if (!engine.state.questFlags.completed.includes(flag))
 			engine.state.questFlags.completed.push(flag);
 	});
+
+	discoverStartingArea(engine, registry, bus);
 
 	for (const spellId of registry.getAllSpellIds()) {
 		engine.state.spellbook.setSpellState(

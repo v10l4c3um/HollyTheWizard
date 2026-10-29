@@ -35,7 +35,10 @@ class GameState {
 	inventory: {
 		items: Item[];
 	};
+	/** Places the player has found out about (can be travelled to). */
 	discoveredLocationIds: string[];
+	/** Places the player has actually been to. */
+	visitedLocationIds: string[];
 	questFlags: {
 		active: string[];
 		completed: string[];
@@ -89,6 +92,7 @@ class GameState {
 			items: [],
 		};
 		this.discoveredLocationIds = [];
+		this.visitedLocationIds = [];
 		this.questFlags = {
 			active: [],
 			completed: [],
@@ -164,6 +168,9 @@ class GameState {
 		state.academicState = data.academicState;
 		state.inventory = data.inventory;
 		state.discoveredLocationIds = data.discoveredLocationIds;
+		// Older saves only knew 'discovered', which meant 'been there'.
+		state.visitedLocationIds =
+			data.visitedLocationIds ?? [...(data.discoveredLocationIds ?? [])];
 		state.questFlags = data.questFlags;
 		state.flags = data.flags ?? {};
 		state.resources = data.resources ?? {};

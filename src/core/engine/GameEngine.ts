@@ -8,6 +8,8 @@ import TurnResolver from "./TurnResolver";
 import Renderer from "./Renderer";
 import { RenderContext } from "./RenderContext";
 import { npcsAt } from "../domain/npc/Presence";
+import { applyEffects } from "../domain/effects/EffectApplier";
+import { arrivalEffects } from "../domain/world/Exploration";
 import { GameBus } from "../domain/events/GameEvents";
 import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlueprint";
@@ -147,6 +149,17 @@ class GameEngine implements IGameEngine {
 						error,
 					);
 				}
+				// Saves from before exits were tracked: the place you stand in
+				// always shows its exits.
+				applyEffects(
+					this.state,
+					arrivalEffects(
+						this.registry,
+						this.state,
+						this.state.currentLocationId,
+					),
+					this.bus,
+				);
 				this.bus.emit("GameLoaded", { filename: command.filename });
 				this.state.output = `Loaded game from '${command.filename}'.`;
 				this.blueprintProgressService.checkMilestones(

@@ -10,6 +10,7 @@ import {
 	spellStateUpdated,
 	timeAdvanced,
 } from "../core/domain/effects/GameEffects";
+import { arrivalEffects } from "../core/domain/world/Exploration";
 import { createGameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import {
@@ -98,6 +99,7 @@ describe("world and turn effects", () => {
 describe("TurnResolver.apply owns every state change of a turn", () => {
 	it("a move changes location, discovery, clock and event log without the engine", () => {
 		state.currentLocationId = "great_hall";
+		applyEffects(state, arrivalEffects(registry, state, "great_hall"));
 		const resolver = new TurnResolver(createGameBus());
 		const before = state.worldClock.getTotalMinutes();
 
@@ -109,6 +111,7 @@ describe("TurnResolver.apply owns every state change of a turn", () => {
 
 		expect(state.currentLocationId).toBe("hallway");
 		expect(state.discoveredLocationIds).toContain("hallway");
+		expect(state.visitedLocationIds).toContain("hallway");
 		expect(state.worldClock.getTotalMinutes()).toBe(before + 5);
 		expect(state.recentEvents).toEqual(result.events);
 		expect(result.timePassed).toMatchObject({ minutes: 5 });

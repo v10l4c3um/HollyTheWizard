@@ -108,8 +108,18 @@ function applyEffect(
 		}
 		case "LocationChanged":
 			state.currentLocationId = effect.locationId;
-			if (!state.discoveredLocationIds.includes(effect.locationId)) {
-				state.discoveredLocationIds.push(effect.locationId);
+			for (const list of [
+				state.visitedLocationIds,
+				state.discoveredLocationIds,
+			]) {
+				if (!list.includes(effect.locationId)) list.push(effect.locationId);
+			}
+			break;
+		case "LocationsDiscovered":
+			for (const id of effect.locationIds) {
+				if (!state.discoveredLocationIds.includes(id)) {
+					state.discoveredLocationIds.push(id);
+				}
 			}
 			break;
 		case "TimeAdvanced":

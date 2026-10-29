@@ -12,7 +12,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 
 | Command | Behavior | Time |
 |---|---|---|
-| `MOVE` | Validates destination exists and is connected; emits `LocationVisited`/`LocationDiscovered`; applies a `LocationChanged` effect (which also marks the place discovered) | 5 min (2 min on a blocked move) |
+| `MOVE` | Validates the destination exists, is connected and has been discovered; arriving marks it visited and discovers its exits; emits `LocationVisited`/`LocationDiscovered`; applies a `LocationChanged` effect (which also marks the place discovered) | 5 min (2 min on a blocked move) |
 | `TALK` | Builds a `ConversationContext` (relationship or zeroed stats, topic, NPC profile, history, last 10 events, privacy), calls `evaluateConversation`, applies its effects, emits five conversation events | 15 min |
 | `STUDY` | `ProgressDelta` of `10 * hours` to subject knowledge; checks spell availability; emits `SubjectStudied`/`SpellRevealed` | 60 min per hour |
 | `ATTEND_CLASS` | Fetches current lesson, applies lesson rewards as effects, rolls each lesson's spell-reveal opportunity, advances the lesson counter, emits `LessonAttended` | fixed 60 min |

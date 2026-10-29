@@ -13,7 +13,7 @@ One class with public fields, grouped as:
 | Group | Fields |
 |---|---|
 | Meta | `metadata` (save version, timestamp), `settings`, `output` |
-| World | `worldClock`, `currentLocationId` (default `"startingVillage"`), `discoveredLocationIds` |
+| World | `worldClock`, `currentLocationId` (default `"startingVillage"`), `discoveredLocationIds`, `visitedLocationIds` |
 | Player | `player` (attributes, resources, name, health, own `inventory`), `spellbook`, `inventory` |
 | Academic | `academicState` (10 attribute values plus per-subject progress for 27 subjects) |
 | Social | `relationships`, `unlockedTopicsByNpc`, `conversationHistory`, `knownNPCIds` |

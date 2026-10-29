@@ -18,7 +18,6 @@ import {
 	spellRevealed,
 	spellStateUpdated,
 	lessonAdvanced,
-	locationChanged,
 	timeAdvanced,
 	eventsRecorded,
 	subjectKnowledgeTrack,
@@ -31,6 +30,7 @@ import {
 import { resolveTopic } from "../domain/npc/TopicRegistry";
 import { momentOf, npcLocation } from "../domain/npc/Presence";
 import { activeClass } from "../domain/quest/Timetable";
+import { arrivalEffects, undiscoveredExits } from "../domain/world/Exploration";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -176,7 +176,7 @@ class TurnResolver {
 		const destination = registry.getLocation(destinationId);
 		const destinationDisplayName =
 			destination?.displayName ?? destinationId;
-		const isNew = !state.discoveredLocationIds.includes(destinationId);
+		const isFirstVisit = !state.visitedLocationIds.includes(destinationId);
 
 		if (!current.connectedLocationsIds.includes(destinationId)) {
 			return {
@@ -188,15 +188,25 @@ class TurnResolver {
 			};
 		}
 
-		const moveEffects = [locationChanged(destinationId)];
+		if (!state.discoveredLocationIds.includes(destinationId)) {
+			return {
+				briefOutput: `You haven't found a way to ${destinationDisplayName} yet.`,
+				events: [],
+				timeCost: { type: "none" },
+			};
+		}
+
+		// Arriving shows you the exits of the new place.
+		const seen = undiscoveredExits(registry, state, destinationId);
+		const moveEffects = arrivalEffects(registry, state, destinationId);
 		applyEffects(state, moveEffects, this.bus);
 
 		this.bus.emit("LocationVisited", {
 			locationId: destinationId,
-			isFirstVisit: isNew,
+			isFirstVisit,
 		});
-		if (isNew) {
-			this.bus.emit("LocationDiscovered", { locationId: destinationId });
+		for (const locationId of seen) {
+			this.bus.emit("LocationDiscovered", { locationId });
 		}
 
 		return {
