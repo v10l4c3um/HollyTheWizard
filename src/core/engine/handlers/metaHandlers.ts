@@ -1,7 +1,8 @@
 import Registry from "../../Registry";
 import { GameBus } from "../../domain/events/GameEvents";
-import { applyEffects } from "../../domain/effects/EffectApplier";
-import { arrivalEffects } from "../../domain/world/Exploration";
+import GameState from "../../domain/world/GameState";
+import { validateLoadedState } from "../../domain/world/SaveValidation";
+import { InvalidSaveError } from "../../application/ports/InvalidSaveError";
 import { AdvanceYear } from "../../application/use-cases/AdvanceYear";
 import { PersistenceRepository } from "../../application/ports/PersistenceRepository";
 import { CommandHandlerMap } from "./types";
@@ -67,32 +68,31 @@ export function createMetaHandlers({
 				slot = command.fallbackFilename;
 			}
 
-			let loaded;
+			// Everything is checked on the side. The live game is only
+			// replaced once the save is known to be complete and to fit the
+			// current content, so a refused load changes nothing.
+			let loaded: GameState;
 			try {
 				loaded = await persistenceRepository.load(slot);
+				const problems = validateLoadedState(loaded, registry);
+				if (problems.length > 0) throw new InvalidSaveError(slot, problems);
 			} catch (cause) {
 				return {
 					kind: "fail",
 					error: {
 						kind: "persistence",
-						message: `Couldn't load '${slot}'.`,
+						message:
+							cause instanceof InvalidSaveError
+								? cause.message
+								: `Couldn't load '${slot}'.`,
 						cause,
 					},
 				};
 			}
-			session.state = loaded;
-			// Saves from before exits were tracked: the place you stand in
-			// always shows its exits.
-			applyEffects(
-				loaded,
-				arrivalEffects(registry, loaded, loaded.currentLocationId),
-				bus,
-			);
+
+			session.replace(loaded);
 			bus.emit("GameLoaded", { filename: slot });
-			return {
-				kind: "say",
-				text: `Loaded game from '${slot}'.`,
-			};
+			return { kind: "say", text: `Loaded game from '${slot}'.` };
 		},
 	};
 }

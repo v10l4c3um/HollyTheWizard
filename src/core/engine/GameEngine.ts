@@ -8,7 +8,8 @@ import Renderer from "./Renderer";
 import { WorldTick, TickReport } from "./WorldTick";
 import { Autosave } from "./Autosave";
 import { buildRenderContext } from "./RenderContext";
-import { CommandHandlerMap, GameSession, runCommand } from "./handlers";
+import { GameSession } from "./GameSession";
+import { CommandHandlerMap, runCommand } from "./handlers";
 import { GameBus } from "../domain/events/GameEvents";
 import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlueprint";
@@ -46,7 +47,7 @@ class GameEngine implements IGameEngine {
 	private logger: Logger;
 
 	constructor(deps: GameEngineDeps) {
-		this.session = { state: new GameState() };
+		this.session = new GameSession(new GameState());
 		this.registry = deps.registry;
 		this.bus = deps.bus;
 		this.resolver = deps.resolver;

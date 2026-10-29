@@ -1,17 +1,14 @@
-import GameState from "../../domain/world/GameState";
+import { GameSession } from "../GameSession";
 import { Command } from "../Command";
 import { TimePassed } from "../TurnResult";
 import { TurnError } from "../TurnOutcome";
-
-/** Holds the live game state; `LOAD` replaces it. Owned by the engine. */
-export interface GameSession {
-	state: GameState;
-}
 
 /**
  * What a handler asks the engine to do next. The engine owns everything after
  * that: rendering, milestone checks and building the outcome.
  */
+export type { GameSession };
+
 export type HandlerResult =
 	/** Narrate this fact with the LLM renderer. */
 	| { kind: "narrate"; briefOutput: string; timePassed?: TimePassed }

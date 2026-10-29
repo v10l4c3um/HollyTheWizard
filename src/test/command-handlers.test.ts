@@ -4,7 +4,9 @@ import { GameEngine } from "../core/engine/GameEngine";
 import { Command } from "../core/engine/Command";
 import { INTENT_TYPES } from "../core/engine/ResolverSchemas";
 import { createCommandHandlers } from "../core/engine/handlers";
-import { CommandHandlerMap, GameSession } from "../core/engine/handlers/types";
+import { CommandHandlerMap } from "../core/engine/handlers/types";
+import { GameSession } from "../core/engine/GameSession";
+import { validState } from "./helpers/validState";
 import { WorldTick } from "../core/engine/WorldTick";
 import TurnResolver from "../core/engine/TurnResolver";
 import { createGameBus } from "../core/domain/events/GameEvents";
@@ -62,7 +64,7 @@ describe("the command handler map", () => {
 describe("meta handlers", () => {
 	it("UNKNOWN fails as invalid-input and says what was not understood", async () => {
 		const { handlers } = buildHandlers();
-		const session: GameSession = { state: new GameState() };
+		const session = new GameSession(new GameState());
 		const result = await handlers.UNKNOWN({ type: "UNKNOWN", input: "zzz" }, session);
 		expect(result).toMatchObject({
 			kind: "fail",
@@ -73,7 +75,7 @@ describe("meta handlers", () => {
 
 	it("SAVE stores the state and says so", async () => {
 		const { handlers, repo } = buildHandlers();
-		const session: GameSession = { state: new GameState() };
+		const session = new GameSession(new GameState());
 		const result = await handlers.SAVE({ type: "SAVE", filename: "a" }, session);
 		expect(result).toEqual({ kind: "say", text: "Game saved as 'a'." });
 		expect(repo.saved["a"]).toBe(session.state);
@@ -81,7 +83,7 @@ describe("meta handlers", () => {
 
 	it("SAVE reports a persistence failure with its cause", async () => {
 		const { handlers } = buildHandlers();
-		const session: GameSession = { state: new GameState() };
+		const session = new GameSession(new GameState());
 		const result = await handlers.SAVE({ type: "SAVE", filename: "broken" }, session);
 		expect(result).toMatchObject({
 			kind: "fail",
@@ -90,17 +92,66 @@ describe("meta handlers", () => {
 		expect(((result as any).error.cause as Error).message).toBe("disk full");
 	});
 
-	it("LOAD replaces the session's state and re-shows the exits", async () => {
-		const { handlers, repo } = buildHandlers();
-		const stored = new GameState(); // an 'old' save: nothing discovered
-		repo.saved["old"] = stored;
-		const session: GameSession = { state: new GameState() };
+	it("LOAD replaces the session's state and announces it", async () => {
+		const { handlers, repo, bus } = buildHandlers();
+		const stored = validState(registry);
+		repo.saved["good"] = stored;
+		const session = new GameSession(new GameState());
+		const loaded: string[] = [];
+		bus.on("GameLoaded", (e) => loaded.push(e.filename));
 
-		const result = await handlers.LOAD({ type: "LOAD", filename: "old" }, session);
+		const result = await handlers.LOAD({ type: "LOAD", filename: "good" }, session);
 
-		expect(result).toEqual({ kind: "say", text: "Loaded game from 'old'." });
+		expect(result).toEqual({ kind: "say", text: "Loaded game from 'good'." });
 		expect(session.state).toBe(stored);
-		expect(stored.discoveredLocationIds).toContain("hallway");
+		expect(loaded).toEqual(["good"]);
+	});
+
+	describe("a save that does not fit the game is refused and changes nothing", () => {
+		async function refused(damage: (s: GameState) => void) {
+			const { handlers, repo, bus } = buildHandlers();
+			const bad = validState(registry);
+			damage(bad);
+			repo.saved["bad"] = bad;
+			const original = new GameState();
+			const before = JSON.stringify(original);
+			const session = new GameSession(original);
+			const loaded = jest.fn();
+			bus.on("GameLoaded", loaded);
+
+			const result = await handlers.LOAD({ type: "LOAD", filename: "bad" }, session);
+
+			expect(session.state).toBe(original);
+			expect(JSON.stringify(original)).toBe(before);
+			expect(loaded).not.toHaveBeenCalled();
+			expect(result.kind).toBe("fail");
+			return result as Extract<typeof result, { kind: "fail" }>;
+		}
+
+		it("when its place no longer exists", async () => {
+			const result = await refused((s) => (s.currentLocationId = "nowhere"));
+			expect(result.error.kind).toBe("persistence");
+			expect(result.error.message).toContain("nowhere");
+			expect(result.error.message).toContain("can't be used");
+		});
+
+		it("when a spell was added since", async () => {
+			const result = await refused((s) => {
+				const book = s.spellbook as any;
+				book.spells.delete(registry.getAllSpellIds()[0]);
+			});
+			expect(result.error.message).toContain("added since");
+		});
+
+		it("when it has no story blueprint", async () => {
+			const result = await refused((s) => (s.campaignBlueprint = undefined));
+			expect(result.error.message).toContain("campaign story");
+		});
+
+		it("when it names a character that no longer exists", async () => {
+			const result = await refused((s) => (s.knownNPCIds = ["ghost"]));
+			expect(result.error.message).toContain("ghost");
+		});
 	});
 
 	it("a bare load takes the quick save, else the autosave, else fails naming the quick save", async () => {
@@ -110,7 +161,7 @@ describe("meta handlers", () => {
 			filename: "quicksave",
 			fallbackFilename: "autosave",
 		};
-		const session = (): GameSession => ({ state: new GameState() });
+		const session = () => new GameSession(new GameState());
 
 		const none = await handlers.LOAD(bare, session());
 		expect(none).toMatchObject({
@@ -118,13 +169,13 @@ describe("meta handlers", () => {
 			error: { message: "Couldn't load 'quicksave'." },
 		});
 
-		repo.saved["autosave"] = new GameState();
+		repo.saved["autosave"] = validState(registry);
 		expect(await handlers.LOAD(bare, session())).toEqual({
 			kind: "say",
 			text: "Loaded game from 'autosave'.",
 		});
 
-		repo.saved["quicksave"] = new GameState();
+		repo.saved["quicksave"] = validState(registry);
 		expect(await handlers.LOAD(bare, session())).toEqual({
 			kind: "say",
 			text: "Loaded game from 'quicksave'.",
@@ -134,7 +185,7 @@ describe("meta handlers", () => {
 	it("LOAD of a missing save fails and leaves the session's state alone", async () => {
 		const { handlers } = buildHandlers();
 		const original = new GameState();
-		const session: GameSession = { state: original };
+		const session = new GameSession(original);
 		const result = await handlers.LOAD({ type: "LOAD", filename: "nope" }, session);
 		expect(result).toMatchObject({ kind: "fail", error: { kind: "persistence" } });
 		expect(session.state).toBe(original);
@@ -209,7 +260,7 @@ describe("the engine's common pipeline", () => {
 		const { engine } = engineWith(
 			{
 				LOAD: async (_c, session) => {
-					session.state = replacement;
+					session.replace(replacement);
 					return { kind: "say", text: "swapped" };
 				},
 			},

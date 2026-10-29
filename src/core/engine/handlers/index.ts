@@ -3,14 +3,11 @@ import { Command } from "../Command";
 import TurnResolver from "../TurnResolver";
 import { createMetaHandlers, MetaHandlerDeps } from "./metaHandlers";
 import { createTurnHandler } from "./turnHandler";
-import {
-	CommandHandler,
-	CommandHandlerMap,
-	GameSession,
-	HandlerResult,
-} from "./types";
+import { GameSession } from "../GameSession";
+import { CommandHandler, CommandHandlerMap, HandlerResult } from "./types";
 
-export type { CommandHandlerMap, GameSession, HandlerResult } from "./types";
+export type { CommandHandlerMap, HandlerResult } from "./types";
+export { GameSession } from "../GameSession";
 
 export interface CommandHandlerDeps extends MetaHandlerDeps {
 	turnResolver: TurnResolver;
