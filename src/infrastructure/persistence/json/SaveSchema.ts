@@ -140,6 +140,13 @@ export const SaveFileSchema = z.object({
 	conversationHistory: z.record(z.string(), z.array(conversationEntry)),
 	knownNPCIds: z.array(z.string()),
 	recentEvents: z.array(z.string()),
+	recentTurns: z.array(
+		z.object({
+			input: z.string(),
+			command: z.object({ type: z.string() }).passthrough(),
+			fromLocationId: z.string(),
+		}),
+	),
 	output: z.string(),
 	settings: z.object({
 		narrationMode: z.string(),

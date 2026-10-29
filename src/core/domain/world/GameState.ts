@@ -16,11 +16,12 @@ import {
 	YearProgress,
 	createEmptyYearProgress,
 } from "../campaign/YearBlueprint";
+import { RecentTurn } from "./RecentTurn";
 import { RelationshipStats } from "../npc/Relationship";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
 /** The save file format. A save with any other value is refused. */
-export const SAVE_FORMAT_VERSION = "1";
+export const SAVE_FORMAT_VERSION = "2";
 
 /** Where a new game starts. Content is checked to contain this location. */
 export const START_LOCATION_ID = "great_hall";
@@ -69,6 +70,8 @@ class GameState {
 	conversationHistory: Record<string, ConversationMemoryEntry[]>;
 	knownNPCIds: string[];
 	recentEvents: string[];
+	/** The last few in-world turns, newest last (see `RecentTurn`). */
+	recentTurns: RecentTurn[];
 	output: string;
 
 	settings: {
@@ -110,6 +113,7 @@ class GameState {
 		this.conversationHistory = {};
 		this.knownNPCIds = [];
 		this.recentEvents = [];
+		this.recentTurns = [];
 		this.output = "";
 		this.settings = {
 			narrationMode: "default",
@@ -197,6 +201,7 @@ class GameState {
 		state.conversationHistory = data.conversationHistory;
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
+		state.recentTurns = data.recentTurns;
 		state.output = data.output;
 		state.settings = data.settings;
 		state.currentYear = data.currentYear;

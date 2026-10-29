@@ -3,6 +3,7 @@ import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 import { SpellState } from "../magic/Spell";
 import { SubjectType } from "../quest/Curriculum";
+import type { RecentTurn } from "../world/RecentTurn";
 
 /** What taught the spell. The player never triggers learning directly. */
 export type SpellLearnSource = "class" | "item" | "trainer";
@@ -85,6 +86,8 @@ export type GameEffect =
 	| { type: "LocationsDiscovered"; locationIds: string[] }
 	| { type: "TimeAdvanced"; minutes: number }
 	| { type: "EventsRecorded"; entries: string[] }
+	/** Remembers a turn so the next sentence can say "again" or "her". */
+	| { type: "TurnRecorded"; turn: RecentTurn }
 	| { type: "SceneInvitationExpired"; invitationId: string }
 	/** hidden -> available only; never downgrades a known spell. */
 	| { type: "SpellRevealed"; spellId: string; atMinutes?: number }
@@ -253,4 +256,8 @@ export function locationsDiscovered(locationIds: string[]): GameEffect {
 
 export function sceneInvitationExpired(invitationId: string): GameEffect {
 	return { type: "SceneInvitationExpired", invitationId };
+}
+
+export function turnRecorded(turn: RecentTurn): GameEffect {
+	return { type: "TurnRecorded", turn };
 }

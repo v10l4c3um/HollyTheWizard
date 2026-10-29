@@ -9,6 +9,7 @@ import {
 	spellRevealed,
 	spellStateUpdated,
 	timeAdvanced,
+	turnRecorded,
 } from "../core/domain/effects/GameEffects";
 import { arrivalEffects } from "../core/domain/world/Exploration";
 import { createGameBus } from "../core/domain/events/GameEvents";
@@ -59,6 +60,25 @@ describe("world and turn effects", () => {
 	it("EventsRecorded appends to the recent events", () => {
 		applyEffects(state, [eventsRecorded(["a", "b"])]);
 		expect(state.recentEvents).toEqual(["a", "b"]);
+	});
+
+	it("TurnRecorded keeps the last five turns, oldest first", () => {
+		for (let i = 1; i <= 7; i++) {
+			applyEffects(state, [
+				turnRecorded({
+					input: `rest ${i}`,
+					command: { type: "REST", duration: i },
+					fromLocationId: "great_hall",
+				}),
+			]);
+		}
+		expect(state.recentTurns.map((t) => t.input)).toEqual([
+			"rest 3",
+			"rest 4",
+			"rest 5",
+			"rest 6",
+			"rest 7",
+		]);
 	});
 
 	it("SpellRevealed makes a hidden spell available and never downgrades", () => {

@@ -3,6 +3,7 @@ import Item from "../world/Item";
 import { GameEffect } from "./GameEffects";
 import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
+import { MAX_RECENT_TURNS } from "../world/RecentTurn";
 import { RelationshipStats } from "../npc/Relationship";
 
 /**
@@ -134,6 +135,12 @@ function applyEffect(
 			state.sceneInvitations = state.sceneInvitations.filter(
 				(invitation) => invitation.invitationId !== effect.invitationId,
 			);
+			break;
+		case "TurnRecorded":
+			state.recentTurns.push(effect.turn);
+			if (state.recentTurns.length > MAX_RECENT_TURNS) {
+				state.recentTurns.splice(0, state.recentTurns.length - MAX_RECENT_TURNS);
+			}
 			break;
 		case "EventsRecorded":
 			state.recentEvents.push(...effect.entries);

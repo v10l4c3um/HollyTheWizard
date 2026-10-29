@@ -37,7 +37,7 @@ describe("the save format is strict", () => {
 
 	it("writes the format version into the save", async () => {
 		await repository.save("s", new GameState());
-		expect((await readSave("s")).metadata.saveVersion).toBe("1");
+		expect((await readSave("s")).metadata.saveVersion).toBe("2");
 	});
 
 	it("round-trips a valid save", async () => {
@@ -48,8 +48,13 @@ describe("the save format is strict", () => {
 	});
 
 	it("refuses a save from another format version", async () => {
-		const error = await loadDamaged((d) => (d.metadata.saveVersion = "0.0.1"));
+		const error = await loadDamaged((d) => (d.metadata.saveVersion = "1"));
 		expect(error.problems.join()).toContain("metadata.saveVersion");
+	});
+
+	it("refuses a turn in the history that is missing its command", async () => {
+		const error = await loadDamaged((d) => d.recentTurns.push({ input: "x", fromLocationId: "a" }));
+		expect(error.problems.join()).toContain("recentTurns");
 	});
 
 	it("refuses a save with no version at all (an old save)", async () => {
@@ -70,6 +75,7 @@ describe("the save format is strict", () => {
 		"player",
 		"knownNPCIds",
 		"recentEvents",
+		"recentTurns",
 		"settings",
 	])("refuses a save missing %s and names it", async (field) => {
 		const error = await loadDamaged((d) => delete d[field]);
