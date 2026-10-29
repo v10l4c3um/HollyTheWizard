@@ -5,6 +5,7 @@ import { Command } from "../core/engine/Command";
 import { INTENT_TYPES } from "../core/engine/ResolverSchemas";
 import { createCommandHandlers } from "../core/engine/handlers";
 import { CommandHandlerMap, GameSession } from "../core/engine/handlers/types";
+import { WorldTick } from "../core/engine/WorldTick";
 import TurnResolver from "../core/engine/TurnResolver";
 import { createGameBus } from "../core/domain/events/GameEvents";
 import { PersistenceRepository } from "../core/application/ports/PersistenceRepository";
@@ -122,6 +123,8 @@ describe("the engine's common pipeline", () => {
 			resolver: { resolve: async () => command } as any,
 			renderer: { render } as any,
 			handlers: { ...handlers, ...overrides },
+			worldTick: new WorldTick(),
+			autosave: { save: jest.fn() } as any,
 			generateCampaignBlueprint: {} as any,
 			generateYearBlueprint: {} as any,
 			blueprintProgressService: { checkMilestones } as any,

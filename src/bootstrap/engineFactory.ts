@@ -14,6 +14,8 @@ import {
 } from "../ai/OllamaConfig";
 import { probeOllamaConnection } from "../ai/OllamaClient";
 import { BlueprintLLMProvider } from "../ai/providers/BlueprintLLMProvider";
+import { WorldTick } from "../core/engine/WorldTick";
+import { Autosave } from "../core/engine/Autosave";
 import { createCommandHandlers } from "../core/engine/handlers";
 import Resolver from "../core/engine/Resolver";
 import TurnResolver from "../core/engine/TurnResolver";
@@ -197,6 +199,10 @@ export function createEngine(
 		options.blueprintConfig ?? DEFAULT_BLUEPRINT_OLLAMA_CONFIG;
 	const allowFallback = options.allowBlueprintFallback ?? false;
 
+	const persistenceRepository =
+		options.persistenceRepository ?? new JsonPersistenceRepository();
+	const logger = options.logger ?? new FileLogger();
+
 	const llmProvider = new BlueprintLLMProvider(blueprintConfig);
 	const generateYearBlueprint = new GenerateYearBlueprint(
 		llmProvider,
@@ -209,13 +215,15 @@ export function createEngine(
 		bus,
 		resolver: new Resolver(resolverConfig, registry),
 		renderer: new Renderer(rendererConfig),
+		worldTick: new WorldTick(),
+		autosave: new Autosave(persistenceRepository, logger),
 		handlers: createCommandHandlers({
 			registry,
 			bus,
 			turnResolver: options.turnResolver ?? new TurnResolver(bus),
 			advanceYear: new AdvanceYear(generateYearBlueprint, bus),
 			persistenceRepository:
-				options.persistenceRepository ?? new JsonPersistenceRepository(),
+				persistenceRepository,
 		}),
 		generateCampaignBlueprint: new GenerateCampaignBlueprint(
 			llmProvider,
@@ -225,7 +233,7 @@ export function createEngine(
 		),
 		generateYearBlueprint,
 		blueprintProgressService: new BlueprintProgressService(),
-		logger: options.logger ?? new FileLogger(),
+		logger,
 	});
 	wireEngine(engine, registry, bus);
 	return engine;

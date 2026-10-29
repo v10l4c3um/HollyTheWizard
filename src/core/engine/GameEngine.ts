@@ -5,6 +5,8 @@ import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import Resolver from "./Resolver";
 import Renderer from "./Renderer";
+import { WorldTick, TickReport } from "./WorldTick";
+import { Autosave } from "./Autosave";
 import { buildRenderContext } from "./RenderContext";
 import { CommandHandlerMap, GameSession, runCommand } from "./handlers";
 import { GameBus } from "../domain/events/GameEvents";
@@ -18,6 +20,8 @@ export interface GameEngineDeps {
 	resolver: Resolver;
 	renderer: Renderer;
 	handlers: CommandHandlerMap;
+	worldTick: WorldTick;
+	autosave: Autosave;
 	generateCampaignBlueprint: GenerateCampaignBlueprint;
 	generateYearBlueprint: GenerateYearBlueprint;
 	blueprintProgressService: BlueprintProgressService;
@@ -33,6 +37,8 @@ class GameEngine implements IGameEngine {
 	private resolver: Resolver;
 	private renderer: Renderer;
 	private handlers: CommandHandlerMap;
+	private worldTick: WorldTick;
+	private autosave: Autosave;
 	private bus: GameBus;
 	private generateCampaignBlueprint: GenerateCampaignBlueprint;
 	private generateYearBlueprint: GenerateYearBlueprint;
@@ -46,6 +52,8 @@ class GameEngine implements IGameEngine {
 		this.resolver = deps.resolver;
 		this.renderer = deps.renderer;
 		this.handlers = deps.handlers;
+		this.worldTick = deps.worldTick;
+		this.autosave = deps.autosave;
 		this.generateCampaignBlueprint = deps.generateCampaignBlueprint;
 		this.generateYearBlueprint = deps.generateYearBlueprint;
 		this.blueprintProgressService = deps.blueprintProgressService;
@@ -85,8 +93,11 @@ class GameEngine implements IGameEngine {
 	}
 
 	async handleCommand(input: string): Promise<TurnOutcome> {
+		let report: TickReport | undefined;
 		try {
 			const command = await this.resolver.resolve(input);
+			const stateBefore = this.state;
+			const clockBefore = stateBefore.worldClock.getTotalMinutes();
 			const result = await runCommand(this.handlers, command, this.session);
 
 			if (result.kind === "fail") {
@@ -94,21 +105,40 @@ class GameEngine implements IGameEngine {
 				return this._fail(kind, message, cause);
 			}
 
+			// Time passed during this turn: let the world react. (A LOAD swaps
+			// the whole state, so there is no "before" to compare with.)
+			if (this.state === stateBefore) {
+				report = this.worldTick.run(
+					this.state,
+					this.registry,
+					this.bus,
+					clockBefore,
+					this.state.worldClock.getTotalMinutes(),
+				);
+			}
+			const notices = report?.notices ?? [];
+
 			this.state.output =
 				result.kind === "say"
-					? result.text
+					? [result.text, ...notices].join(" ")
 					: await this.renderer.render(
 							buildRenderContext(
 								this.registry,
 								this.state,
 								result.briefOutput,
 								result.timePassed,
+								notices,
 							),
 						);
 
 			this.blueprintProgressService.checkMilestones(this.state, this.bus);
 		} catch (error) {
 			return this._fail("internal", "Something went wrong.", error);
+		}
+
+		// The turn is final now, so this is what the player would come back to.
+		if (report?.startedNewDay) {
+			await this.autosave.save(this.state);
 		}
 
 		return this._ok();

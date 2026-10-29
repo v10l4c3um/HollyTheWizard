@@ -16,6 +16,8 @@ export interface RenderContext {
 	recentEvents: string[];
 	narrationMode: string;
 	timePassed?: TimePassed;
+	/** What happened in the world while time passed (e.g. a missed class). */
+	worldNotes?: string[];
 }
 
 /** Everything the narrator is told about the moment, from the current state. */
@@ -24,6 +26,7 @@ export function buildRenderContext(
 	state: GameState,
 	briefOutput: string,
 	timePassed?: TimePassed,
+	worldNotes: string[] = [],
 ): RenderContext {
 	const location = registry.getLocation(state.currentLocationId);
 	return {
@@ -38,5 +41,6 @@ export function buildRenderContext(
 		recentEvents: state.recentEvents.slice(-5),
 		narrationMode: state.settings.narrationMode,
 		timePassed,
+		worldNotes,
 	};
 }

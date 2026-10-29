@@ -32,7 +32,7 @@ class Renderer {
 				}`,
 			);
 			// Narration is polish; the turn's outcome is not. Show the facts.
-			return ctx.briefOutput;
+			return [ctx.briefOutput, ...(ctx.worldNotes ?? [])].join(" ");
 		}
 	}
 
@@ -49,6 +49,10 @@ class Renderer {
 
 		const timeInfo = ctx.timePassed
 			? `Time passed: ${ctx.timePassed.minutes} minutes (${ctx.timePassed.beforeTimeOfDay} → ${ctx.timePassed.afterTimeOfDay}). Mention this naturally if relevant.`
+			: "";
+
+		const worldNotes = ctx.worldNotes?.length
+			? `Also happened while time passed: ${ctx.worldNotes.join(" ")} Mention it briefly.`
 			: "";
 
 		return `You are a narrator for a fantasy RPG.
@@ -68,6 +72,7 @@ When: ${capitalize(ctx.weekday)} (day ${ctx.day}), ${ctx.timeOfDay}
 ${npcs}
 ${recentEvents}
 ${timeInfo}
+${worldNotes}
 Narration style: ${ctx.narrationMode}
 
 What just happened (brief): ${ctx.briefOutput}
