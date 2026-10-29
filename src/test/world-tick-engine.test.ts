@@ -1,3 +1,4 @@
+import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 import * as fs from "fs/promises";
 import * as path from "path";
 import {
@@ -86,30 +87,17 @@ describe("the world tick in the turn pipeline", () => {
 	});
 
 	it("logs a failed autosave without telling the player", async () => {
-		const failing = {
-			save: async () => {
-				throw new Error("disk full");
-			},
-			load: async () => {
-				throw new Error("unused");
-			},
-			exists: async () => false,
-		};
-		(game.engine as any).autosave = new (
-			await import("../core/engine/Autosave")
-		).Autosave(failing, {
-			debug: () => {},
-			warn: () => {},
-			error: (message: string, cause?: unknown) => {
-				game.logged.push({ message, cause });
-			},
-		});
+		// The autosave is a real `Autosave` over the real repository; the disk fails.
+		const save = jest
+			.spyOn(JsonPersistenceRepository.prototype, "save")
+			.mockRejectedValue(new Error("disk full"));
 
 		const outcome = await say("rest all night", "REST", { duration: 18 });
 
 		expect(outcome.error).toBeUndefined();
 		expect(outcome.narration).not.toContain("disk full");
 		expect(game.logged.some((e) => e.message === "autosave failed")).toBe(true);
+		save.mockRestore();
 	});
 
 	it("runs no tick after a failed command or a LOAD", async () => {

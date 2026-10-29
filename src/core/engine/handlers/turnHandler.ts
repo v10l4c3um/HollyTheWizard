@@ -9,11 +9,11 @@ export function createTurnHandler(
 	registry: Registry,
 ): CommandHandler<InWorldCommand> {
 	return async (command, session) => {
-		const result = turnResolver.apply(command, session.state, registry);
+		const turn = turnResolver.decide(command, session.state, registry);
 		return {
 			kind: "narrate",
-			briefOutput: result.briefOutput,
-			timePassed: result.timePassed,
+			briefOutput: turn.briefOutput,
+			turn,
 		};
 	};
 }

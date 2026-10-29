@@ -1,23 +1,20 @@
 import { IGameEngine } from "../../types";
-import { TurnError, TurnOutcome } from "./TurnOutcome";
+import { TurnOutcome } from "./TurnOutcome";
 import { Logger } from "../application/ports/Logger";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import Resolver from "./Resolver";
 import Renderer from "./Renderer";
-import { WorldTick, TickReport } from "./WorldTick";
+import { WorldTick } from "./WorldTick";
 import { Autosave } from "./Autosave";
-import { applyEffects } from "../domain/effects/EffectApplier";
-import { turnRecorded } from "../domain/effects/GameEffects";
-import { buildWorldView } from "./WorldView";
-import { buildRenderContext } from "./RenderContext";
-import { Command, IN_WORLD_TYPES } from "../domain/commands/CommandDefinitions";
 import { GameSession } from "./GameSession";
-import { CommandHandlerMap, runCommand } from "./handlers";
+import { CommandHandlerMap } from "./handlers";
 import { GameBus } from "../domain/events/GameEvents";
 import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlueprint";
 import { BlueprintProgressService } from "../domain/campaign/BlueprintProgressService";
+import { TurnPipeline } from "./pipeline/TurnPipeline";
+import { createStages } from "./pipeline/stages";
 
 export interface GameEngineDeps {
 	registry: Registry;
@@ -39,30 +36,25 @@ type StartupMilestoneStatus = "in_progress" | "done";
 class GameEngine implements IGameEngine {
 	private session: GameSession;
 	private registry: Registry;
-	private resolver: Resolver;
-	private renderer: Renderer;
-	private handlers: CommandHandlerMap;
-	private worldTick: WorldTick;
-	private autosave: Autosave;
-	private bus: GameBus;
+	private pipeline: TurnPipeline;
 	private generateCampaignBlueprint: GenerateCampaignBlueprint;
 	private generateYearBlueprint: GenerateYearBlueprint;
 	private blueprintProgressService: BlueprintProgressService;
-	private logger: Logger;
 
 	constructor(deps: GameEngineDeps) {
 		this.session = new GameSession(new GameState());
 		this.registry = deps.registry;
-		this.bus = deps.bus;
-		this.resolver = deps.resolver;
-		this.renderer = deps.renderer;
-		this.handlers = deps.handlers;
-		this.worldTick = deps.worldTick;
-		this.autosave = deps.autosave;
+		this.pipeline = new TurnPipeline({
+			session: this.session,
+			registry: deps.registry,
+			resolver: deps.resolver,
+			autosave: deps.autosave,
+			logger: deps.logger,
+			stages: createStages(deps),
+		});
 		this.generateCampaignBlueprint = deps.generateCampaignBlueprint;
 		this.generateYearBlueprint = deps.generateYearBlueprint;
 		this.blueprintProgressService = deps.blueprintProgressService;
-		this.logger = deps.logger;
 		this.state.output =
 			"Welcome to Holly the Wizard! Type a command to begin.";
 	}
@@ -98,102 +90,7 @@ class GameEngine implements IGameEngine {
 	}
 
 	async handleCommand(input: string): Promise<TurnOutcome> {
-		let command: Command;
-		try {
-			command = await this.resolver.resolve(
-				input,
-				buildWorldView(this.registry, this.state),
-			);
-		} catch (error) {
-			return this._fail("internal", "Something went wrong.", error);
-		}
-
-		// The turn works on a copy of the state. It is kept only if the turn
-		// succeeds; any failure puts the untouched state back.
-		this.session.begin();
-		let report: TickReport | undefined;
-		try {
-			const working = this.state;
-			const clockBefore = working.worldClock.getTotalMinutes();
-			const fromLocationId = working.currentLocationId;
-			const result = await runCommand(this.handlers, command, this.session);
-
-			if (result.kind === "fail") {
-				this.session.rollback();
-				const { kind, message, cause } = result.error;
-				return this._fail(kind, message, cause);
-			}
-
-			// Time passed during this turn: let the world react. (A LOAD or an
-			// undo swaps the whole state, so there is no "before" to compare with.)
-			if (this.state === working) {
-				report = this.worldTick.run(
-					this.state,
-					this.registry,
-					this.bus,
-					clockBefore,
-					this.state.worldClock.getTotalMinutes(),
-				);
-			}
-			const notices = report?.notices ?? [];
-
-			this.state.output =
-				result.kind === "say"
-					? [result.text, ...notices].join(" ")
-					: await this.renderer.render(
-							buildRenderContext(
-								this.registry,
-								this.state,
-								result.briefOutput,
-								result.timePassed,
-								notices,
-							),
-						);
-
-			this.blueprintProgressService.checkMilestones(this.state, this.bus);
-
-			// Remember what the player did, so the next sentence can say "again",
-			// "go back" or "ask her". Only in-world turns, and only on the working
-			// copy, so a rollback forgets it too.
-			if (IN_WORLD_TYPES.has(command.type) && this.state === working) {
-				applyEffects(
-					this.state,
-					[turnRecorded({ input, command, fromLocationId })],
-					this.bus,
-				);
-			}
-			this.session.commit();
-		} catch (error) {
-			this.session.rollback();
-			return this._fail("internal", "Something went wrong.", error);
-		}
-
-		// The turn is final now, so this is what the player would come back to.
-		if (report?.startedNewDay) {
-			await this.autosave.save(this.state);
-		}
-
-		return this._ok();
-	}
-
-	private _ok(): TurnOutcome {
-		return { state: this.state, narration: this.state.output };
-	}
-
-	private _fail(
-		kind: TurnError["kind"],
-		message: string,
-		cause?: unknown,
-	): TurnOutcome {
-		if (kind !== "invalid-input") {
-			this.logger.error(`${kind}: ${message}`, cause);
-		}
-		this.state.output = message;
-		return {
-			state: this.state,
-			narration: message,
-			error: { kind, message, cause },
-		};
+		return this.pipeline.run(input);
 	}
 }
 

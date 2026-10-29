@@ -1,4 +1,5 @@
 import { resetFakeOllama, scriptPlayer } from "./helpers/fakeOllama";
+import Renderer from "../core/engine/Renderer";
 import { buildTestGame, TestGame } from "./helpers/buildTestGame";
 
 jest.mock("../ai/OllamaClient", () => {
@@ -59,7 +60,7 @@ describe("a turn is a transaction", () => {
 		const before = game.engine.state;
 		const snapshot = JSON.stringify(before);
 		const spy = jest
-			.spyOn(game.turnResolver, "apply")
+			.spyOn(game.turnResolver, "decide")
 			.mockImplementation((_c, state) => {
 				state.currentLocationId = "forest";
 				state.worldClock.advanceTime(600);
@@ -93,8 +94,7 @@ describe("a turn is a transaction", () => {
 
 	it("rolls back when the narrator crashes after the rules already ran", async () => {
 		const before = game.engine.state;
-		const renderer = (game.engine as any).renderer;
-		const spy = jest.spyOn(renderer, "render").mockRejectedValue(new Error("llm gone"));
+		const spy = jest.spyOn(Renderer.prototype, "render").mockRejectedValue(new Error("llm gone"));
 		try {
 			const outcome = await move("hallway");
 			expect(outcome.error?.kind).toBe("internal");

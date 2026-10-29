@@ -1,6 +1,6 @@
 import { GameSession } from "../GameSession";
 import { Command } from "../../domain/commands/CommandDefinitions";
-import { TimePassed } from "../TurnResult";
+import { TurnResult } from "../TurnResult";
 import { TurnError } from "../TurnOutcome";
 
 /**
@@ -11,7 +11,12 @@ export type { GameSession };
 
 export type HandlerResult =
 	/** Narrate this fact with the LLM renderer. */
-	| { kind: "narrate"; briefOutput: string; timePassed?: TimePassed }
+	| {
+			kind: "narrate";
+			briefOutput: string;
+			/** An in-world rule's result: the pipeline moves the clock and announces its events. */
+			turn?: TurnResult;
+	  }
 	/** Show this exact text; no narration. */
 	| { kind: "say"; text: string }
 	/** The command did not work; nothing is narrated or checked. */

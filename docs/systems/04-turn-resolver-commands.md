@@ -1,6 +1,6 @@
 # Turn Resolver & Commands
 
-Files: `src/core/engine/TurnResolver.ts` (the pipeline, ~100 lines), `src/core/engine/rules/` (one file per command plus `context.ts`, `results.ts`, `index.ts`), `TurnResult.ts`, `TimeCost.ts`, `src/core/domain/commands/CommandDefinitions.ts` (the `Command` type). Tests: `turn-rules.test.ts`, `turn-event-order.test.ts`, `turn-resolver.test.ts` and the scenario suites. Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
+Files: `src/core/engine/TurnResolver.ts` (`decide`, ~60 lines), `turnSteps.ts` (`advanceTime`, `announce`), `src/core/engine/rules/` (one file per command plus `context.ts`, `results.ts`, `index.ts`), `TurnResult.ts`, `TimeCost.ts`, `src/core/domain/commands/CommandDefinitions.ts` (the `Command` type). Tests: `turn-rules.test.ts`, `turn-event-order.test.ts`, `turn-resolver.test.ts` and the scenario suites. Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
 
 ## What it does
 
@@ -10,12 +10,12 @@ A rule never writes a sentence. It returns **facts** (`TurnFact`, `domain/facts/
 
 ## How it works
 
-`apply(command, state, registry)` takes only the seven in-world commands (`InWorldCommand`; the meta commands never get here, the type enforces it) and is a short pipeline:
+`decide(command, state, registry)` takes only the seven in-world commands (`InWorldCommand`; the meta commands never get here, the type enforces it). Moving the clock and announcing events are the next stages of the turn pipeline (see 02), kept in `turnSteps.ts`; `apply` runs all three in one call and is what the rule tests use. `decide` is a short pipeline:
 
 1. It makes one `Random` for the turn (a seeded one resumed from `GameState.randomState`, or an injected one) and a `TurnContext` (state, registry, random, services, and an `apply(effects)` that runs `applyEffects`). A rule has no bus.
 2. It runs the rule for the command, `turnRules[command.type]` (`rules/index.ts`, a registry typed over the in-world commands, so a new command without a rule does not compile). A rule is a plain function `(command, ctx) => TurnResult`: it checks, applies the effects later steps depend on, and returns the fact, the time cost, the effects and the events it wants announced (`emits`). It states its own `outcome`: `success`, `blocked` (tried, did not work, time passed, such as a move to an unconnected place) or `failure` (not a valid request, no time).
-3. It applies the bookkeeping every turn shares as effects: the fact log (every fact but a refusal), the clock, the new random state.
-4. Only then does it emit the rule's `emits` on the bus, in order, and `ActionResolved`. A listener therefore sees the finished turn (clock advanced, log written), not a half-done one.
+3. It applies the bookkeeping that belongs to the decision as effects: the fact log (every fact but a refusal) and the new random state.
+4. The turn pipeline then moves the clock (`advanceTime`: `TimeAdvanced`, `timePassed`) and emits the rule's `emits` on the bus, in order, then `ActionResolved` (`announce`). A listener therefore sees the finished turn (clock advanced, log written), not a half-done one.
 
 Whether a place is private comes from the `Location` data.
 

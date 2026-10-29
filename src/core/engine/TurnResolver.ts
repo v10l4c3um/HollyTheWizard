@@ -12,9 +12,9 @@ import {
 	GameEffect,
 	factsRecorded,
 	randomStateSet,
-	timeAdvanced,
 } from "../domain/effects/GameEffects";
 import { TurnContext, TurnRule, turnRules } from "./rules";
+import { advanceTime, announce } from "./turnSteps";
 
 /** What the rules use besides the bus and the logger; every one has a real default. */
 export interface TurnResolverDeps {
@@ -25,10 +25,10 @@ export interface TurnResolverDeps {
 }
 
 /**
- * Runs one in-world turn: picks the rule for the command, then does the
- * bookkeeping every turn shares (fact log, clock, random state), then
- * announces what the rule asked to have announced. The rules themselves live
- * in `./rules`, one per command.
+ * Decides one in-world turn: picks the rule for the command and does the
+ * bookkeeping that belongs to the decision (the fact log, where chance stands).
+ * The clock and the announcements are the next stages of the turn pipeline
+ * (`turnSteps.ts`). The rules themselves live in `./rules`, one per command.
  */
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -45,7 +45,7 @@ class TurnResolver {
 		this.makeRandom = deps.random ?? ((state) => createRandom(state.randomState));
 	}
 
-	apply(command: InWorldCommand, state: GameState, registry: Registry): TurnResult {
+	decide(command: InWorldCommand, state: GameState, registry: Registry): TurnResult {
 		const random = this.makeRandom(state);
 		const ctx: TurnContext = {
 			state,
@@ -59,39 +59,22 @@ class TurnResolver {
 		const rule = turnRules[command.type] as TurnRule<InWorldCommand>;
 		const result = rule(command, ctx);
 
-		// Bookkeeping common to every turn: the log, the clock, where chance stands
-		// (so a save or an undo replays the same luck).
+		// Bookkeeping that is part of the decision: the log, and where chance
+		// stands (so a save or an undo replays the same luck).
 		const bookkeeping: GameEffect[] = [];
 		const logged = result.facts.filter((fact) => fact.kind !== "refused");
 		if (logged.length > 0) bookkeeping.push(factsRecorded(logged));
-		if (result.timeCost.type === "minutes") {
-			bookkeeping.push(timeAdvanced(result.timeCost.amount));
-		}
-		const beforeTimeOfDay = state.worldClock.timeOfDay;
 		if (random.state !== undefined) bookkeeping.push(randomStateSet(random.state));
 		ctx.apply(bookkeeping);
-		if (result.timeCost.type === "minutes") {
-			result.timePassed = {
-				minutes: result.timeCost.amount,
-				beforeTimeOfDay,
-				afterTimeOfDay: state.worldClock.timeOfDay,
-			};
-		}
 		result.effects = [...(result.effects ?? []), ...bookkeeping];
+		return result;
+	}
 
-		// Only now, with the turn finished, tell the world what happened.
-		for (const { name, payload } of result.emits ?? []) {
-			this.bus.emit(name as never, payload as never);
-		}
-
-		// Generic "something happened" hook for cross-cutting systems (rumors,
-		// suspicion, achievements, ...): the rule says how the action turned out.
-		this.bus.emit("ActionResolved", {
-			actionType: command.type,
-			locationId: state.currentLocationId,
-			outcome: result.outcome,
-		});
-
+	/** The whole turn in one call: decide, move the clock, announce. The engine runs these as separate stages. */
+	apply(command: InWorldCommand, state: GameState, registry: Registry): TurnResult {
+		const result = this.decide(command, state, registry);
+		advanceTime(result, state, this.bus, this.logger);
+		announce(command, result, state, this.bus);
 		return result;
 	}
 }
