@@ -85,6 +85,7 @@ export type GameEffect =
 	| { type: "LocationsDiscovered"; locationIds: string[] }
 	| { type: "TimeAdvanced"; minutes: number }
 	| { type: "EventsRecorded"; entries: string[] }
+	| { type: "SceneInvitationExpired"; invitationId: string }
 	/** hidden -> available only; never downgrades a known spell. */
 	| { type: "SpellRevealed"; spellId: string; atMinutes?: number }
 	/** Replaces a spell's state with the result of a progression rule. */
@@ -248,4 +249,8 @@ export function lessonAdvanced(
 
 export function locationsDiscovered(locationIds: string[]): GameEffect {
 	return { type: "LocationsDiscovered", locationIds };
+}
+
+export function sceneInvitationExpired(invitationId: string): GameEffect {
+	return { type: "SceneInvitationExpired", invitationId };
 }

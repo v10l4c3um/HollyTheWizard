@@ -1,4 +1,9 @@
-import { SubjectType, SchoolYear } from "../quest/Curriculum";
+import {
+	SubjectType,
+	SchoolYear,
+	DayOfWeek,
+	TimeOfDay,
+} from "../quest/Curriculum";
 import { AttributeId } from "../player/PlayerStats";
 import { TypedBus } from "../../engine/EventBus";
 
@@ -77,6 +82,15 @@ export type GameEvents = {
 	QuestFlagSet: { flagId: string; active: boolean };
 	QuestActivated: { questId: string };
 	QuestCompleted: { questId: string };
+	/** A new part of the day began (once per boundary, even across a long rest). */
+	PeriodChanged: {
+		day: number;
+		weekday: DayOfWeek;
+		period: TimeOfDay;
+		atMinutes: number;
+	};
+	/** A new calendar day began, at midnight. */
+	DayStarted: { day: number; weekday: DayOfWeek };
 	TimeAdvanced: {
 		minutesDelta: number;
 		newMinutesOfDay: number;

@@ -130,6 +130,11 @@ function applyEffect(
 				totalMinutes: state.worldClock.getTotalMinutes(),
 			});
 			break;
+		case "SceneInvitationExpired":
+			state.sceneInvitations = state.sceneInvitations.filter(
+				(invitation) => invitation.invitationId !== effect.invitationId,
+			);
+			break;
 		case "EventsRecorded":
 			state.recentEvents.push(...effect.entries);
 			break;
