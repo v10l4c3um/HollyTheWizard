@@ -260,7 +260,7 @@ class TurnResolver {
 			topic,
 			topicDef,
 			npcProfile,
-			isPrivate: isPrivateLocation(locationId),
+			isPrivate: registry.getLocation(locationId)?.isPrivate ?? false,
 			locationId,
 			relationship: relationship ?? {
 				trust: 0,
@@ -716,21 +716,6 @@ export default TurnResolver;
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const PRIVATE_LOCATION_KEYWORDS = [
-	"dormitory",
-	"room",
-	"private",
-	"study",
-	"quarters",
-	"office",
-	"garden",
-];
-
-function isPrivateLocation(locationId: string): boolean {
-	const lower = locationId.toLowerCase();
-	return PRIVATE_LOCATION_KEYWORDS.some((kw) => lower.includes(kw));
-}
 
 function buildConversationOutput(
 	npcName: string,

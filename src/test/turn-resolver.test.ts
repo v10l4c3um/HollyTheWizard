@@ -89,3 +89,36 @@ describe("ActionResolved reports what the rule said", () => {
 		expect(seen).toEqual(["MOVE:blocked", "MOVE:success", "MOVE:failure"]);
 	});
 });
+
+
+describe("whether a place is private is data on the place", () => {
+	it("the shipped content marks the places where you can speak freely", () => {
+		const isPrivate = (id: string) => registry.getLocation(id)?.isPrivate;
+		expect(isPrivate("headmaster_office")).toBe(true);
+		expect(isPrivate("hagrid_hut")).toBe(true);
+		// These used to count as private because their ids contain "room".
+		expect(isPrivate("classroom")).toBe(false);
+		expect(isPrivate("common_room")).toBe(false);
+		expect(isPrivate("grounds")).toBe(false);
+	});
+
+	it("a conversation is tagged as private exactly when its place is", () => {
+		const tagsOfTalk = () => {
+			moveToNpc(state, registry, "hagrid");
+			let tags: string[] = [];
+			bus.on("ConversationResolved", (e) => (tags = e.narrationTags));
+			apply({ type: "TALK", npcId: "hagrid" });
+			return tags;
+		};
+		const place = registry.getLocation("grounds")!;
+		expect(tagsOfTalk()).not.toContain("private-setting");
+		place.isPrivate = true;
+		try {
+			state = validState(registry);
+			applyEffects(state, arrivalEffects(registry, state, "great_hall"), bus);
+			expect(tagsOfTalk()).toContain("private-setting");
+		} finally {
+			place.isPrivate = false;
+		}
+	});
+});

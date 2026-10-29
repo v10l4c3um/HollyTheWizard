@@ -89,6 +89,7 @@ class ContentLoader {
 					l.description,
 					l.connectedLocationsIds,
 					l.aliases,
+					l.private,
 				),
 			);
 		}

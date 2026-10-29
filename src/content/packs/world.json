@@ -129,7 +129,8 @@
       "aliases": [
         "the headmaster's office",
         "Dumbledore's office"
-      ]
+      ],
+      "private": true
     },
     {
       "id": "grounds",
@@ -170,7 +171,8 @@
         "Hagrid's hut",
         "the hut",
         "the gamekeeper's hut"
-      ]
+      ],
+      "private": true
     }
   ]
 }

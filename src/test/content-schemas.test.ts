@@ -60,6 +60,15 @@ describe("pack manifest schema", () => {
 		expect(result.locations?.[1].aliases).toEqual([]);
 	});
 
+	it("makes a place public unless it says it is private", () => {
+		const result = PackManifestSchema.parse(
+			manifest({
+				locations: [{ ...location("office"), private: true }, location("yard")],
+			}),
+		);
+		expect(result.locations?.map((l) => l.private)).toEqual([true, false]);
+	});
+
 	it("keeps accepting the unused fields the shipped content carries", () => {
 		const withLegacy = manifest({
 			npcs: [npc("anna", { affinity: 85 })],

@@ -105,6 +105,8 @@ export const LocationSchema = z.strictObject({
 	connectedLocationsIds: z.array(z.string()),
 	/** Other names players use for the place ("the hut", "outside"). */
 	aliases: z.array(z.string()).default([]),
+	/** Nobody overhears here, so conversations can go further. */
+	private: z.boolean().default(false),
 });
 
 export type LocationData = z.infer<typeof LocationSchema>;
