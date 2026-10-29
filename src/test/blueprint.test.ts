@@ -1,3 +1,4 @@
+import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -341,13 +342,10 @@ describe("JsonPersistenceRepository round-trip", () => {
 		const state = new GameState();
 		state.currentLocationId = "forest";
 		state.worldClock.advanceTime(125);
-		state.spellbook.setSpellState("test_spell", {
-			spellId: "test_spell",
-			knowledgeState: "learned",
-			proficiency: 0.5,
-			practiceAttempts: 2,
-			successfulCasts: 1,
-		} as any);
+		state.spellbook.setSpellState(
+				"test_spell",
+				createLearnedSpellState("test_spell", "test"),
+			);
 
 		await repository.save(testFilename, state);
 		const loaded = await repository.load(testFilename);

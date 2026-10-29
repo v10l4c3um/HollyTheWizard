@@ -93,12 +93,4 @@ describe("exploration", () => {
 		expect(state.discoveredLocationIds.filter((i) => i === "forest")).toHaveLength(1);
 		expect(state.visitedLocationIds).not.toContain("forest");
 	});
-
-	it("an older save's discovered places count as visited", () => {
-		const plain = JSON.parse(JSON.stringify(state));
-		delete plain.visitedLocationIds;
-		plain.discoveredLocationIds = ["great_hall", "hallway"];
-		const loaded = GameState.fromPlainObject(plain);
-		expect(loaded.visitedLocationIds).toEqual(["great_hall", "hallway"]);
-	});
 });

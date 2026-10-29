@@ -1,3 +1,4 @@
+import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
 import * as fs from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -106,13 +107,10 @@ describe("JsonPersistenceRepository", () => {
 			const state = new GameState();
 			state.currentLocationId = "forest";
 			state.worldClock.advanceTime(125);
-			state.spellbook.setSpellState("test_spell", {
-				spellId: "test_spell",
-				knowledgeState: "learned",
-				proficiency: 0.5,
-				practiceAttempts: 2,
-				successfulCasts: 1,
-			} as any);
+			state.spellbook.setSpellState(
+				"test_spell",
+				createLearnedSpellState("test_spell", "test"),
+			);
 
 			await repository.save(testFilename, state);
 
@@ -165,13 +163,10 @@ describe("JsonPersistenceRepository", () => {
 		it("rehydrates class instances correctly", async () => {
 			const testFilename = `test-save-${Date.now()}`;
 			const state = new GameState();
-			state.spellbook.setSpellState("test_spell", {
-				spellId: "test_spell",
-				knowledgeState: "learned",
-				proficiency: 0.5,
-				practiceAttempts: 2,
-				successfulCasts: 1,
-			} as any);
+			state.spellbook.setSpellState(
+				"test_spell",
+				createLearnedSpellState("test_spell", "test"),
+			);
 
 			await repository.save(testFilename, state);
 			const loaded = await repository.load(testFilename);
@@ -218,22 +213,6 @@ describe("JsonPersistenceRepository", () => {
 			expect(hagrid.trust).toBe(5);
 		});
 
-		it("fills in attributes and resources missing from a save", async () => {
-			const state = new GameState();
-			await repository.save("sparse", state);
-			const file = path.join(SAVES_DIR, "sparse.json");
-			const data = JSON.parse(await fs.readFile(file, "utf-8"));
-			data.player.attributes = { values: { INT: 7 } };
-			delete data.player.resources;
-			await fs.writeFile(file, JSON.stringify(data), "utf-8");
-
-			const loaded = await repository.load("sparse");
-
-			expect(loaded.player.attributes.get("INT")).toBe(7);
-			expect(loaded.player.attributes.get("WIL")).toBe(0);
-			expect(loaded.player.resources.energy).toBe(100);
-		});
-
 		it("keeps the calendar day through a save", async () => {
 			const state = new GameState();
 			state.worldClock.advanceTime(2 * 1440 + 90); // day 3
@@ -246,20 +225,6 @@ describe("JsonPersistenceRepository", () => {
 			expect(loaded.worldClock.getTotalMinutes()).toBe(
 				state.worldClock.getTotalMinutes(),
 			);
-		});
-
-		it("loads a save from before the calendar existed", async () => {
-			const state = new GameState();
-			await repository.save("legacy", state);
-			const file = path.join(SAVES_DIR, "legacy.json");
-			const data = JSON.parse(await fs.readFile(file, "utf-8"));
-			data.worldClock = { minutesOfDay: 600 };
-			await fs.writeFile(file, JSON.stringify(data), "utf-8");
-
-			const loaded = await repository.load("legacy");
-
-			expect(loaded.worldClock.getDay()).toBe(1);
-			expect(loaded.worldClock.getMinutesOfDay()).toBe(600);
 		});
 
 		it("throws when loading non-existent file", async () => {
@@ -277,13 +242,10 @@ describe("JsonPersistenceRepository", () => {
 			const originalState = new GameState();
 			originalState.currentLocationId = "forest";
 			originalState.worldClock.advanceTime(125);
-			originalState.spellbook.setSpellState("test_spell", {
-				spellId: "test_spell",
-				knowledgeState: "learned",
-				proficiency: 0.5,
-				practiceAttempts: 2,
-				successfulCasts: 1,
-			} as any);
+			originalState.spellbook.setSpellState(
+				"test_spell",
+				createLearnedSpellState("test_spell", "test"),
+			);
 
 			await repository.save(testFilename, originalState);
 			const loadedState = await repository.load(testFilename);

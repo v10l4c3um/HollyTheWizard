@@ -1,6 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import GameState from "../../../core/domain/world/GameState";
+import { InvalidSaveError } from "../../../core/application/ports/InvalidSaveError";
+import { SaveFileSchema, describeSaveProblems } from "./SaveSchema";
 import { PersistenceRepository } from "../../../core/application/ports/PersistenceRepository";
 
 const DEFAULT_SAVES_DIR = path.join(process.cwd(), "saves");
@@ -26,8 +28,19 @@ export class JsonPersistenceRepository implements PersistenceRepository {
 	async load(filename: string = "autosave"): Promise<GameState> {
 		const filePath = this._resolveFilePath(filename);
 		const json = await fs.readFile(filePath, "utf-8");
-		const data = JSON.parse(json);
-		return GameState.fromPlainObject(data);
+
+		let data: unknown;
+		try {
+			data = JSON.parse(json);
+		} catch {
+			throw new InvalidSaveError(filename, ["the file is not valid JSON"]);
+		}
+
+		const parsed = SaveFileSchema.safeParse(data);
+		if (!parsed.success) {
+			throw new InvalidSaveError(filename, describeSaveProblems(parsed.error));
+		}
+		return GameState.fromPlainObject(parsed.data);
 	}
 
 	async exists(filename: string): Promise<boolean> {

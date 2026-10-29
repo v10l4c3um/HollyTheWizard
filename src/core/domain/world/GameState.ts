@@ -19,6 +19,9 @@ import {
 import { RelationshipStats } from "../npc/Relationship";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
+/** The save file format. A save with any other value is refused. */
+export const SAVE_FORMAT_VERSION = "1";
+
 /** Where a new game starts. Content is checked to contain this location. */
 export const START_LOCATION_ID = "great_hall";
 
@@ -80,7 +83,7 @@ class GameState {
 
 	constructor() {
 		this.metadata = {
-			saveVersion: "0.0.1",
+			saveVersion: SAVE_FORMAT_VERSION,
 			createdTimestamp: Date.now(),
 		};
 		this.worldClock = new WorldClock();
@@ -153,11 +156,11 @@ class GameState {
 	}
 
 	/**
-	 * Rehydrates a GameState from a plain object produced by
-	 * `JSON.parse(JSON.stringify(gameState))` (e.g. loaded from disk).
-	 * Class-instance fields with methods (`worldClock`, `spellbook`) are
-	 * rebuilt via their own `fromJSON`; the rest are plain data and can
-	 * be copied directly.
+	 * Rebuilds a GameState from a save file's contents. The caller has already
+	 * validated the shape (see `SaveSchema`), so nothing is defaulted here: a
+	 * part that is missing is an invalid save, not an empty one. Class-instance
+	 * fields (`player`, `worldClock`, `spellbook`, relationships) are rebuilt
+	 * through their own `fromJSON`.
 	 */
 	static fromPlainObject(data: any): GameState {
 		const state = new GameState();
@@ -168,30 +171,28 @@ class GameState {
 		state.academicState = data.academicState;
 		state.inventory = data.inventory;
 		state.discoveredLocationIds = data.discoveredLocationIds;
-		// Older saves only knew 'discovered', which meant 'been there'.
-		state.visitedLocationIds =
-			data.visitedLocationIds ?? [...(data.discoveredLocationIds ?? [])];
+		state.visitedLocationIds = data.visitedLocationIds;
 		state.questFlags = data.questFlags;
-		state.flags = data.flags ?? {};
-		state.resources = data.resources ?? {};
+		state.flags = data.flags;
+		state.resources = data.resources;
 		state.relationships = Object.fromEntries(
-			Object.entries(data.relationships ?? {}).map(([npcId, stats]) => [
+			Object.entries(data.relationships).map(([npcId, stats]) => [
 				npcId,
 				RelationshipStats.fromJSON(stats as Partial<RelationshipStats>),
 			]),
 		);
-		state.unlockedTopicsByNpc = data.unlockedTopicsByNpc ?? {};
-		state.clues = data.clues ?? {};
-		state.rumors = data.rumors ?? {};
-		state.sceneInvitations = data.sceneInvitations ?? [];
-		state.conversationHistory = data.conversationHistory ?? {};
+		state.unlockedTopicsByNpc = data.unlockedTopicsByNpc;
+		state.clues = data.clues;
+		state.rumors = data.rumors;
+		state.sceneInvitations = data.sceneInvitations;
+		state.conversationHistory = data.conversationHistory;
 		state.knownNPCIds = data.knownNPCIds;
 		state.recentEvents = data.recentEvents;
 		state.output = data.output;
 		state.settings = data.settings;
 		state.currentYear = data.currentYear;
 		state.campaignBlueprint = data.campaignBlueprint;
-		state.yearBlueprints = data.yearBlueprints ?? {};
+		state.yearBlueprints = data.yearBlueprints;
 		state.yearProgress = data.yearProgress;
 
 		state.worldClock = WorldClock.fromJSON(data.worldClock);

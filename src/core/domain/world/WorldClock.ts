@@ -56,16 +56,9 @@ class WorldClock {
 		return { totalMinutes: this.totalMinutes };
 	}
 
-	/** Also reads saves from before the calendar, which only kept `minutesOfDay`. */
-	static fromJSON(
-		data: { totalMinutes: number } | { minutesOfDay: number },
-	): WorldClock {
+	static fromJSON(data: { totalMinutes: number }): WorldClock {
 		const clock = new WorldClock();
-		if ("totalMinutes" in data) {
-			clock.totalMinutes = data.totalMinutes;
-		} else {
-			clock.setMinutesOfDay(data.minutesOfDay);
-		}
+		clock.totalMinutes = data.totalMinutes;
 		return clock;
 	}
 

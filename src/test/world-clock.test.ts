@@ -119,14 +119,5 @@ describe("WorldClock calendar", () => {
 			expect(restored.getWeekday()).toBe("thursday");
 			expect(restored.getCurrentTime()).toBe(clock.getCurrentTime());
 		});
-
-		it("loads an older save that only stored the minute of the day", () => {
-			const restored = WorldClock.fromJSON({ minutesOfDay: 600 });
-
-			expect(restored.getDay()).toBe(1);
-			expect(restored.getWeekday()).toBe("monday");
-			expect(restored.getMinutesOfDay()).toBe(600);
-			expect(restored.getCurrentTime()).toBe("10:00 AM");
-		});
 	});
 });
