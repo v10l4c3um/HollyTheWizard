@@ -103,6 +103,8 @@ export function buildRegistry(
 	if (problems.length > 0) {
 		throw new ContentError(problems);
 	}
+	// Loading is over: content can no longer change.
+	registry.freeze();
 	onProgress?.({
 		id: "school-data",
 		label: "Loading school data",

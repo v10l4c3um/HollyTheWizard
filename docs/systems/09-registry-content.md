@@ -1,6 +1,6 @@
 # Registry & Content Packs
 
-Files: `src/core/Registry.ts`, `src/core/content/ContentLoader.ts`, `src/core/content/SchoolDataLoader.ts`, `src/bootstrap/engineFactory.ts` (`buildRegistry`), `src/content/packs/*.json` (5 files), `src/content/curriculum/*.json` (5 files), domain classes `Location.ts`, `Item.ts`, `Npc.ts`. Docs: `docs/CONTENT_SYSTEM.md`, `docs/ADDING_SPELLS.md`. Tests: `engine-factory.test.ts` only touches startup.
+Files: `src/core/Registry.ts` (+ `content/deepFreeze.ts`), `src/core/content/ContentLoader.ts`, `src/core/content/SchoolDataLoader.ts`, `src/bootstrap/engineFactory.ts` (`buildRegistry`), `src/content/packs/*.json` (5 files), `src/content/curriculum/*.json` (5 files), domain classes `Location.ts`, `Item.ts`, `Npc.ts`. Docs: `docs/CONTENT_SYSTEM.md`, `docs/ADDING_SPELLS.md`. Tests: `engine-factory.test.ts` only touches startup.
 
 ## What it does
 
@@ -11,7 +11,7 @@ Holds all static game definitions (locations, NPCs, NPC profiles, items, spells,
 1. `buildRegistry` (in `engineFactory`) creates a `Registry` and loads the places from `world.json`: the school and the country around it.
 2. `ContentLoader.loadAllPacks` reads every `*.json` in `src/content/packs/` (sorted by filename). Each pack is a manifest with optional `locations`, `spells`, `npcs` and `profiles` arrays, validated against a strict Zod schema (`ContentSchemas.ts`; unknown keys are errors). Problems from every file are gathered and thrown together as one `ContentError`; a missing pack directory is an error too.
 3. `SchoolDataLoader` reads `subjects.json`, every `year*.json` (one `SubjectCurriculum` each), and `timetables.json`, and registers a single `SchoolData` blob. `ContentLinter.ts` then checks the map, profiles, lessons, spells and timetables for dangling ids, and `buildRegistry` refuses to start on any finding.
-4. `Registry` is four `Map`s plus `npcProfiles` and `schoolData`, with `register*`/`get*`/`getAll*Ids` methods and `getCurriculumForSubject`.
+4. `Registry` is four `Map`s plus `npcProfiles` and `schoolData`, with `register*`/`get*`/`getAll*Ids` methods and `getCurriculumForSubject`. `register*` refuses a duplicate id. At the end of `buildRegistry`, after the lint passes, `freeze()` ends loading: registering anything later throws, and every stored entry is deep-frozen (`deepFreeze`), so content that was handed out cannot be changed by accident. This is enforced at runtime, not by types (getters do not return read-only types).
 5. Progress is reported to the loading screen through `onProgress`.
 
 Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year 1** (charms, defense, potions) out of 27 subjects and 7 years.
@@ -28,20 +28,18 @@ Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year
 
 ## Weaknesses
 
-1. **"Immutable after startup" is only a convention.** `register*` methods stay public and mutable, and returned objects are shared and mutable. (Duplicate ids across packs are now reported at load.)
-2. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
-3. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy the JSON to the output, so a compiled build has no content (a missing folder is now a load error, not an empty world).
-4. **Thin content.** One year of curriculum, three subjects with lessons, ~7 NPCs, a dozen places, no items, rumors, clues, scenes, exams or events. Many mechanics (exams, scene invitations, clues) have no content format at all.
-5. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
-6. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
-7. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
+1. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
+2. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy the JSON to the output, so a compiled build has no content (a missing folder is now a load error, not an empty world).
+3. **Thin content.** One year of curriculum, three subjects with lessons, ~7 NPCs, a dozen places, no items, rumors, clues, scenes, exams or events. Many mechanics (exams, scene invitations, clues) have no content format at all.
+4. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
+5. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
+6. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
 
 ## Rework ideas
 
 - **Define the world in data.** Add `locations` (with exits, tags such as `private`, `public`, `classroom`, capacity, travel time), items, and optionally NPC `home`/schedule fields to the pack format. Remove all hard-coded content from `engineFactory`.
 - **Schema-validate every pack with Zod** at load, and fail fast with file, path and line-quality errors. Generate the TypeScript types from the schemas (single source of truth).
 - **Add a content linter** (also run in tests) that checks all cross-references: exits, NPC profile ids, lesson-to-spell links, timetable-to-subject links, blueprint allowlists.
-- **Freeze the registry** after `build()` (a `RegistryBuilder` that rejects duplicate ids and returns an immutable `Registry`).
 - **Pack manifest v2:** `id`, `version`, `requires`, per-type arrays, and explicit `overrides`. Separate packs by domain (`world/`, `npcs/`, `spells/`, `curriculum/`).
 - **Item definitions versus instances:** `ItemDefinition` in the registry, `{ itemId, quantity }` in state.
 - **Make content location part of the build** (copy assets on `tsc`, or load via `import` with a bundler) and make a missing pack directory a hard error.

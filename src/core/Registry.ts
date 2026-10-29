@@ -9,6 +9,7 @@ import {
 	WeeklyTimetable,
 } from "./domain/quest/Curriculum";
 import { NpcConversationProfile } from "./domain/npc/NpcProfile";
+import { deepFreeze } from "./content/deepFreeze";
 
 class Registry {
 	private locations = new Map<string, Location>();
@@ -18,16 +19,47 @@ class Registry {
 	private spells = new Map<string, Spell>();
 	private schoolData: SchoolData | null = null;
 
+	private frozen = false;
+
+	/** True once `freeze()` has been called: content can no longer change. */
+	get isFrozen(): boolean {
+		return this.frozen;
+	}
+
+	/**
+	 * Ends loading. From now on registering anything throws, and every stored
+	 * entry is deep-frozen, so content the registry hands out cannot be
+	 * changed by accident (the compiler does not enforce this; it is checked
+	 * at runtime).
+	 */
+	freeze(): void {
+		this.frozen = true;
+		for (const map of [this.locations, this.npcs, this.npcProfiles, this.items, this.spells]) {
+			for (const entry of map.values()) deepFreeze(entry);
+		}
+		deepFreeze(this.schoolData);
+	}
+
+	private add<T>(map: Map<string, T>, kind: string, id: string, entry: T): void {
+		if (this.frozen) {
+			throw new Error(`Registry is frozen: cannot register ${kind} "${id}"`);
+		}
+		if (map.has(id)) {
+			throw new Error(`Duplicate ${kind} id "${id}"`);
+		}
+		map.set(id, entry);
+	}
+
 	registerLocation(location: Location): void {
-		this.locations.set(location.id, location);
+		this.add(this.locations, "location", location.id, location);
 	}
 
 	registerNPC(npc: NPC): void {
-		this.npcs.set(npc.id, npc);
+		this.add(this.npcs, "NPC", npc.id, npc);
 	}
 
 	registerNpcProfile(profile: NpcConversationProfile): void {
-		this.npcProfiles.set(profile.npcId, profile);
+		this.add(this.npcProfiles, "NPC profile", profile.npcId, profile);
 	}
 
 	getNpcProfile(id: string): NpcConversationProfile | undefined {
@@ -39,11 +71,11 @@ class Registry {
 	}
 
 	registerItem(item: Item): void {
-		this.items.set(item.id, item);
+		this.add(this.items, "item", item.id, item);
 	}
 
 	registerSpell(spell: Spell): void {
-		this.spells.set(spell.definition.id, spell);
+		this.add(this.spells, "spell", spell.definition.id, spell);
 	}
 
 	getLocation(id: string): Location | undefined {
@@ -75,6 +107,8 @@ class Registry {
 	}
 
 	registerSchoolData(data: SchoolData): void {
+		if (this.frozen) throw new Error("Registry is frozen: cannot register school data");
+		if (this.schoolData) throw new Error("Duplicate school data");
 		this.schoolData = data;
 	}
 

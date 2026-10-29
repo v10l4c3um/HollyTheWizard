@@ -112,15 +112,24 @@ describe("whether a place is private is data on the place", () => {
 			apply({ type: "TALK", npcId: "hagrid" });
 			return tags;
 		};
-		const place = registry.getLocation("grounds")!;
 		expect(tagsOfTalk()).not.toContain("private-setting");
-		place.isPrivate = true;
+
+		// The registry is frozen, so look at the same world with one place private.
+		const real = registry;
+		const privatePlace = Object.create(real.getLocation("grounds")!, {
+			isPrivate: { value: true },
+		});
+		registry = Object.create(real, {
+			getLocation: {
+				value: (id: string) => (id === "grounds" ? privatePlace : real.getLocation(id)),
+			},
+		});
 		try {
 			state = validState(registry);
 			applyEffects(state, arrivalEffects(registry, state, "great_hall"), bus);
 			expect(tagsOfTalk()).toContain("private-setting");
 		} finally {
-			place.isPrivate = false;
+			registry = real;
 		}
 	});
 });

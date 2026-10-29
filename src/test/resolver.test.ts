@@ -334,6 +334,10 @@ describe("Resolver", () => {
 		});
 
 		it("shows epithets to the model when it has to choose", async () => {
+			registry = new Registry();
+			registry.registerNPC(
+				new NPC("ron_weasley", "Ron Weasley", [], "Loyal and funny"),
+			);
 			registry.registerNPC(
 				new NPC("percy_weasley", "Percy Weasley", [], "Prefect", [
 					"the head boy",
