@@ -1,6 +1,6 @@
 # Event Bus
 
-Files: `src/core/engine/EventBus.ts` (18 lines, `TypedBus`), `src/core/domain/events/GameEvents.ts` (event catalog + `createGameBus`). Listeners: `src/core/engine/ProgressionTracker.ts` (the event → flag table is `src/core/domain/campaign/QuestFlags.ts`). Tests: `progression-tracker.test.ts`.
+Files: `src/core/engine/EventBus.ts` (18 lines, `TypedBus`), `src/core/domain/events/GameEvents.ts` (event catalog + `createGameBus`), `src/core/domain/ids.ts` (the id names the payloads use). Listeners: `src/core/engine/ProgressionTracker.ts` (the event → flag table is `src/core/domain/campaign/QuestFlags.ts`). Tests: `progression-tracker.test.ts`, `event-types.test.ts` (compile-time checks of the payload types).
 
 ## What it does
 
@@ -14,6 +14,8 @@ A synchronous, in-process publish/subscribe channel for "something happened" not
 - Emitters are scattered: `TurnResolver` (most), `GameEngine` (`TimeAdvanced`, `GameSaved`, `GameLoaded`), and the blueprint use cases (`BlueprintGenerated`, `YearAdvanced`, `BlueprintMilestoneReached`).
 
 ## Current usage (what is actually wired)
+
+Payloads are typed from the game's own definitions: closed sets are imported unions (`ConversationResult`, `SpellLearnSource`, `TopicCategory`, the in-world command types), and ids that content defines use the names in `domain/ids.ts` (`SpellId`, `LocationId`, `NpcId`, ...), which are plain strings because a content pack can add more. Narration tags stay free strings.
 
 Listeners exist in exactly one place: `ProgressionTracker`, which `GameEngine` always constructs, registers four. A listener never writes state: it maps the event to `QuestFlagSet` effects (`QUEST_FLAG_EVENTS`) and applies them with `applyEffects` to the live state (read at the moment of the event, so a turn's working copy, a load or an undo are followed). A guard test fails if any other code assigns to `questFlags`.
 
@@ -41,11 +43,10 @@ Those flags are what `BlueprintProgressService` checks to complete story milesto
 2. **Events carry state-shaped meaning without a guarantee of ordering.** For example `LocationVisited` is emitted by `TurnResolver` before the engine updates `currentLocationId` (see 04). A listener that reads state sees the previous state. `emit` happens mid-resolution, not after the turn commits.
 3. **Synchronous and unguarded.** `emit` does not catch handler exceptions, so one faulty listener aborts the emitting handler mid-turn (the engine's outer `catch` then reports a generic error). There is no way to emit from inside a handler safely, no re-entrancy guard, no ordering/priority, and no async handlers.
 4. **Duplicate and inconsistent emissions.** `GameSaved` and `GameLoaded` can be emitted by both `TurnResolver` and `GameEngine` (the former is dead code today). The event set mixes granularities (`SubjectStudied` and `SpellPracticed` next to `ActionResolved`), and the same fact is announced by several events (`NpcTalkedTo`, `TopicDiscussed`, `ConversationResolved`, `RevealTriggered` all fire for one talk).
-5. **Event data leaks identity strings.** Payload ids are untyped strings, and `ConversationResolved.result` repeats the conversation result union by hand instead of importing it.
-6. **No registry of subscriptions or teardown.** `off` needs the original function reference, handlers are never removed, and `LOAD` replaces `engine.state` while listeners keep working only because they read `engine.state` lazily.
-7. **Hard to observe.** There is no wildcard subscription or event log, so debugging "what fired this turn?" means reading code. The `TurnResult.events` strings and the bus events are two separate, unrelated records of the same turn.
-8. **Placement.** `TypedBus` lives in `core/engine/` while `GameEvents.ts` (domain) imports it, so the domain layer depends on the engine layer.
-9. **No tests** for the bus itself (ordering, error isolation); only the quest-flag listeners are covered.
+5. **No registry of subscriptions or teardown.** `off` needs the original function reference, handlers are never removed, and `LOAD` replaces `engine.state` while listeners keep working only because they read `engine.state` lazily.
+6. **Hard to observe.** There is no wildcard subscription or event log, so debugging "what fired this turn?" means reading code. The `TurnResult.events` strings and the bus events are two separate, unrelated records of the same turn.
+7. **Placement.** `TypedBus` lives in `core/engine/` while `GameEvents.ts` (domain) imports it, so the domain layer depends on the engine layer.
+8. **No tests** for the bus itself (ordering, error isolation); only the quest-flag listeners are covered.
 
 ## Rework ideas
 

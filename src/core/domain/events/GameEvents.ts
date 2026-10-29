@@ -6,6 +6,11 @@ import {
 } from "../quest/Curriculum";
 import { AttributeId } from "../player/PlayerStats";
 import { TypedBus } from "../../engine/EventBus";
+import type { InWorldCommand } from "../commands/CommandDefinitions";
+import type { SpellLearnSource } from "../effects/GameEffects";
+import type { ConversationResult } from "../npc/ConversationTypes";
+import type { TopicCategory } from "../npc/TopicRegistry";
+import type { FlagId, LessonId, LocationId, NpcId, SpellId, TopicId } from "../ids";
 
 /**
  * How an action turned out: `success`; `blocked` (tried, did not work, time
@@ -14,25 +19,28 @@ import { TypedBus } from "../../engine/EventBus";
  */
 export type ActionOutcome = "success" | "blocked" | "failure";
 
+/** Where a spell first became known of. */
+export type SpellRevealSource = "study" | "class" | "location" | "event" | "npc" | "item";
+
 export type GameEvents = {
 	SpellRevealed: {
-		spellId: string;
-		source: "study" | "class" | "location" | "event" | "npc" | "item";
+		spellId: SpellId;
+		source: SpellRevealSource;
 	};
-	SpellLearned: { spellId: string; source: string };
-	SpellMastered: { spellId: string };
+	SpellLearned: { spellId: SpellId; source: SpellLearnSource };
+	SpellMastered: { spellId: SpellId };
 	SpellPracticed: {
-		spellId: string;
+		spellId: SpellId;
 		attempts: number;
 		successCount: number;
 		proficiency: number;
 	};
 	LessonAttended: {
 		subjectId: SubjectType;
-		lessonId: string;
+		lessonId: LessonId;
 		lessonTitle: string;
 	};
-	LessonSkipped: { subjectId: SubjectType; lessonId: string };
+	LessonSkipped: { subjectId: SubjectType; lessonId: LessonId };
 	/**
 	 * Cause event only: carries what happened, not resulting totals. Totals
 	 * live in `GameState` and are mutated via the `ProgressDelta` effect
@@ -58,35 +66,35 @@ export type GameEvents = {
 	 * action without the resolver having to know about them.
 	 */
 	ActionResolved: {
-		actionType: string;
-		locationId: string;
+		actionType: InWorldCommand["type"];
+		locationId: LocationId;
 		outcome: ActionOutcome;
 		tags?: string[];
 	};
-	LocationVisited: { locationId: string; isFirstVisit: boolean };
-	LocationDiscovered: { locationId: string };
-	NpcTalkedTo: { npcId: string; topic: string | undefined };
+	LocationVisited: { locationId: LocationId; isFirstVisit: boolean };
+	LocationDiscovered: { locationId: LocationId };
+	NpcTalkedTo: { npcId: NpcId; topic: TopicId | undefined };
 	ConversationResolved: {
-		npcId: string;
-		topic: string | undefined;
-		result: "success" | "partial" | "refusal" | "deflection" | "reveal" | "invitation";
+		npcId: NpcId;
+		topic: TopicId | undefined;
+		result: ConversationResult;
 		narrationTags: string[];
 		score: number;
 	};
 	TopicDiscussed: {
-		npcId: string;
-		topicId: string;
-		category: string;
+		npcId: NpcId;
+		topicId: TopicId;
+		category: TopicCategory;
 	};
 	BoundaryHit: {
-		npcId: string;
-		topicId: string;
+		npcId: NpcId;
+		topicId: TopicId;
 	};
 	RevealTriggered: {
-		npcId: string;
-		topicId: string;
+		npcId: NpcId;
+		topicId: TopicId;
 	};
-	QuestFlagSet: { flagId: string; active: boolean };
+	QuestFlagSet: { flagId: FlagId; active: boolean };
 	QuestActivated: { questId: string };
 	QuestCompleted: { questId: string };
 	/** A new part of the day began (once per boundary, even across a long rest). */

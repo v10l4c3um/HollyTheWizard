@@ -51,7 +51,7 @@ export function study(command: Study, ctx: TurnContext) {
 		emits: [
 			// The event carries the delta only; totals live in the state.
 			event("SubjectStudied", { subjectId: subject, knowledgeGain }),
-			...revealed.map((spellId) => event("SpellRevealed", { spellId, source: "study" as const })),
+			...revealed.map((spellId) => event("SpellRevealed", { spellId, source: "study" })),
 		],
 	});
 }

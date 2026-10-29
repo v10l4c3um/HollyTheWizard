@@ -78,7 +78,7 @@ export function attendClass({ subjectId }: Attend, ctx: TurnContext) {
 				lessonId: lesson.id,
 				lessonTitle: lesson.title,
 			}),
-			...revealed.map((spellId) => event("SpellRevealed", { spellId, source: "class" as const })),
+			...revealed.map((spellId) => event("SpellRevealed", { spellId, source: "class" })),
 			...learned.map((spellId) => event("SpellLearned", { spellId, source: "class" })),
 		],
 	});
