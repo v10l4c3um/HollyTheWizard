@@ -1,6 +1,6 @@
 # NPCs, Profiles & Relationships
 
-Files: `src/core/domain/npc/Npc.ts` (22 lines), `NpcProfile.ts` (17), `Relationship.ts` (36), content in `src/content/packs/npcs.json` and `npc-profiles.json`, state in `GameState` (`relationships`, `unlockedTopicsByNpc`, `conversationHistory`, `knownNPCIds`), registry in `Registry.ts`. The rules that use these are covered in 13 (conversation). No tests.
+Files: `src/core/domain/npc/Npc.ts` (22 lines), `NpcProfile.ts` (17), `Relationship.ts` (36), content in `src/content/npcs/npcs.json` and `profiles.json`, state in `GameState` (`relationships`, `unlockedTopicsByNpc`, `conversationHistory`, `knownNPCIds`), registry in `Registry.ts`. The rules that use these are covered in 13 (conversation). No tests.
 
 ## What it does
 

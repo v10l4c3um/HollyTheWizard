@@ -34,7 +34,7 @@ If Ollama is unavailable or returns garbage, every LLM step has a deterministic 
 | Spells | `src/core/domain/magic/` | Spells move `hidden → available → learned → mastered`; practice raises proficiency, stability and reliability |
 | Curriculum | `src/core/domain/quest/`, `src/content/curriculum/` | 27 subjects, timetables, per-year lessons that can reveal spells |
 | Campaign | `src/core/domain/campaign/` | LLM-generated (schema-validated, allowlisted) campaign and per-year blueprints with themes, clue seeds, gates and milestones; safe fallbacks |
-| Content | `src/content/`, `src/core/content/` | Data-driven JSON packs for spells, NPCs, NPC profiles and curriculum, loaded into an immutable `Registry` at startup |
+| Content | `src/content/`, `src/core/content/` | Data-driven JSON packs (manifest v2, one folder per domain: world, npcs, spells, curriculum), schema-validated and cross-checked, loaded into a frozen `Registry` at startup |
 | AI | `src/ai/` | `OllamaClient` (retry, timeout, structured output), narration prompts, blueprint provider |
 | Persistence | `src/infrastructure/persistence/json/` | Saves `GameState` as JSON in `./saves/` |
 | UI | `src/ui/ink/` | React + Ink terminal UI: menu → loading → game (output, input, HUD, spellbook) |

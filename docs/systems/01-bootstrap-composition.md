@@ -10,9 +10,9 @@ Builds a ready-to-play game: loads content into a `Registry`, creates the event 
 
 `engineFactory(onProgress)`:
 
-1. `buildRegistry`: creates a `Registry`; **hard-codes** three locations and one NPC (`villager`); `ContentLoader.loadAllPacks` (spells, NPCs, profiles); `SchoolDataLoader.loadSchoolData` (subjects, curriculum, timetables). Progress is reported for content packs and school data.
+1. `buildRegistry`: creates a `Registry`; `ContentLoader.load` reads every pack in `src/content/` (places, characters, spells, subjects, curriculum, timetables; see 09); `lintContent` checks the cross-references and the blueprint allowlists; the registry is frozen. Progress is reported for the content packs and the content check.
 2. `createGameBus()` and `createEngine(registry, bus, options)`, which builds the resolver, renderer, blueprint use cases, progress service, persistence repository, logger and the command-handler map, and injects them into `GameEngine` (see 02).
-3. Registers four `bus.on` listeners that translate events into quest flags (see 07).
+3. (The quest-flag listeners are no longer wired here: `GameEngine` builds its own `ProgressionTracker`, see 07.)
 4. Sets every registered spell to `hidden` in `engine.state.spellbook`.
 5. `engine.initializeCampaignBlueprint()`: Ollama health check for each distinct model, then generate the campaign and year blueprints (see 15, 18). Any failure throws and aborts startup.
 6. Returns the engine as `IGameEngine`. Separately, `locationNameResolver(id)` lazily builds a **second** registry just to look up display names for the UI.

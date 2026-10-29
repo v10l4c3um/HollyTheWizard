@@ -1,6 +1,6 @@
 # Registry & Content Packs
 
-Files: `src/core/Registry.ts` (+ `content/deepFreeze.ts`), `src/core/content/ContentLoader.ts`, `src/core/content/SchoolDataLoader.ts`, `src/bootstrap/engineFactory.ts` (`buildRegistry`), `src/content/packs/*.json` (5 files), `src/content/curriculum/*.json` (5 files), domain classes `Location.ts`, `Item.ts`, `Npc.ts`. Docs: `docs/CONTENT_SYSTEM.md`, `docs/ADDING_SPELLS.md`. Tests: `engine-factory.test.ts` only touches startup.
+Files: `src/core/Registry.ts` (+ `content/deepFreeze.ts`), `src/core/content/` (`ContentLoader.ts`, `ContentSchemas.ts` (the manifest), `readContentFile.ts` (positioned errors), `ContentLinter.ts`, `ContentOrigins.ts`, `versions.ts`), schemas next to the domain types (`magic/Spell.ts`, `npc/Npc.ts`, `npc/NpcProfile.ts`, `world/Location.ts`, `quest/CurriculumContent.ts`), `src/bootstrap/engineFactory.ts` (`buildRegistry`), `src/content/{world,npcs,spells,curriculum}/*.json` (11 packs), `src/tools/lintContent.ts`, domain classes `Location.ts`, `Item.ts`, `Npc.ts`. Docs: `docs/CONTENT_SYSTEM.md`, `docs/ADDING_SPELLS.md`. Tests: `content-loader`, `content-schemas`, `content-positions`, `content-lint`, `content-types`, `quest-flag-allowlist`, `registry-frozen`.
 
 ## What it does
 
@@ -8,20 +8,24 @@ Holds all static game definitions (locations, NPCs, NPC profiles, items, spells,
 
 ## How it works
 
-1. `buildRegistry` (in `engineFactory`) creates a `Registry` and loads the places from `world.json`: the school and the country around it.
-2. `ContentLoader.loadAllPacks` reads every `*.json` in `src/content/packs/` (sorted by filename). Each pack is a manifest with optional `locations`, `spells`, `npcs` and `profiles` arrays, validated against a strict Zod schema (`ContentSchemas.ts`; unknown keys are errors). Problems from every file are gathered and thrown together as one `ContentError`; a missing pack directory is an error too.
-3. `SchoolDataLoader` reads `subjects.json`, every `year*.json` (one `SubjectCurriculum` each), and `timetables.json`, and registers a single `SchoolData` blob. `ContentLinter.ts` then checks the map, profiles, lessons, spells and timetables for dangling ids, and `buildRegistry` refuses to start on any finding.
-4. `Registry` is four `Map`s plus `npcProfiles` and `schoolData`, with `register*`/`get*`/`getAll*Ids` methods and `getCurriculumForSubject`. `register*` refuses a duplicate id. At the end of `buildRegistry`, after the lint passes, `freeze()` ends loading: registering anything later throws, and every stored entry is deep-frozen (`deepFreeze`), so content that was handed out cannot be changed by accident. This is enforced at runtime, not by types (getters do not return read-only types).
-5. Progress is reported to the loading screen through `onProgress`.
+1. `buildRegistry` (in `engineFactory`) creates a `Registry`, runs `ContentLoader.load`, then `lintContent`, then freezes it.
+2. **Layout.** Content is in one folder per domain, `src/content/world/` (locations), `npcs/` (npcs, profiles), `spells/` (spells) and `curriculum/` (subjects, curriculums, timetables). Every `*.json` in them is a **pack**: a manifest (format 2) with an `id`, a `version`, `requires` (packs that must be present and load first), one array per kind of content, and explicit `overrides`. A pack may only hold the kinds of its folder. See `docs/CONTENT_SYSTEM.md`.
+3. **Loading.** Packs are read and validated against strict Zod schemas (unknown keys are errors); the files are parsed with `jsonc-parser`, so every problem carries `file:line:col`. Packs load in dependency order. An id defined twice is an error unless the later pack lists it under `overrides` (and an override of nothing is an error). The loader merges into staging maps, then registers the final entries and one aggregated `SchoolData`. Problems from every file are gathered and thrown together as one `ContentError`.
+4. **Types come from the schemas.** The schemas live next to the domain types and the types are `z.infer` of them (`Spell`, `NpcData`, `NpcConversationProfile`, `LocationData`, `LessonDefinition`, ...), so the shape of a pack and the shape the game reads are one definition.
+5. **Checks.** `ContentLinter.ts` checks the cross-references (exits and reachability, place names, profiles and topics, schedules, lesson-to-spell, timetable-to-subject, topic and spell places) and the blueprint side: the quest-flag allowlist derived from the content, the arc catalog and the fallback blueprint of every year. Each problem names the file, line and column of the content it is about (the loader records these in `ContentOrigins`). `buildRegistry` refuses to start on any finding; `npm run lint:content` runs the same checks; the test suite runs them over the shipped content.
+6. `Registry` is a set of `Map`s plus `schoolData`, with `register*`/`get*`/`getAll*Ids` methods and `getCurriculumForSubject`. `register*` refuses a duplicate id. After the lint passes, `freeze()` ends loading: registering anything later throws, and every stored entry is deep-frozen (`deepFreeze`), so content that was handed out cannot be changed by accident. This is enforced at runtime, not by types.
+7. Progress is reported to the loading screen through `onProgress`.
 
-Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year 1** (charms, defense, potions) out of 27 subjects and 7 years.
+Current content: 11 packs, curriculum for **3 subjects in year 1** (charms, defense, potions) out of 27 subjects and 7 years.
 
 ## Strengths
 
 - **A clean, small lookup interface.** All systems depend on `Registry.getX(id)`, so definitions are separate from player state.
 - **Data-driven spells, NPCs and profiles.** New content is a JSON file dropped into a folder, with no code change (the stated goal in `CONTENT_SYSTEM.md`).
-- **Packs are additive and namespaced by file,** and one broken pack does not take down startup.
-- **Deterministic load order** (sorted filenames).
+- **Packs are explicit.** Each has an id, a version and declared dependencies; a replacement is a visible `overrides` entry, never a silent overwrite.
+- **Deterministic load order** (by dependencies, ties by id).
+- **One definition of a content shape:** the schema, from which the type is inferred.
+- **Errors are precise:** every problem names `file:line:col`, and all of them are reported at once.
 - **Static versus dynamic is separated,** which is exactly the property the save format needs: saves hold ids, not definitions.
 - **Startup progress is reported** per pack, which gives the loading screen real status.
 - **Documented** (content system and adding-spells guides).
@@ -29,11 +33,10 @@ Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year
 ## Weaknesses
 
 1. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
-2. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy the JSON to the output, so a compiled build has no content (a missing folder is now a load error, not an empty world).
+2. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy the JSON to the output, so a compiled build has no content (a missing folder is a load error, not an empty world).
 3. **Thin content.** One year of curriculum, three subjects with lessons, ~7 NPCs, a dozen places, no items, rumors, clues, scenes, exams or events. Many mechanics (exams, scene invitations, clues) have no content format at all.
-4. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
-5. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
-6. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
+4. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
+5. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
 
 ## Rework ideas
 

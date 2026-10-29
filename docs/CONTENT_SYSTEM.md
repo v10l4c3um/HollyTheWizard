@@ -1,410 +1,77 @@
-# Content System Documentation
+# Content System
 
-## Overview
+Game content (places, characters, spells, school life) is data: JSON **packs** in `src/content/`, loaded and checked at startup. Nothing in a pack needs a code change. If any pack is wrong, the game refuses to start and prints every problem with `file:line:column`.
 
-The Content System provides a flexible, data-driven approach to defining game content without modifying source code. Content is organized into **packs** (JSON files) and loaded at startup via the **ContentLoader**.
+## Layout
 
-## Architecture
+One folder per domain. A pack may only hold what its folder is for.
 
-### ContentLoader
-
-**Location:** `src/core/content/ContentLoader.ts`
-
-The `ContentLoader` class is responsible for:
-
-- Discovering content pack files in the designated directory
-- Parsing JSON manifests
-- Registering content into the Registry
-
-**Public Methods:**
-
-```typescript
-loadSpellPack(packName: string, registry: Registry): void
+```
+src/content/
+  world/        locations
+  npcs/         npcs, profiles
+  spells/       spells
+  curriculum/   subjects, curriculums, timetables
 ```
 
-Loads a single spell pack by name. Throws if file not found.
+Every `*.json` file in those folders is a pack.
 
-```typescript
-loadAllSpellPacks(registry: Registry): void
-```
-
-Loads all `.json` files from the content pack directory. Logs warnings for missing files or parsing errors, but doesn't crash.
-
-**Constructor:**
-
-```typescript
-new ContentLoader(packDirectory?: string)
-```
-
-Defaults to `src/content/packs/` if not specified.
-
-### Content Pack Structure
-
-A content pack is a JSON file with a manifest structure:
+## A pack (manifest format 2)
 
 ```json
 {
-	"name": "Pack Display Name",
-	"version": "1.0.0",
-	"description": "Optional description",
-	"spells": [
-		{
-			/* spell definitions */
-		}
-	]
+  "format": 2,
+  "id": "npcs.profiles",
+  "version": "1.0.0",
+  "name": "NPC Conversation Profiles",
+  "description": "optional",
+  "requires": [{ "id": "npcs.core", "version": "1.0.0" }],
+  "profiles": [ ... ],
+  "overrides": { "npcs": ["professor_snape"] }
 }
 ```
 
-## Spell Packs
+| Field | Meaning |
+|---|---|
+| `format` | Always `2`. A file without it is a version 1 pack and is refused. |
+| `id` | Unique, lowercase and dotted (`spells.year1`). |
+| `version` | `x.y.z`. |
+| `requires` | Packs that must be present and load first. `version` is the lowest acceptable (same major). |
+| `locations`, `npcs`, `profiles`, `spells`, `subjects`, `curriculums`, `timetables` | The content, one array per kind. Only the kinds of the pack's folder. |
+| `overrides` | Ids of earlier content this pack deliberately replaces, per kind. |
 
-### File Location
+Packs load in dependency order (ties by id), not by file name.
 
-Spell packs go in: `src/content/packs/`
+### Ids and overrides
 
-Files must be named `*.json` and are loaded in alphabetical order.
+Each entry has an id: a location, NPC or spell `id`; a profile's `npcId`; a subject's `type`; a curriculum is `subject + year`; a timetable is its `year`. Defining an id that already exists is an **error** unless the later pack lists it under `overrides.<kind>`. Overriding an id that does not exist is also an error. This makes a replacement a visible decision.
 
-### Spell Schema
+## What is checked
 
-Each spell in a pack must match the `Spell` interface:
+1. **Shape (Zod, strict).** Every file is parsed with a schema; a misspelled key, a wrong type or a value outside the allowed list is an error at `file:line:col`. The schemas live next to the domain types (`Spell.ts`, `Npc.ts`, `NpcProfile.ts`, `Location.ts`, `quest/CurriculumContent.ts`), and the TypeScript types are inferred from them, so there is one definition.
+2. **Pack rules.** Unique pack ids, `requires` present and compatible, no cycles, kinds allowed in the folder, overrides valid.
+3. **Cross-references (`ContentLinter.ts`).** Exits lead to real places and every place is reachable from the start; place names do not collide; profiles belong to real NPCs and use real topics and places; NPC schedules use real places and subjects; topics are natural only in real places; spell conditions name real places; lessons reveal or require real spells and subjects; timetables name real subjects and places; lessons are numbered 1..n.
+4. **Blueprint allowlists.** The quest flags a blueprint may use are derived from the content (`lesson_completed:*`, `discovered:*`, `spell_revealed:*`, `mastered:*`). The blueprint schema, its prompt and its semantic check accept only those; the linter verifies the arc catalog and the fallback blueprint of every year against them.
 
-```typescript
-interface Spell {
-	id: string; // Unique identifier (used in STUDY commands)
-	name: string; // Display name
-	description: string; // Flavor text and gameplay description
-	manaCost: number; // Base mana required to cast
-	level: SpellLevel; // Difficulty level: 1-4 (Novice, Apprentice, Adept, Expert)
-	requiredConditions: []; // Future: conditions needed to learn/cast
-	usageType: string; // "combat" | "utility" | "passive"
-	learningDifficulty: number; // 0.0 to 1.0 (how hard to learn)
-	practiceRequirement: number; // Number of successful uses to gain proficiency
-	range: string; // "self" | "touch" | "short" | "ranged"
-	targetType: string; // "self" | "single" | "group" | "area" | "passive"
-	backfireRisk: string; // "none" | "low" | "medium" | "high"
-	scaling: {
-		// Attribute-based scaling factors
-		[attributeName]: number;
-	};
-	visuals?: string; // Description of visual effects
-	sound?: string; // Sound effect reference
-	loreTag?: string; // Thematic tag (e.g., "fire_magic", "ancient_curse")
-}
-```
+The registry is then frozen: nothing can be registered later and content objects cannot be changed.
 
-### Spell Level Reference
-
-| Level | Name       | Learning Difficulty Range | Example                      |
-| ----- | ---------- | ------------------------- | ---------------------------- |
-| 1     | Novice     | 0.0 - 0.3                 | Arcane Missile, Heal, Shield |
-| 2     | Apprentice | 0.3 - 0.5                 | Fireball, Frostbolt          |
-| 3     | Adept      | 0.5 - 0.7                 | Chain Lightning, Teleport    |
-| 4     | Expert     | 0.7 - 1.0                 | Meteor Strike                |
-
-### Default Spell Packs
-
-#### `spells.json` - Core Spells
-
-8 foundational spells available to all wizards:
-
-- **Combat:** Fireball, Frostbolt, Arcane Missile
-- **Utility:** Heal, Shield, Magelight
-- **Advanced:** Meteor Strike, Time Warp
-
-#### `spells_advanced.json` - Advanced Spells
-
-4 higher-tier spells for experienced players:
-
-- **Combat:** Chain Lightning
-- **Utility:** Teleport, Summon Familiar, Arcane Reflection
-
-## Usage Examples
-
-### In Code: Loading Content
-
-```typescript
-import ContentLoader from "./core/content/ContentLoader";
-import Registry from "./core/Registry";
-
-const registry = new Registry();
-const contentLoader = new ContentLoader();
-
-// Load all packs from the default directory
-contentLoader.loadAllSpellPacks(registry);
-
-// Or load a specific pack
-contentLoader.loadSpellPack("spells", registry);
-```
-
-### In Game: Learning Spells
-
-Players study spells via the `STUDY` command:
+## Checking content without starting the game
 
 ```
-study fireball 1        // Study Fireball for 1 hour (30 minutes of game time)
-study chain_lightning   // Study Chain Lightning for default duration
+npm run lint:content            # the shipped content
+npm run lint:content <dir>      # another content directory
 ```
 
-The TurnResolver checks the Registry and provides feedback:
+It prints `Content OK` or every problem, and exits 1 on any. The same checks run in the test suite over the shipped content.
 
-- If the spell exists but isn't known: "You haven't learned Fireball yet."
-- If the spell is learned: "You spent 1 hour(s) studying Fireball. You feel more proficient now."
-- If the spell doesn't exist: "There is no spell with id 'invalid_spell'."
+## Adding things
 
-## Creating New Spell Packs
+- **A spell:** add it to a file in `spells/` (see `ADDING_SPELLS.md`).
+- **A character:** add it to `npcs/npcs.json` with a `schedule` (every character needs one), optionally a profile in `npcs/profiles.json`.
+- **A place:** add it to `world/world.json` and connect it from an existing place; unreachable places are an error.
+- **A lesson:** add it to the subject's curriculum pack with the next `order`.
+- **A mod or a variant world:** make a new pack that `requires` the original and lists what it replaces under `overrides`.
 
-### Step 1: Create a JSON file
+## Not yet
 
-Create `src/content/packs/your_pack.json`:
-
-```json
-{
-	"name": "Your Pack Name",
-	"version": "1.0.0",
-	"description": "What this pack contains",
-	"spells": [
-		{
-			"id": "your_spell_id",
-			"name": "Your Spell Name",
-			"description": "Flavor and mechanics description",
-			"manaCost": 25,
-			"level": 2,
-			"requiredConditions": [],
-			"usageType": "combat",
-			"learningDifficulty": 0.4,
-			"practiceRequirement": 15,
-			"range": "ranged",
-			"targetType": "single",
-			"backfireRisk": "low",
-			"scaling": {
-				"intellect": 0.8
-			}
-		}
-	]
-}
-```
-
-### Step 2: Test
-
-Restart the app; the pack will be automatically loaded:
-
-```
-npm run start
-```
-
-Look for output like:
-
-```
-Loaded spell pack 'Your Pack Name' with 1 spells
-```
-
-### Step 3: Verify
-
-Test the spell:
-
-```
-study your_spell_id
-```
-
-## Design Patterns
-
-### Balancing Learning Difficulty
-
-- **Easy (0.0 - 0.2):** Beginner spells, few resource costs
-- **Moderate (0.3 - 0.5):** Mid-tier spells, balanced
-- **Hard (0.6 - 0.8):** Advanced spells, higher risk/reward
-- **Very Hard (0.8 - 1.0):** Expert spells, powerful but dangerous
-
-### Practice Requirements
-
-Generally correlate with difficulty:
-
-- Novice spells: 3 - 10 practices
-- Apprentice spells: 10 - 20 practices
-- Adept spells: 25 - 35 practices
-- Expert spells: 35 - 50 practices
-
-### Scaling Examples
-
-Scaling determines how character attributes affect spell effectiveness:
-
-```json
-// Intellect-heavy spell
-"scaling": { "intellect": 0.9, "focus": 0.3 }
-
-// Balanced intelligence and empathy (for healing)
-"scaling": { "intellect": 0.6, "empathy": 0.4 }
-
-// Pure intellect (time/space manipulation)
-"scaling": { "intellect": 1.0 }
-```
-
-## Future Enhancements
-
-The content system is designed to be extensible:
-
-### Planned Additions
-
-1. **Item Packs** - Equipment, consumables, crafting materials
-2. **NPC Packs** - Dialogue trees, quest givers, merchants
-3. **Location Packs** - World regions, dungeons, procedural content
-4. **Event Packs** - Encounters, weather, seasonal events
-
-### Required Conditions
-
-The `requiredConditions` field is currently unused but designed for:
-
-- Class/role requirements
-- Attribute minimums
-- Environmental triggers
-- Story/progression gates
-
-## Troubleshooting
-
-### Spells not loading
-
-**Check:**
-
-1. File is in `src/content/packs/` and ends with `.json`
-2. JSON syntax is valid (use a JSON validator)
-3. Console output shows "Loaded spell pack..." message
-
-### Spell ID not recognized in STUDY command
-
-**Check:**
-
-1. The `id` field in the JSON matches exactly (case-sensitive)
-2. Pack was loaded (check console on startup)
-3. Spell is in the Registry (not just in a JSON file with no Loader call)
-
-### TypeScript compilation errors
-
-**Check:**
-
-1. ContentLoader is imported in main.ts
-2. `loadAllSpellPacks()` is called during initialization
-3. JSON files are present and readable
-
-## Performance Notes
-
-- All packs are loaded synchronously at startup
-- No lazy-loading; consider grouping related spells into single packs
-- For 1000+ spells, consider splitting into multiple packs (5-10 each)
-- Pack loading is logged to console for debugging
-
-## File Structure
-
-```
-src/
-├── content/
-│   └── packs/
-│       ├── spells.json                 # Core spells
-│       ├── spells_advanced.json        # Advanced spells
-│       ├── npcs.json                   # Core NPCs
-│       └── (your new packs go here)
-├── core/
-│   ├── content/
-│   │   └── ContentLoader.ts            # Loader implementation
-│   └── domain/
-│       └── magic/
-│           └── SpellBook.ts            # Spell interface
-└── main.ts                             # Initializes ContentLoader
-```
-
-## NPC Content Packs
-
-NPC content packs allow you to define non-player characters (NPCs) with unique names, dialogues, and affiliations that can be used in the wizarding world.
-
-### Structure
-
-An NPC content pack is a JSON file with the following structure:
-
-```json
-{
-	"name": "Pack Name",
-	"version": "1.0.0",
-	"description": "Description of the pack",
-	"npcs": [
-		{
-			"id": "unique_npc_id",
-			"name": "NPC Name",
-			"dialogue": ["Dialogue line 1", "Dialogue line 2"],
-			"affinity": 50
-		}
-	]
-}
-```
-
-### Usage Examples
-
-### In Code: Loading Content
-
-```typescript
-import ContentLoader from "./core/content/ContentLoader";
-import Registry from "./core/Registry";
-
-const registry = new Registry();
-const contentLoader = new ContentLoader();
-
-// Load all packs from the default directory (including NPC packs)
-contentLoader.loadAllSpellPacks(registry);
-contentLoader.loadAllNpcPacks(registry);
-
-// Or load a specific pack
-contentLoader.loadSpellPack("spells", registry);
-contentLoader.loadNpcPack("npcs", registry);
-```
-
-### In Game: Interacting with NPCs
-
-Players can interact with NPCs through various dialogue commands in the game.
-
-## Creating New NPC Packs
-
-### Step 1: Create a JSON file
-
-Create `src/content/packs/your_npc_pack.json`:
-
-```json
-{
-	"name": "Your NPC Pack",
-	"version": "1.0.0",
-	"description": "Description of your NPC pack",
-	"npcs": [
-		{
-			"id": "your_npc_id",
-			"name": "Your NPC Name",
-			"dialogue": ["Dialogue line 1", "Dialogue line 2"],
-			"affinity": 50
-		}
-	]
-}
-```
-
-### Step 2: Add to the Registry
-
-The ContentLoader will automatically register NPCs from packs into the Registry.
-
-## Troubleshooting
-
-### NPCs not loading
-
-**Check:**
-
-1. File is in `src/content/packs/` and ends with `.json`
-2. JSON syntax is valid (use a JSON validator)
-3. Console output shows "Loaded NPC pack..." message
-
-### NPC ID not recognized in-game
-
-**Check:**
-
-1. The `id` field in the JSON matches exactly (case-sensitive)
-2. Pack was loaded (check console on startup)
-3. NPC is in the Registry (not just in a JSON file with no Loader call)
-
-## Performance Notes
-
-- All NPC packs are loaded synchronously at startup
-- No lazy-loading; consider grouping related NPCs into single packs
-- For 100+ NPCs, consider splitting into multiple packs (5-10 each)
-- Pack loading is logged to console for debugging
+Items have no pack format. Localization is not separated from content. JSON is read from `src` (a `tsc` build does not copy it).
