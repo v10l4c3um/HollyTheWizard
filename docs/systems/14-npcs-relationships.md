@@ -28,12 +28,12 @@ Defines who the characters are (identity, voice, personality data) and how the p
 2. **Initial relationship data is ignored.** Each NPC in `npcs.json` has an `affinity` number (85, 90, ...) that the `NPC` class does not declare, and nothing reads it. It looks like the intended starting disposition, but the semantics are unclear (Snape 85 toward the player?), and it conflicts with a model that starts at zero.
 3. **Characters are thin.** An NPC is a name, three sample lines and one tag sentence. There is no role (teacher, student, staff), house or year, age, appearance, goals, secrets, knowledge, or relationships with other NPCs. Nothing lets one NPC react to what happened with another, so the world has no social graph.
 4. **No NPC state over time.** No mood, no goals, no memory of the world beyond conversations, no change between years. Students do not progress, teachers do not change, and relationships have no decay or growth outside conversations.
-5. **Profile semantics are loose.** Topic ids and location ids are free strings that must match `TopicRegistry` and the world (they do not: `dungeons`, `hagrid_hut`, `headmaster_office` are not locations). `traits` are an unstructured list used in one hard-coded check. Nothing validates or lints them (see 09).
+5. **Profile traits are loose.** `traits` are an unstructured list used in one hard-coded check. (Topic and place ids in profiles are linted.)
 6. **Voice is under-specified.** The `dialogue` array is a few quotes, without constraints (register, vocabulary, verbal tics, taboos), and nothing forces the narrator to use it (the renderer prompt does not include it, see 05).
 7. **Naming and shape inconsistencies.** `tag_description` is snake_case in a camelCase codebase, `NPC` and `NpcConversationProfile` split what is one concept in two registries, and `Relationship` versus `RelationshipStats` are redundant.
 8. **Relationship axes lack meaning in play.** Only trust, affection and resentment/fear are read by the conversation rules. `respect`, `attraction`, `loyalty`, `envy` and `comfort` are written occasionally or never read. There are no thresholds with consequences (friend, rival, ally), no UI to see standing, and the player cannot infer the state except through narration tags the narrator does not receive.
 9. **Franchise content.** The six NPCs and their quotes are existing franchise characters, which affects what can be published; the system should work with any cast.
-10. **Testing.** No tests for stat clamping, profile loading or integration of NPC definition + profile + state.
+10. **Testing.** Profile loading and presence are tested (`npc-content.test.ts`, `presence*.test.ts`); stat clamping and relationship round-trips are not.
 
 ## Rework ideas
 

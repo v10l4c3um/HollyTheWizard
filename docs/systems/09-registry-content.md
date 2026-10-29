@@ -28,17 +28,13 @@ Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year
 
 ## Weaknesses
 
-1. **The world is not a school.** The only locations are hard-coded in code: a village, a forest and a market. There is no castle, classroom, library or dormitory, no location content pack, and no way to author locations in data. The curriculum, NPC pack (professors, Hagrid, etc.) and "attend class" all assume a school, but nothing in the registry places them anywhere. NPCs have no home or schedule data, and classes have no room.
-2. **No validation of pack content.** Manifests are `JSON.parse(...) as ContentPackManifest`. No schema, no required fields, no types checked. `npcs.json` includes an `affinity` field that the `NPC` class does not have, which is silently ignored. A malformed spell shows up as a runtime error mid-game, not at load.
-3. **No referential integrity.** Nothing checks that a profile's `npcId` exists, a lesson's `spellId` is a real spell, a reveal condition references a real subject, a location's exits point to real locations, or a timetable subject exists. Typos fail silently or surface as "no spell with id" during play.
-4. **"Immutable after startup" is only a convention.** `register*` methods stay public and mutable, duplicates silently overwrite earlier entries (no warning on id collision across packs), and returned objects are shared and mutable.
-5. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
-6. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy JSON to the output, so a compiled build has no content, and `loadAllPacks` only warns when the folder is missing, which gives an empty world rather than a failure.
-7. **Thin content.** One year, three subjects, no locations, ~7 NPCs, no items, no rumors, clues, scenes, exams or events. The "extensible content system" currently covers a small fraction of what the game types describe. Many mechanics (exams, scene invitations, clues) have no content format at all.
-8. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
-9. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
-10. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
-11. **Testing.** No tests for `Registry`, `ContentLoader` or `SchoolDataLoader` (only the startup failure path).
+1. **"Immutable after startup" is only a convention.** `register*` methods stay public and mutable, and returned objects are shared and mutable. (Duplicate ids across packs are now reported at load.)
+2. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
+3. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy the JSON to the output, so a compiled build has no content (a missing folder is now a load error, not an empty world).
+4. **Thin content.** One year of curriculum, three subjects with lessons, ~7 NPCs, a dozen places, no items, rumors, clues, scenes, exams or events. Many mechanics (exams, scene invitations, clues) have no content format at all.
+5. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
+6. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
+7. **No localization or text separation.** Descriptions, dialogue examples and names are embedded in entity definitions.
 
 ## Rework ideas
 

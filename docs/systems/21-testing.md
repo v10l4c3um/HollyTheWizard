@@ -31,18 +31,13 @@ About 55 cases in total. Strongest areas: the Ollama client, the blueprint pipel
 
 ## Weaknesses
 
-1. **The core game rules are essentially untested.** There are no tests for `TurnResolver` (every command), `evaluateConversation`, `applyEffects`, `GameEngine.handleCommand`, `CurriculumService`, `SpellRevealService`, `WorldClock`, `BlueprintProgressService`, `Registry`/`ContentLoader`, or any UI component. This is where the findings in the system notes cluster, and they are invisible to the current suite: relationship effects dropped (06), practice unreachable (11), reveal downgrade (11), load breaking player stats (08), dead event-mood phase (13), year transition (12).
-2. **Tests assert implementation shape rather than behaviour in places.** The resolver test locks in "failure becomes `REST`", the renderer test locks in the placeholder fallback string, and the persistence test checks only the clock and spellbook, which is why a broken load passes (08, 19).
-3. **The suite writes to the real `./saves` directory.** One test saves `autosave` there and cleanup removes only `test-save-*` files, so running `npm test` can overwrite a player's actual autosave. The `blueprint.test.ts` round trip is another writer.
-4. **No end-to-end test of a turn,** not even with fake resolver and renderer. A single "new game, move, attend class, save, load, attend class again" scenario would have caught several defects.
-5. **Nothing uses randomness control.** `Math.random` is called in practice and reveal logic, so those paths cannot be tested deterministically (04, 11).
-6. **No content tests:** nothing validates that packs parse, that ids cross-reference (spells in lessons, profiles for NPCs, exits between locations), or that the starting game is playable (09).
-7. **Mixed test style and naming:** `it` and `test` are both used, and no shared fixtures or builders exist (each test constructs state by hand), which makes adding tests expensive.
-8. **Coverage is unknown.** No coverage script or threshold, and the Jest config collects coverage from `src/**/*.ts` (including the untested UI `.tsx` only partially, since `.tsx` is excluded by the glob).
-9. **No CI, lint or format step** is configured (no GitHub Actions file, ESLint or Prettier config seen), so tests run only when someone remembers. `.vscode/settings.json` is the only tooling config.
-10. **Build/test configuration quirks:** `tsconfig.json` uses CommonJS while `tsconfig.runtime.json` and the UI package use ESM (`bundler` resolution), and `npm run build` would emit to `dist` without copying the JSON content (see 09). The test and runtime paths are therefore different module systems, which can hide ESM-only problems.
-11. **Fixtures with placeholder shapes:** several tests use `as any` for spell states with fields that do not exist (`practiceAttempts`, `successfulCasts`), so type checking does not protect them.
-12. **No LLM-quality testing.** There are no prompt regression sets (a list of inputs and the expected command), which matters most for the resolver (03) and narrator (05).
+1. **Parts of the game are untested.** There are about 550 tests in 61 files, covering the rules, effects, conversation, content, the engine turn and persistence. There are none for any UI component (20), and several areas (stat clamping, year change, the silent-failure paths of effects; see 06, 10, 12) are untested.
+2. **Mixed test style:** `it` and `test` are both used. Shared builders exist (`buildTestGame`, `fakeOllama`, `placePlayer`), but many tests still construct state by hand.
+3. **Coverage is unknown.** No coverage script or threshold, and the Jest config collects coverage from `src/**/*.ts` (including the untested UI `.tsx` only partially, since `.tsx` is excluded by the glob).
+4. **No CI, lint or format step** is configured (no GitHub Actions file, ESLint or Prettier config seen), so tests run only when someone remembers. `.vscode/settings.json` is the only tooling config.
+5. **Build/test configuration quirks:** `tsconfig.json` uses CommonJS while `tsconfig.runtime.json` and the UI package use ESM (`bundler` resolution), and `npm run build` would emit to `dist` without copying the JSON content (see 09). The test and runtime paths are therefore different module systems, which can hide ESM-only problems.
+6. **Fixtures with placeholder shapes:** several tests use `as any` for spell states with fields that do not exist (`practiceAttempts`, `successfulCasts`), so type checking does not protect them.
+7. **LLM quality is tested only for the resolver.** `npm run eval:resolver` (71 phrases against a live Ollama) and `eval:blueprint` measure it by hand; there is no equivalent for the narrator (05), and neither runs in CI.
 
 ## Rework ideas
 

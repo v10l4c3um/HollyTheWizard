@@ -25,9 +25,9 @@ Nothing yet. The intended job (from the Phase 2 design doc) is to make the world
 
 1. **Presence is a lookup, not a simulation.** Where an NPC is follows from the clock when asked (see 14), so nothing happens off-screen: NPCs do not act on their own, and there are no NPC routines with consequences, timed events or curfew beyond the world tick's boundary rules.
 2. **The design doc is high level.** It does not define the schedule format, how a block resolves when several apply, who wins between routine and override, how presence interacts with the player's own schedule, or what "off-screen progression" looks like as data.
-3. **The prerequisites are themselves unfinished:** calendar (16), locations in data (09), NPC introduction and presence (14), and structured events (07). The scheduler cannot be built well before these.
-4. **Risk of performance and determinism problems if added naively:** simulating many NPCs per turn, randomness for "occasional" overrides, and long jumps in time (resting 8 hours must fast-forward correctly, not skip schedule effects).
-5. **Test strategy absent,** though a schedule resolver is a pure function and ideal for table tests.
+3. **The prerequisites are partly unfinished:** NPC introduction (14) and structured events (07) are open; presence, locations in data, the calendar and the world tick exist.
+4. **Risk of performance and determinism problems if added naively:** simulating many NPCs per turn, randomness for "occasional" overrides (it must come from the turn's seeded `Random`), and long jumps in time (resting 8 hours must fast-forward correctly, not skip schedule effects; the tick already walks every boundary).
+5. **Test strategy is partial.** Presence is tested (`presence.test.ts`); the schedule format and how blocks resolve have no table tests, though a schedule resolver is a pure function and ideal for them.
 
 ## Design sketch (rework)
 
