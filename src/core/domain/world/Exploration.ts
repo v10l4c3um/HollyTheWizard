@@ -6,6 +6,10 @@ import {
 	locationsDiscovered,
 } from "../effects/GameEffects";
 
+// TODO: hidden places. Skip locations flagged `hidden` here and reveal them with
+// `LocationsDiscovered` from conversation, lessons, items or story beats
+// (docs/systems/16-world-time.md).
+
 /**
  * Places you can see from where you stand that you have not found yet. Being
  * somewhere shows you its exits; that is the only way to discover a place.

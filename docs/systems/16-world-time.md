@@ -35,6 +35,7 @@ Provides the "where" and "when" of the game: a graph of locations the player mov
 8. **Time is advanced in two places and debug logs every turn** (`[TIME DEBUG]` in the engine), and `REST` is the only way to pass time deliberately, yet it has no waiting-until semantics or interruption.
 9. **Fixed:** locations are data (`world.json`). Original description: **Hard-coded world.** Locations are constructed in code, not from data, and the item class mixes definition and instance (see 09).
 10. **No tests for the clock or movement:** wrap-around, time-of-day boundaries and move validation are untested.
+11. **TODO: hidden places.** Every connected place is discovered the moment you arrive next to it, so discovery never gates anything beyond the graph. Planned: a `hidden` flag on locations in `world.json` that "seeing exits" skips, revealed by `LocationsDiscovered` effects from NPC conversation, lessons, items or story beats (see `Exploration.ts`).
 
 ## Rework ideas
 

@@ -50,7 +50,7 @@ If Ollama is unavailable or returns garbage, every LLM step has a deterministic 
 
 ## Known gaps
 
-spell reveal condition checks, no structured quest system, scene invitations lack handlers, no dueling/combat.
+spell reveal condition checks, no hidden or revealable locations (TODO), no structured quest system, scene invitations lack handlers, no dueling/combat.
 
 ## Further reading
 
