@@ -1,3 +1,4 @@
+import { questFlagAllowlist } from "./QuestFlags";
 import Registry from "../../Registry";
 import GameState from "../world/GameState";
 import { YearBlueprint } from "./YearBlueprint";
@@ -53,14 +54,20 @@ export function validateYearBlueprintSemantics(
 		}
 	}
 
+	const allowed = new Set(questFlagAllowlist(registry));
+	const checkFlag = (flag: string, where: string) => {
+		if (flag.trim() === "") errors.push(`${where} has an empty flag.`);
+		else if (!allowed.has(flag)) errors.push(`${where} uses flag "${flag}", which the game never sets.`);
+	};
 	for (const milestone of blueprint.milestones) {
-		if (
-			milestone.trigger.type === "questFlag" &&
-			milestone.trigger.flag.trim() === ""
-		) {
-			errors.push(
-				`Milestone "${milestone.id}" has an empty questFlag trigger.`,
-			);
+		if (milestone.trigger.type === "questFlag") {
+			checkFlag(milestone.trigger.flag, `Milestone "${milestone.id}"`);
+		}
+	}
+	for (const gate of blueprint.gates) checkFlag(gate.flag, "A gate");
+	for (const climax of blueprint.climaxOptions) {
+		for (const flag of climax.preconditions) {
+			checkFlag(flag, `Climax "${climax.id}"`);
 		}
 	}
 

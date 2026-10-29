@@ -4,6 +4,12 @@ import { START_LOCATION_ID } from "../domain/world/GameState";
 import { TOPICS, TopicDefinition } from "../domain/npc/TopicRegistry";
 import { normalizeName } from "../engine/EntityMatcher";
 import { SubjectCurriculum } from "../domain/quest/Curriculum";
+import { ARC_MODULES } from "../domain/campaign/ArcModuleRegistry";
+import { campaignBaseSchemaFor, yearBlueprintSchemaFor } from "../domain/campaign/BlueprintSchemas";
+import { validateYearBlueprintSemantics } from "../domain/campaign/CampaignBlueprintService";
+import { buildSafeCampaignBase, buildSafeYearBlueprint } from "../domain/campaign/DeterministicFallback";
+import { questFlagAllowlist } from "../domain/campaign/QuestFlags";
+import { SCHOOL_YEARS } from "../domain/quest/Curriculum";
 
 /**
  * Collects problems. A problem can say which piece of content it is about
@@ -44,6 +50,7 @@ export function lintContent(registry: Registry, options: LintOptions = {}): stri
 	lintSpells(registry, report);
 	lintSchedules(registry, report);
 	lintSchool(registry, report);
+	lintBlueprints(registry, report);
 	return report.problems;
 }
 
@@ -261,4 +268,50 @@ function lintNumbering(curriculum: SubjectCurriculum, report: Report): void {
 		["curriculums", `${curriculum.subjectType} year ${curriculum.year}`],
 		`Lessons of "${curriculum.subjectType}" year ${curriculum.year} are not numbered 1 to n (found ${orders.join(", ")})`,
 	);
+}
+
+/**
+ * What the story layer may refer to must be real: the flag allowlist is not
+ * empty, the arc catalog is sound, and the blueprints the game falls back on
+ * (every year) pass the same schema and checks a generated one must.
+ */
+function lintBlueprints(registry: Registry, report: Report): void {
+	if (questFlagAllowlist(registry).length === 0) {
+		report.add(undefined, "The content defines nothing a blueprint could use as a quest flag");
+	}
+
+	const seenModules = new Set<string>();
+	for (const module of ARC_MODULES) {
+		if (seenModules.has(module.id)) report.add(undefined, `Duplicate arc module id "${module.id}"`);
+		seenModules.add(module.id);
+		if (module.climaxShapes.length === 0) {
+			report.add(undefined, `Arc module "${module.id}" has no climax shape`);
+		}
+		if (module.suggestedRoles.length === 0) {
+			report.add(undefined, `Arc module "${module.id}" suggests no roles`);
+		}
+	}
+
+	const base = buildSafeCampaignBase("lint");
+	const { yearPlans: _plans, wasFallback: _base, ...baseShape } = base;
+	const campaign = campaignBaseSchemaFor(registry).safeParse(baseShape);
+	if (!campaign.success) {
+		report.add(undefined, `The fallback campaign blueprint is invalid: ${campaign.error.issues[0]?.message}`);
+	}
+
+	const yearSchema = yearBlueprintSchemaFor(registry);
+	for (const year of SCHOOL_YEARS) {
+		const { wasFallback: _fallback, ...shape } = buildSafeYearBlueprint(year, base);
+		const parsed = yearSchema.safeParse(shape);
+		if (!parsed.success) {
+			report.add(
+				undefined,
+				`The fallback blueprint for year ${year} is invalid: ${parsed.error.issues[0]?.path.join(".")}: ${parsed.error.issues[0]?.message}`,
+			);
+		}
+		const semantic = validateYearBlueprintSemantics(buildSafeYearBlueprint(year, base), registry);
+		for (const error of semantic.errors) {
+			report.add(undefined, `The fallback blueprint for year ${year}: ${error}`);
+		}
+	}
 }

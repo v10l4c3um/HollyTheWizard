@@ -1,6 +1,7 @@
 import { z } from "zod";
 import Registry from "../../Registry";
 import { getAllArcModuleIds } from "./ArcModuleRegistry";
+import { questFlagAllowlist } from "./QuestFlags";
 
 /**
  * Zod schemas for structural validation of LLM-generated blueprint JSON.
@@ -116,6 +117,8 @@ export function yearBlueprintSchemaFor(registry: Registry) {
 	const npcs = idEnum(registry.getAllNpcIds());
 	const places = idEnum(registry.getAllLocationIds());
 	const modules = idEnum(getAllArcModuleIds());
+	// Only flags the game can really set: a milestone on any other flag could never complete.
+	const flags = idEnum(questFlagAllowlist(registry));
 
 	return YearBlueprintSchema.extend({
 		arcModules: z.array(modules).min(1).max(2),
@@ -123,5 +126,21 @@ export function yearBlueprintSchemaFor(registry: Registry) {
 		clueSeeds: z
 			.array(ClueSeedSchema.extend({ locationId: places, moduleId: modules }))
 			.max(10),
+		gates: z.array(BlueprintGateSchema.extend({ flag: flags })).max(10),
+		milestones: z
+			.array(
+				BlueprintMilestoneSchema.extend({
+					trigger: z.union([
+						z.object({ type: z.literal("questFlag"), flag: flags }),
+						z.object({ type: z.literal("yearStart") }),
+					]),
+				}),
+			)
+			.min(1)
+			.max(8),
+		climaxOptions: z
+			.array(ClimaxOptionSchema.extend({ preconditions: z.array(flags) }))
+			.min(1)
+			.max(3),
 	});
 }

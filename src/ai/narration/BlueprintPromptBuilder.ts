@@ -1,3 +1,4 @@
+import { questFlagAllowlist } from "../../core/domain/campaign/QuestFlags";
 import Registry from "../../core/Registry";
 import { CampaignBlueprintBase } from "../../core/domain/campaign/CampaignBlueprint";
 import { YearRecap } from "../../core/domain/campaign/CampaignBlueprintService";
@@ -38,6 +39,7 @@ export function buildYearBlueprintPrompt(
 	const moduleIds = getAllArcModuleIds();
 	const npcIds = registry.getAllNpcIds();
 	const locationIds = registry.getAllLocationIds();
+	const flags = questFlagAllowlist(registry);
 
 	return `You are designing the story arc for Year ${recap.year} of a multi-year wizard-school RPG.
 
@@ -53,6 +55,7 @@ You MUST only use these allowed ids - do not invent new ones:
 - Arc module ids: ${JSON.stringify(moduleIds)}
 - NPC ids: ${JSON.stringify(npcIds)}
 - Location ids: ${JSON.stringify(locationIds)}
+- Quest flags (the only flags the game ever sets; every milestone flag, gate flag and climax precondition MUST be one of these): ${JSON.stringify(flags)}
 
 Respond with ONLY a JSON object matching this shape:
 {
@@ -60,9 +63,9 @@ Respond with ONLY a JSON object matching this shape:
   "arcModules": array of 1-2 module ids from the allowed list,
   "moduleRoles": object mapping role names (e.g. "instigator", "ally") to NPC ids from the allowed list,
   "clueSeeds": array of { "clueId": string, "locationId": one of the allowed location ids, "moduleId": one of the chosen arcModules },
-  "gates": array of { "flag": string, "description": string },
-  "milestones": array of 1-8 { "id": string, "description": string, "trigger": { "type": "yearStart" } or { "type": "questFlag", "flag": string } },
-  "climaxOptions": array of 1-3 { "id": string, "description": string, "preconditions": array of quest flag strings (can be empty) },
+  "gates": array of { "flag": one of the allowed quest flags, "description": string },
+  "milestones": array of 1-8 { "id": string, "description": string, "trigger": { "type": "yearStart" } or { "type": "questFlag", "flag": one of the allowed quest flags } },
+  "climaxOptions": array of 1-3 { "id": string, "description": string, "preconditions": array of allowed quest flags (can be empty) },
   "compatibilityNotes": array of short strings noting how this year avoids repeating last year's main module
 }
 
