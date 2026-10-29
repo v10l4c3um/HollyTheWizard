@@ -111,4 +111,65 @@ describe("buildWorldView", () => {
 		expect(view.subjects.map((s) => s.id)).toContain("charms");
 		expect(view.places.length).toBeGreaterThan(10);
 	});
+
+	describe("the recent past", () => {
+		const turn = (input: string, command: any, from = "great_hall") => ({
+			input,
+			command,
+			fromLocationId: from,
+		});
+
+		it("is empty for a new game", () => {
+			const view = buildWorldView(registry, stateAt("great_hall"));
+			expect(view.recent).toEqual([]);
+			expect(view.lastPerson).toBeUndefined();
+			expect(view.lastPlace).toBeUndefined();
+		});
+
+		it("describes turns with display names, oldest first", () => {
+			const state = stateAt("great_hall");
+			state.recentTurns.push(
+				turn("talk to Hermione", { type: "TALK", npcId: "hermione_granger" }),
+				turn("go to the library", { type: "MOVE", destinationId: "library" }),
+				turn("rest", { type: "REST", duration: 1 }),
+			);
+			expect(buildWorldView(registry, state).recent.map((t) => t.summary)).toEqual([
+				"talked to Hermione Granger (hermione_granger)",
+				"went to Library (library)",
+				"rested for 1 hour",
+			]);
+		});
+
+		it("remembers the newest person, place, subject, spell and item", () => {
+			const state = stateAt("great_hall");
+			state.inventory.items.push(new Item("wand", "Holly Wand"));
+			state.recentTurns.push(
+				turn("a", { type: "TALK", npcId: "hagrid" }),
+				turn("b", { type: "TALK", npcId: "hermione_granger" }),
+				turn("c", { type: "MOVE", destinationId: "library" }),
+				turn("d", { type: "STUDY", subjectId: "potions", duration: 1 }),
+				turn("e", { type: "ATTEND_CLASS", subjectId: "charms", duration: 1 }),
+				turn("f", { type: "PRACTICE", spellId: "levitate", duration: 1 }),
+				turn("g", { type: "INTERACT", itemId: "wand", actionType: "use" }),
+			);
+			const view = buildWorldView(registry, state);
+			expect(view.lastPerson?.id).toBe("hermione_granger");
+			expect(view.lastPlace?.id).toBe("library");
+			expect(view.lastSubject?.id).toBe("charms");
+			expect(view.lastSpell?.id).toBe("levitate");
+			expect(view.lastItem).toEqual({ id: "wand", name: "Holly Wand" });
+		});
+
+		it("never treats something that is not a real thing as a referent", () => {
+			const state = stateAt("great_hall");
+			state.recentTurns.push(
+				turn("go to narnia", { type: "MOVE", destinationId: "Narnia" }),
+				turn("talk to gandalf", { type: "TALK", npcId: "Gandalf" }),
+			);
+			const view = buildWorldView(registry, state);
+			expect(view.lastPlace).toBeUndefined();
+			expect(view.lastPerson).toBeUndefined();
+			expect(view.recent[0].summary).toBe("went to Narnia");
+		});
+	});
 });

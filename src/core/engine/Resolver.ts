@@ -1,3 +1,4 @@
+import { parseFollowUp } from "./FollowUp";
 import { AUTOSAVE_SLOT, QUICKSAVE_SLOT, parseFastPath } from "./FastPath";
 import { z } from "zod";
 import { Command } from "./Command";
@@ -85,6 +86,12 @@ class Resolver {
 			return fast;
 		}
 
+		const followUp = view ? parseFollowUp(input, view) : null;
+		if (followUp) {
+			console.debug(`[Resolver] "${input}" → follow-up → ${JSON.stringify(followUp)}`);
+			return followUp;
+		}
+
 		try {
 			// Without a view the resolver still knows the content, just not
 			// where the player is or who is here.
@@ -101,6 +108,12 @@ class Resolver {
 			// A sentence made only of command words ("study", "talk", "use") names
 			// nothing, whatever the model made of it.
 			if (!!NOUN[intent] && !mentionsAnything(input)) args.target = undefined;
+
+			// "her", "there", "it": the newest real thing of the right kind, or nothing.
+			const pronoun = givenTarget(args.target);
+			if (pronoun && world && NOUN[intent] && PRONOUNS.has(normalizeName(pronoun))) {
+				args.target = lastReferent(intent, world)?.id;
+			}
 
 			const given = givenTarget(args.target);
 			if (given && world) {
@@ -477,6 +490,10 @@ Choose the one option the player most likely means. Respond with only valid JSON
 		view?: WorldView,
 	): string {
 		const world = view ? worldLines(intent, view) : "";
+		const recent =
+			view && view.recent.length > 0 && NOUN[intent]
+				? `What the player did most recently (newest last):\n${view.recent.map((t) => `- "${t.input}" → ${t.summary}`).join("\n")}\nWords like him, her, them, it, there and that mean the most recent matching thing above: answer with its id.\n`
+				: "";
 		const duration =
 			'Include "duration" only if the player says how long, as a whole number of hours; otherwise leave it out.';
 		const help: Record<IntentType, string> = {
@@ -493,7 +510,7 @@ Choose the one option the player most likely means. Respond with only valid JSON
 		};
 
 		return `You are an argument extractor for a fantasy RPG game. The user's input has already been classified as a "${intent}" command (${withoutExamples(INTENT_SUMMARIES[intent])}).
-${view ? `\n${playerNote(view.playerName)}\n` : ""}${world}
+${view ? `\n${playerNote(view.playerName)}\n` : ""}${world}${recent}
 User input: "${input}"
 
 Respond with only valid JSON of this shape: ${help[intent]}
@@ -647,6 +664,31 @@ function mentionsAnything(input: string): boolean {
 	return normalizeName(input)
 		.split(" ")
 		.some((word) => word !== "" && !/^\d+$/.test(word) && !NO_TARGET_WORDS.has(word));
+}
+
+/** Words that point back at something said or done earlier. */
+const PRONOUNS = new Set([
+	"him", "her", "them", "he", "she", "they", "it", "its", "there", "that", "this", "one",
+	"that one", "that person", "that place", "the same", "the same one",
+]);
+
+/** What "him", "there" or "it" means for this intent: the newest matching thing. */
+function lastReferent(intent: IntentType, view: WorldView): NamedEntity | undefined {
+	switch (intent) {
+		case "TALK":
+			return view.lastPerson;
+		case "MOVE":
+			return view.lastPlace;
+		case "STUDY":
+		case "ATTEND_CLASS":
+			return view.lastSubject;
+		case "PRACTICE":
+			return view.lastSpell;
+		case "INTERACT":
+			return view.lastItem;
+		default:
+			return undefined;
+	}
 }
 
 /** Same words once case, punctuation and spacing are ignored. */

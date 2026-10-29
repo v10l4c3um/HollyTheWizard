@@ -344,3 +344,79 @@ describe("a target the player never gave is asked for, not guessed", () => {
 		});
 	});
 });
+
+
+describe("sentences that depend on what just happened", () => {
+	const past = (s: GameState) =>
+		s.recentTurns.push(
+			{ input: "talk to Hermione", command: { type: "TALK", npcId: "hermione_granger" }, fromLocationId: "classroom" },
+			{ input: "go to the library", command: { type: "MOVE", destinationId: "library" }, fromLocationId: "hallway" },
+			{ input: "practise wingardium leviosa", command: { type: "PRACTICE", spellId: "levitate", duration: 1 }, fromLocationId: "library" },
+			{ input: "study charms", command: { type: "STUDY", subjectId: "charms", duration: 1 }, fromLocationId: "library" },
+		);
+
+	it.each([
+		["TALK", "ask her about the exam", "her", { type: "TALK", npcId: "hermione_granger" }],
+		["TALK", "talk to him", "him", { type: "TALK", npcId: "hermione_granger" }],
+		["MOVE", "go there", "there", { type: "MOVE", destinationId: "library" }],
+		["PRACTICE", "practise it again for an hour", "it", { type: "PRACTICE", spellId: "levitate" }],
+		["STUDY", "study that more", "that", { type: "STUDY", subjectId: "charms" }],
+	])("%s: %p ('%s') means the newest matching thing", async (intent, input, target, expected) => {
+		model({ intent }, { target });
+		expect(await resolve(input, viewAt("great_hall", past))).toMatchObject(expected);
+		expect(calls()).toHaveLength(2);
+	});
+
+	it("keeps an id the model already worked out from the recent turns", async () => {
+		model({ intent: "TALK" }, { target: "hermione_granger" });
+		expect(await resolve("ask her about it", viewAt("great_hall", past))).toMatchObject({
+			npcId: "hermione_granger",
+		});
+	});
+
+	it("asks who is meant when there is nothing to point back at", async () => {
+		model({ intent: "TALK" }, { target: "her" });
+		expect(await resolve("talk to her", viewAt("great_hall"))).toEqual({
+			type: "UNKNOWN",
+			input: "talk to her",
+			hint: "Who do you want to talk to?",
+		});
+	});
+
+	it("asks where when 'there' has no place to mean", async () => {
+		model({ intent: "MOVE" }, { target: "there" });
+		expect(await resolve("go there", viewAt("great_hall"))).toMatchObject({
+			type: "UNKNOWN",
+			hint: "Where do you want to go?",
+		});
+	});
+
+	it("does not mistake a pronoun for a person who is called that", async () => {
+		model({ intent: "TALK" }, { target: "Hagrid" });
+		expect(await resolve("talk to Hagrid", viewAt("great_hall", past))).toMatchObject({
+			npcId: "hagrid",
+		});
+	});
+
+	it("tells the model what just happened, only when something did", async () => {
+		model({ intent: "TALK" }, { target: "hermione_granger" });
+		await resolve("ask her about it", viewAt("great_hall", past));
+		const prompt = bodyOf(1).prompt;
+		expect(prompt).toContain("What the player did most recently");
+		expect(prompt).toContain('"talk to Hermione" → talked to Hermione Granger (hermione_granger)');
+		expect(prompt).toContain("most recent matching thing");
+
+		(global.fetch as jest.Mock).mockClear();
+		model({ intent: "TALK" }, { target: "hagrid" });
+		await resolve("talk to hagrid", viewAt("great_hall"));
+		expect(bodyOf(1).prompt).not.toContain("What the player did most recently");
+	});
+
+	it("repeats and goes back without calling the model", async () => {
+		model();
+		const view = viewAt("great_hall", past);
+		expect(await resolve("again", view)).toEqual({ type: "STUDY", subjectId: "charms", duration: 1 });
+		expect(await resolve("go back", view)).toEqual({ type: "MOVE", destinationId: "hallway" });
+		expect(calls()).toHaveLength(0);
+	});
+});
