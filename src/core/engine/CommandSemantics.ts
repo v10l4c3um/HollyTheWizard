@@ -144,6 +144,9 @@ export function cleanReply(
 		} else if (value && PRONOUNS.has(normalizeName(value))) {
 			value = view ? lastReferent(target.kind, view)?.id : undefined;
 		}
+		// The model leaves a pronoun's target out ("ask her about it"): the newest
+		// matching thing fills it in.
+		if (!value && view && hasPronoun(input)) value = lastReferent(target.kind, view)?.id;
 		out[target.field] = value;
 	}
 

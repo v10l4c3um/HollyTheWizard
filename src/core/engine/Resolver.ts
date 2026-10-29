@@ -189,6 +189,20 @@ class Resolver {
 				})),
 			);
 
+		// The player's own sentence names a thing outright ("practice alohomora"):
+		// that wins over whatever id the model answered with.
+		const named = clearWinner(
+			rankCandidates(
+				input,
+				all.map((entity) => ({
+					id: entity.id,
+					names: [entity.id, entity.name],
+					aliases: entity.aliases ?? [],
+				})),
+			),
+		);
+		if (named) return { value: named, matched: true };
+
 		const inPreferred = clearWinner(rank(preferred));
 		if (inPreferred) return { value: inPreferred, matched: true };
 

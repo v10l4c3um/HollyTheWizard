@@ -61,19 +61,26 @@ const RULES = `Rules:
 - Going, walking, entering or visiting any place in the game is MOVE, even if its name sounds like a class or like a person ("Hagrid's hut" is a place, not Hagrid). ATTEND_CLASS is only for attending the lesson itself.
 - Greeting, talking to or asking a person is TALK, never INTERACT. Studying, revising or reading up on a subject is STUDY. PRACTICE is only for casting a spell; INTERACT is only for using an item.
 - For a target field, give the id from the lists when the player clearly means one of the entries, otherwise copy the player's own words for it.
-- If the player did not say which place, person, subject, spell or item, leave the target field out. Never guess one, and never repeat the command word as the target.
+- If the player did not say which place, person, subject, spell or item, leave the target field out. Never guess one, and never repeat the command word as the target. (The words him, her, them, it, there and that are the exception: they mean the most recent matching thing, if the recent actions below show one.)
 - Include "duration" only if the player says how long, as a whole number of hours. Include "conversationTopic" only if the sentence is about one of these topics: ${TOPIC_IDS.join(", ")}.
 - If the sentence is not a command, answer {"type": "UNKNOWN"}.`;
 
-/** One sentence in, one command out. `view` is absent when the resolver has no game to look at. */
+/**
+ * One sentence in, one command out. `view` is absent when the resolver has no
+ * game to look at.
+ *
+ * The parts that never change (instructions, commands, rules) come first and
+ * what changes every turn (the player, the world, the sentence) comes last, so
+ * the model server can reuse its work on the unchanged start of the prompt.
+ */
 export function buildCommandPrompt(input: string, view?: WorldView): string {
 	return `You turn one sentence from the player of a fantasy school RPG into a single game command.
-${view ? `\n${playerNote(view.playerName)}\n\n${worldSection(view)}\n` : ""}
+
 Commands:
 ${commandList()}
 
 ${RULES}
-
+${view ? `\n${playerNote(view.playerName)}\n\n${worldSection(view)}\n` : ""}
 User input: "${input}"
 
 Respond with only one JSON object: the command's "type" and the fields it needs.`;

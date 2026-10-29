@@ -397,6 +397,14 @@ describe("sentences that depend on what just happened", () => {
 		});
 	});
 
+	it("fills in a pronoun's target when the model leaves it out", async () => {
+		model({ intent: "TALK" }, {});
+		expect(await resolve("ask her about the exam", viewAt("great_hall", past))).toMatchObject({
+			type: "TALK",
+			npcId: "hermione_granger",
+		});
+	});
+
 	it("keeps an id the model already worked out from the recent turns", async () => {
 		model({ intent: "TALK" }, { target: "hermione_granger" });
 		expect(await resolve("ask her about it", viewAt("great_hall", past))).toMatchObject({
@@ -448,5 +456,33 @@ describe("sentences that depend on what just happened", () => {
 		expect(await resolve("again", view)).toEqual({ type: "STUDY", subjectId: "charms", duration: 1 });
 		expect(await resolve("go back", view)).toEqual({ type: "MOVE", destinationId: "hallway" });
 		expect(calls()).toHaveLength(0);
+	});
+});
+
+
+describe("the player's own words win over a wrong id", () => {
+	it("when the sentence names the spell, the model's other spell is overruled", async () => {
+		model({ intent: "PRACTICE" }, { target: "arcane_reflection", duration: 2 });
+		expect(await resolve("practice alohomora for 2 hours", viewAt("great_hall"))).toMatchObject({
+			type: "PRACTICE",
+			spellId: "unlock",
+			duration: 2,
+		});
+	});
+
+	it("when the sentence names two things, it does not choose for the model", async () => {
+		model({ intent: "TALK" }, { target: "hagrid" });
+		expect(
+			await resolve("tell Hagrid that Hermione was looking for him", viewAt("great_hall", (s) => moveToNpc(s, registry, "hagrid"))),
+		).toMatchObject({ npcId: "hagrid" });
+	});
+
+	it("when it agrees with the model, nothing changes", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		expect(await resolve("go to the library", viewAt("hallway"))).toEqual({
+			type: "MOVE",
+			destinationId: "library",
+		});
+		expect(calls()).toHaveLength(1);
 	});
 });
