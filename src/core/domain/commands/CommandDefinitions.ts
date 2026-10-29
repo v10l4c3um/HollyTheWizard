@@ -151,7 +151,7 @@ export const COMMANDS: Record<CommandType, CommandDefinition> = {
 	},
 	ATTEND_CLASS: {
 		schema: AttendClass,
-		summary: "Attend the lesson of a subject (duration in hours, only if said).",
+		summary: "Attend, sit in on or go to a lesson, class or lecture of a subject (duration in hours, only if said).",
 		modelFacing: true,
 		inWorld: true,
 		target: { field: "subjectId", kind: "subject", missingHint: "Which class do you want to attend?" },

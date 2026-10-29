@@ -11,6 +11,9 @@ import { NamedEntity, WorldView } from "./WorldView";
  * command, and the one that settles which of a few things a name means.
  */
 
+/** Names only: enough for the model to recognise a thing it has no id to give for. */
+const namesOf = (entities: NamedEntity[]): string => entities.map((e) => e.name).join(", ");
+
 const listOf = (entities: NamedEntity[]): string =>
 	entities
 		.map(
@@ -30,10 +33,10 @@ function worldSection(view: WorldView): string {
 		`Places they can reach from here (id = name): ${listOf(view.exits) || "none"}.`,
 		`Other places in the game: ${listOf(view.places.filter((p) => !view.exits.some((e) => e.id === p.id) && p.id !== view.location.id)) || "none"}.`,
 		`People here right now (id = name): ${listOf(view.peopleHere) || "nobody"}.`,
-		`Other people in the game: ${listOf(view.people.filter((p) => !view.peopleHere.some((h) => h.id === p.id))) || "none"}.`,
+		`Other people in the game: ${namesOf(view.people.filter((p) => !view.peopleHere.some((h) => h.id === p.id))) || "none"}.`,
 		`Subjects (id = name): ${listOf(view.subjects)}.${view.classNow ? ` The class being held now is ${view.classNow.name}.` : ""}`,
 		`Spells the player has learned (id = name): ${listOf(view.spells.filter((s) => s.learned)) || "none"}.`,
-		`Other spells (id = name): ${listOf(view.spells.filter((s) => !s.learned)) || "none"}.`,
+		`Other spells: ${namesOf(view.spells.filter((s) => !s.learned)) || "none"}.`,
 		`Items the player has (id = name): ${listOf(view.items) || "none"}.`,
 	];
 	if (view.recent.length > 0) {
@@ -58,7 +61,7 @@ function commandList(): string {
 }
 
 const RULES = `Rules:
-- Going, walking, entering or visiting any place in the game is MOVE, even if its name sounds like a class or like a person ("Hagrid's hut" is a place, not Hagrid). ATTEND_CLASS is only for attending the lesson itself.
+- Going, walking, entering or visiting any place in the game is MOVE, even if its name sounds like a class or like a person ("Hagrid's hut" is a place, not Hagrid). Going to a lesson, class or lecture of a subject ("go to the potions lecture", "go to transfiguration class") is ATTEND_CLASS, not MOVE.
 - Greeting, talking to or asking a person is TALK, never INTERACT. Studying, revising or reading up on a subject is STUDY. PRACTICE is only for casting a spell; INTERACT is only for using an item.
 - For a target field, give the id from the lists when the player clearly means one of the entries, otherwise copy the player's own words for it.
 - If the player did not say which place, person, subject, spell or item, leave the target field out. Never guess one, and never repeat the command word as the target. (The words him, her, them, it, there and that are the exception: they mean the most recent matching thing, if the recent actions below show one.)

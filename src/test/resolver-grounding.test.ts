@@ -221,7 +221,7 @@ describe("what the model is told", () => {
 		expect(prompt).toContain("Classroom");
 		expect(prompt).toContain("Hagrid's hut".replace("Hagrid's hut", "Gamekeeper's Hut"));
 		expect(prompt).toContain("is MOVE");
-		expect(prompt).toContain("ATTEND_CLASS is only for attending the lesson itself");
+		expect(prompt).toContain("is ATTEND_CLASS, not MOVE");
 	});
 
 	it("shows what the player can see: places to reach, people here, subjects, spells", async () => {
@@ -232,7 +232,7 @@ describe("what the model is told", () => {
 		expect(prompt).toContain("hallway = Main Corridor");
 		expect(prompt).toContain("hagrid = Rubeus Hagrid");
 		expect(prompt).toContain("charms = Charms");
-		expect(prompt).toContain("levitate = Wingardium Leviosa");
+		expect(prompt).toContain("Wingardium Leviosa");
 	});
 
 	it("lists every command the model may answer with, and the topics it may use", async () => {
