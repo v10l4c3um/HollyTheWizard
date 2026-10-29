@@ -15,6 +15,7 @@ import { GenerateYearBlueprint } from "../application/use-cases/GenerateYearBlue
 import { BlueprintProgressService } from "../domain/campaign/BlueprintProgressService";
 import { TurnPipeline } from "./pipeline/TurnPipeline";
 import { createStages } from "./pipeline/stages";
+import { ProgressionTracker } from "./ProgressionTracker";
 
 export interface GameEngineDeps {
 	registry: Registry;
@@ -44,6 +45,7 @@ class GameEngine implements IGameEngine {
 	constructor(deps: GameEngineDeps) {
 		this.session = new GameSession(new GameState());
 		this.registry = deps.registry;
+		new ProgressionTracker(deps.bus, () => this.state, deps.logger);
 		this.pipeline = new TurnPipeline({
 			session: this.session,
 			registry: deps.registry,

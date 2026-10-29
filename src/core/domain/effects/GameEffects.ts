@@ -39,6 +39,7 @@ export type GameEffect =
 			value: boolean | number | string;
 			reason: string;
 	  }
+	| { type: "QuestFlagSet"; list: "active" | "completed"; flag: string }
 	| { type: "InventoryDelta"; itemId: string; delta: number; reason: string }
 
 	// New social/content effects
@@ -146,6 +147,11 @@ export function flagSet(
 	reason: string,
 ): GameEffect {
 	return { type: "FlagSet", flagId, value, reason };
+}
+
+/** Marks a story flag, once, on the `active` or `completed` list (what milestones check). */
+export function questFlagSet(list: "active" | "completed", flag: string): GameEffect {
+	return { type: "QuestFlagSet", list, flag };
 }
 
 export function inventoryDelta(

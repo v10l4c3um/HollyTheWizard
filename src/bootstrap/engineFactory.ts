@@ -139,27 +139,6 @@ export function wireEngine(
 	registry: Registry,
 	bus: GameBus,
 ): void {
-	bus.on("LessonAttended", ({ subjectId, lessonId }) => {
-		const flag = `lesson_completed:${subjectId}:${lessonId}`;
-		if (!engine.state.questFlags.active.includes(flag))
-			engine.state.questFlags.active.push(flag);
-	});
-	bus.on("LocationDiscovered", ({ locationId }) => {
-		const flag = `discovered:${locationId}`;
-		if (!engine.state.questFlags.active.includes(flag))
-			engine.state.questFlags.active.push(flag);
-	});
-	bus.on("SpellRevealed", ({ spellId }) => {
-		const flag = `spell_revealed:${spellId}`;
-		if (!engine.state.questFlags.active.includes(flag))
-			engine.state.questFlags.active.push(flag);
-	});
-	bus.on("SpellMastered", ({ spellId }) => {
-		const flag = `mastered:${spellId}`;
-		if (!engine.state.questFlags.completed.includes(flag))
-			engine.state.questFlags.completed.push(flag);
-	});
-
 	discoverStartingArea(engine, registry, bus);
 
 	for (const spellId of registry.getAllSpellIds()) {

@@ -70,6 +70,11 @@ function applyEffect(
 		case "FlagSet":
 			state.flags[effect.flagId] = effect.value;
 			break;
+		case "QuestFlagSet":
+			if (!state.questFlags[effect.list].includes(effect.flag)) {
+				state.questFlags[effect.list].push(effect.flag);
+			}
+			break;
 		case "InventoryDelta":
 			applyInventoryDelta(state, effect.itemId, effect.delta);
 			break;

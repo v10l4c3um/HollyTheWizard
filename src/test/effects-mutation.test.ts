@@ -4,6 +4,7 @@ import TurnResolver from "../core/engine/TurnResolver";
 import { applyEffects } from "../core/domain/effects/EffectApplier";
 import {
 	factsRecorded,
+	questFlagSet,
 	lessonAdvanced,
 	locationChanged,
 	spellRevealed,
@@ -55,6 +56,12 @@ describe("world and turn effects", () => {
 
 		expect(state.worldClock.getTotalMinutes()).toBe(before + 45);
 		expect(seen).toEqual([45]);
+	});
+
+	it("QuestFlagSet marks a story flag once, on the list asked for", () => {
+		applyEffects(state, [questFlagSet("active", "a"), questFlagSet("active", "a"), questFlagSet("completed", "b")]);
+		expect(state.questFlags.active).toEqual(["a"]);
+		expect(state.questFlags.completed).toEqual(["b"]);
 	});
 
 	it("FactsRecorded appends to the recent facts and keeps the last 20", () => {

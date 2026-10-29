@@ -16,6 +16,7 @@ Defines the vocabulary of state changes (`GameEffect`) and the single function t
 | `AttributeDelta` / `ResourceDelta` | `player.attributes/resources.applyDelta` |
 | `RelationshipDelta` | `state.relationships[npcId]?.applyDelta` |
 | `FlagSet` | `state.flags[id] = value` |
+| `QuestFlagSet` | Adds a story flag to `questFlags.active` or `.completed`, once (what milestones check; set by `ProgressionTracker`, see 07) |
 | `InventoryDelta` | Adds to or removes from `inventory.items`, creating a nameless `Item` for new ids |
 | `TopicUnlocked` | Pushes to `unlockedTopicsByNpc` if absent |
 | `ClueRevealed` / `RumorLearned` | Writes a record into `clues` / `rumors` |
