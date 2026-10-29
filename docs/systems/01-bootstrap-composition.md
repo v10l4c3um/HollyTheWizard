@@ -28,18 +28,17 @@ Builds a ready-to-play game: loads content into a `Registry`, creates the event 
 
 ## Weaknesses
 
-1. ~~**It is not really the root.**~~ **Fixed:** `createEngine` builds the object graph from `EngineOptions` (Ollama configs, persistence, logger, fallback flag) and `GameEngine` only receives it; the engine no longer imports `ai/` or `infrastructure/`. Still missing: a clock and RNG at the root.
+1. **The root has no clock or random source.** `createEngine` builds the object graph from `EngineOptions` (Ollama configs, persistence, logger, fallback flag), but time comes from the `WorldClock` inside the state and `Math.random()` is called directly (spell practice, reveal rolls), so a run cannot be made reproducible by injecting a seed.
 2. **The world is defined in code here.** Locations and the `villager` NPC are constructed inline (see 09), which makes `buildRegistry` content, not wiring. It also sits next to the content loaders, so there are two content sources with different rules.
 3. **Game rules are wired in the factory.** The four listeners that make campaign milestones work live here (see 07). Any other way of building an engine (tests, a different front end) silently loses story progress.
 4. **Spellbook initialisation is a startup side effect on a state it does not own.** The factory reaches into `engine.state.spellbook` after construction. Because it runs only at startup, a loaded save is missing any spell added to the content since that save (no `hidden` entry), so new spells never appear for existing saves, and `getSpellState` returns `undefined` for them. State creation (new game vs. loaded) is also mixed up with engine creation.
 5. **New game and load are the same path.** The UI's `choice` (new, continue, load) is not passed to the factory. Every start generates a new campaign and year blueprint through the LLM, and the loaded save then overwrites them (see 19). Startup cost is paid even when the result is discarded.
-6. **Startup requires the LLM** (Ollama probe + blueprint generation). This is intended: the LLM is a required part of the product. The probe lives in `engineFactory` (`verifyLlmAvailable`), not the engine. (Resolved: the object graph is now built by `createEngine` and injected into `GameEngine`.)
-7. **Milestones are declared in three places:** the `StartupProgressUpdate` id union, the `INITIAL_STARTUP_MILESTONES` list in `InkApp.tsx`, and the `switch` that maps engine milestone ids to progress updates here. Adding a step means editing all three, and the UI imports the type from `bootstrap`.
-8. **A second registry.** `locationNameResolver` calls `buildRegistry()` again (re-reading all content and printing the pack-loading logs) instead of using the engine's registry. If content differs or loading fails differently, the UI and engine disagree on names.
-9. **No player setup.** There is no character creation step; the `Player` is the constructor default (see 10), and the seed is generated inside the engine from `Date.now()`, so runs are not reproducible (see 15).
-10. **Global and implicit configuration.** Paths are `__dirname`/`cwd` based, Ollama settings are constants, and the module-level `cachedRegistry` is global mutable state.
-11. **Console output during startup** (pack loading, Ollama debug) writes into the Ink screen (see 20).
-12. **Thin test coverage:** only one failure case; no test of a successful build with a fake LLM, listener wiring, or content loading.
+6. **Milestones are declared in three places:** the `StartupProgressUpdate` id union, the `INITIAL_STARTUP_MILESTONES` list in `InkApp.tsx`, and the `switch` that maps engine milestone ids to progress updates here. Adding a step means editing all three, and the UI imports the type from `bootstrap`.
+7. **A second registry.** `locationNameResolver` calls `buildRegistry()` again (re-reading all content and printing the pack-loading logs) instead of using the engine's registry. If content differs or loading fails differently, the UI and engine disagree on names.
+8. **No player setup.** There is no character creation step; the `Player` is the constructor default (see 10), and the seed is generated inside the engine from `Date.now()`, so runs are not reproducible (see 15).
+9. **Global and implicit configuration.** Paths are `__dirname`/`cwd` based, Ollama settings are constants, and the module-level `cachedRegistry` is global mutable state.
+10. **Console output during startup** (pack loading, Ollama debug) writes into the Ink screen (see 20).
+11. **Thin test coverage:** only one failure case; no test of a successful build with a fake LLM, listener wiring, or content loading.
 
 ## Rework ideas
 

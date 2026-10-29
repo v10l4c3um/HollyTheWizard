@@ -40,16 +40,15 @@ The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state fr
    - Inventory lives in `state.inventory.items` (used by effects and `INTERACT`) and `player.inventory`.
    - `state.resources` (generic map, "mutated via `ResourceDelta`") is not touched by the applier, which uses `player.resources`; `player.health` is a third place for health.
    - Which copy is authoritative is unclear, and two of the copies are dead.
-3. ~~**No schema, no validation, no versioning.**~~ **Fixed:** the format is versioned and Zod-validated, every part is required, and a save is also checked against the content on load (see 19). There are no migrations by decision.
-4. **Transient and derived data are saved.** `output` (last narration) is persisted, `recentEvents` grows without bound (only `.slice(-N)` on read), and a loaded save includes the blueprint object graph, which the class itself says nothing about validating.
-5. **Fields that nothing writes.** `knownNPCIds` is never populated, so "nearby NPCs" in the narration prompt is always empty (see 05). `resources`, `sceneInvitations` (no consumer), and `settings.romanceIntensity` are similar dead weight. Schedules and NPC presence have no state at all.
-6. **Hard-coded content in the model.** The 27 subject ids and starting attribute values are written into the `GameState` constructor, and the start location `"startingVillage"` is a string literal. Content that belongs in data is baked into code, and the subject list duplicates `SubjectType`.
-7. **Public mutable fields, no encapsulation.** Anything can write anything (`engine.state.questFlags.active.push` in the factory, `output =` in the engine), so the "effects only" rule is convention, not enforcement. The class has almost no behaviour, so it is a data bag typed as a class, with `Date.now()` and defaults in the constructor.
-8. **Unbounded, structurally loose collections.** `questFlags` and `flags` are free-text string lists and maps. `sceneType` in state is `string` while the effect uses a union. Clue and rumor records are bare booleans with no timestamp or location.
-9. **Coupling to higher layers.** The state module imports campaign blueprint types, curriculum types, and NPC types, so the "domain core" is one big dependency hub, and `InkApp` and the renderer receive the whole object.
-10. **Time is split.** `worldClock` holds day and time, but cooldowns, invitation expiry (`validUntilMinutes`) and "last seen" data have no shared absolute timestamp.
-11. **Mutable reference returned from the engine,** so the UI cannot diff, and there is no snapshot for undo.
-12. **Testing gap** beyond persistence: no tests for `fromPlainObject` with missing or older data, or for class methods after load.
+3. **Transient and derived data are saved.** `output` (last narration) is persisted, `recentEvents` grows without bound (only `.slice(-N)` on read), and a loaded save includes the blueprint object graph, which the class itself says nothing about validating.
+4. **Fields that nothing writes.** `knownNPCIds` is never populated, so "nearby NPCs" in the narration prompt is always empty (see 05). `resources`, `sceneInvitations` (no consumer), and `settings.romanceIntensity` are similar dead weight. Schedules and NPC presence have no state at all.
+5. **Hard-coded content in the model.** The 27 subject ids and starting attribute values are written into the `GameState` constructor, and the start location `"startingVillage"` is a string literal. Content that belongs in data is baked into code, and the subject list duplicates `SubjectType`.
+6. **Public mutable fields, no encapsulation.** Anything can write anything (`engine.state.questFlags.active.push` in the factory, `output =` in the engine), so the "effects only" rule is convention, not enforcement. The class has almost no behaviour, so it is a data bag typed as a class, with `Date.now()` and defaults in the constructor.
+7. **Unbounded, structurally loose collections.** `questFlags` and `flags` are free-text string lists and maps. `sceneType` in state is `string` while the effect uses a union. Clue and rumor records are bare booleans with no timestamp or location.
+8. **Coupling to higher layers.** The state module imports campaign blueprint types, curriculum types, and NPC types, so the "domain core" is one big dependency hub, and `InkApp` and the renderer receive the whole object.
+9. **Time is split.** `worldClock` holds day and time, but cooldowns, invitation expiry (`validUntilMinutes`) and "last seen" data have no shared absolute timestamp.
+10. **Mutable reference returned from the engine,** so the UI cannot diff, and there is no snapshot for undo.
+11. **Testing gap** beyond persistence: no tests for `fromPlainObject` with missing or older data, or for class methods after load.
 
 ## Rework ideas
 

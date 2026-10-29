@@ -35,24 +35,23 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 ## Weaknesses
 
 1. **One 650-line class mixes everything.** Each command is a method on one class, with string building, rule logic, event emission and effect construction inline. The result is hard to extend or test per command, and it will not scale to dueling, quests or scenes.
-2. ~~**Mixed mutation and a half-finished conversion.**~~ **Fixed:** movement, time, the event log, lesson progress, spell reveal and spell practice are all effects (`LocationChanged`, `TimeAdvanced`, `EventsRecorded`, `LessonAdvanced`, `SpellRevealed`, `SpellStateUpdated`); `stateChanges` is gone.
-3. **Events are emitted before the outcome is final.** `MOVE` emits `LocationVisited` / `LocationDiscovered` before the engine sets the location. Listeners see the event while state is still the old state. The event-then-state ordering is accidental.
-4. **Dead or duplicated code.** `_save`, `_load`, and the `ADVANCE_YEAR` branch are unreachable in practice, since the engine handles them first. The comment says so, and they still emit `GameSaved`/`GameLoaded`, which would double-emit if ever reached.
-5. **Rules are shallow.**
+2. **Events are emitted before the outcome is final.** `MOVE` emits `LocationVisited` / `LocationDiscovered` before the engine sets the location. Listeners see the event while state is still the old state. The event-then-state ordering is accidental.
+3. **Dead or duplicated code.** `_save`, `_load`, and the `ADVANCE_YEAR` branch are unreachable in practice, since the engine handles them first. The comment says so, and they still emit `GameSaved`/`GameLoaded`, which would double-emit if ever reached.
+4. **Rules are shallow.**
    - `REST` changes nothing (no energy, health or mana), though the text says "You feel refreshed!".
    - `INTERACT` is a stub that always succeeds.
    - `STUDY` has no cost (energy), diminishing returns, location or time-of-day requirement, and validates nothing: `subjectId` is cast to `SubjectType`, and an unknown subject quietly creates a progress track.
    - `ATTEND_CLASS` ignores the timetable, location, time of day, and the `duration` argument (always 60 minutes). The player can attend any class anywhere at any hour, and repeatedly in a row.
    - `PRACTICE` has no mana, energy or backfire effect even though `SpellBalance` defines `manaCost` and `backfireRisk`, and ignores `castCondition`.
    - `MOVE` has no travel-time variation, locked doors, curfew or ownership.
-6. **`TALK` does not check that the NPC exists or is present.** An unknown id falls through to a zeroed relationship and uses the id as the name, and any known NPC can be talked to from anywhere. The `knownNPCIds` list is used for "nearby" in the render context, so presence is not modeled at all (no scheduler, see system 17).
-7. **Hacky privacy rule.** `isPrivateLocation` does substring matching on the location id (`"study"`, `"room"`, `"garden"`). It misclassifies (any id containing "room", "study", or "office"; a public garden counts as private) and should be a property of the `Location` data.
-8. **Hidden randomness.** `Math.random()` in `PRACTICE` is not seeded or injectable, so results cannot be reproduced for tests, replays or bug reports. The other systems in the project advertise determinism.
-9. **Fragile success detection.** `ActionResolved` outcome is inferred from `events.length === 0 && timeCost none`. A blocked `MOVE` has events and a time cost, so it is reported as a success. The turn result should carry the outcome explicitly.
-10. **Messages and prose live in rules code.** Output strings such as "Something happened!" and `buildConversationOutput` are embedded in the logic, which blocks localization and makes it hard for the renderer to receive structured facts rather than a sentence it must paraphrase.
-11. **`events` are English strings.** `Talked to ${npcId} about ...` then feeds `recentEvents`, which feeds conversation mood modifiers and the render prompt. Structured data is lost; later systems must parse text.
-12. **Per-turn services are built in the constructor** with no injection, so tests cannot substitute a fake reveal service or RNG.
-13. **No tests.** `TurnResolver` has no test file; the rules most important to the game are untested.
+5. **`TALK` does not check that the NPC exists or is present.** An unknown id falls through to a zeroed relationship and uses the id as the name, and any known NPC can be talked to from anywhere. The `knownNPCIds` list is used for "nearby" in the render context, so presence is not modeled at all (no scheduler, see system 17).
+6. **Hacky privacy rule.** `isPrivateLocation` does substring matching on the location id (`"study"`, `"room"`, `"garden"`). It misclassifies (any id containing "room", "study", or "office"; a public garden counts as private) and should be a property of the `Location` data.
+7. **Hidden randomness.** `Math.random()` in `PRACTICE` is not seeded or injectable, so results cannot be reproduced for tests, replays or bug reports. The other systems in the project advertise determinism.
+8. **Fragile success detection.** `ActionResolved` outcome is inferred from `events.length === 0 && timeCost none`. A blocked `MOVE` has events and a time cost, so it is reported as a success. The turn result should carry the outcome explicitly.
+9. **Messages and prose live in rules code.** Output strings such as "Something happened!" and `buildConversationOutput` are embedded in the logic, which blocks localization and makes it hard for the renderer to receive structured facts rather than a sentence it must paraphrase.
+10. **`events` are English strings.** `Talked to ${npcId} about ...` then feeds `recentEvents`, which feeds conversation mood modifiers and the render prompt. Structured data is lost; later systems must parse text.
+11. **Per-turn services are built in the constructor** with no injection, so tests cannot substitute a fake reveal service or RNG.
+12. **No tests.** `TurnResolver` has no test file; the rules most important to the game are untested.
 
 ## Rework ideas
 

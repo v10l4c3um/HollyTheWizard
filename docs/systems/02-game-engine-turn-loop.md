@@ -47,7 +47,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
 
 ## Weaknesses
 
-1. **LLM latency is on every in-world turn's critical path.** Partly fixed: `save` and `load` are parsed by `FastPath` and skip the resolver model. Every other command still makes two serial resolver calls plus one renderer call.
+1. **LLM latency is on every in-world turn's critical path.** Every in-world command makes two serial resolver calls (intent, then arguments, plus a third when the target is ambiguous) and one renderer call. Only `save`, `load`, `undo` and the follow-ups `again` / `go back` are parsed without the model.
 
 ## Rework ideas
 
