@@ -8,7 +8,7 @@ Turns free-form player text into a typed `Command` that `GameEngine` hands to `T
 
 ## How it works
 
-**Fast path first.** `parseFastPath` (`FastPath.ts`) parses `save` and `load` without the model: `save`, `save game`, `save [game] [as|to] <name>`, `load`, `load game`, `load [game] [from] <name>`, where `<name>` is one `[A-Za-z0-9_-]+` token. A bare `save` writes `quicksave`; a bare `load` asks for `quicksave` and falls back to `autosave`. The rules are strict on purpose: "save the day" or "load up on potions" do not match and go to the model.
+**Fast path first.** `parseFastPath` (`FastPath.ts`) parses `undo`, `save` and `load` without the model (`undo` only as the single word; it takes back the last turn): `save`, `save game`, `save [game] [as|to] <name>`, `load`, `load game`, `load [game] [from] <name>`, where `<name>` is one `[A-Za-z0-9_-]+` token. A bare `save` writes `quicksave`; a bare `load` asks for `quicksave` and falls back to `autosave`. The rules are strict on purpose: "save the day" or "load up on potions" do not match and go to the model.
 
 Everything else goes through `Resolver.resolve`, a two-stage LLM pipeline against Ollama (`format: "json"`):
 

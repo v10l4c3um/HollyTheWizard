@@ -9,6 +9,7 @@ Saves the whole `GameState` to disk and loads it back, so a run can be continued
 ## How it works
 
 - **Port:** `PersistenceRepository { save, load, exists }`, all async.
+- **Copies:** `GameState.clone()` is `fromPlainObject(JSON.parse(JSON.stringify(state)))`, i.e. the save path, so copies and saves share one definition of the state. The undo history lives in memory only and is not saved.
 - **Strict format:** a save carries `metadata.saveVersion` (`SAVE_FORMAT_VERSION`, now "1") and `load` validates the whole file against a Zod schema (`SaveSchema.ts`) in which every part is required. Anything else (another version, a missing or wrong-typed part, invalid JSON) throws `InvalidSaveError` listing the problems. There is deliberately **no migration and no defaults**: old saves were wiped, and a save missing a part is refused.
 - **Content check:** after loading, `validateLoadedState` (`SaveValidation.ts`) refuses a save whose places, spells or characters the game no longer has (or lacks a new spell), or that has no campaign / year story blueprint. Saves are tied to the content version.
 - **Adapter:** `JsonPersistenceRepository` writes `JSON.stringify(state, null, 2)` to `<cwd>/saves/<name>.json` (creating the folder), and loads with `JSON.parse` followed by `GameState.fromPlainObject`. File names are sanitised (`path.basename`, non-`[A-Za-z0-9_-]` replaced by `_`, empty becomes `autosave`).

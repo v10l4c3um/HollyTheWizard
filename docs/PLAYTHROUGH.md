@@ -23,6 +23,7 @@ You begin in the **Great Hall** on **Monday morning** (day 1). Charms is taught 
 
 ## Useful things to try
 
+- `undo` takes back your last action (up to 20 turns, and not across a `load`). Time, place, spells and relationships all go back.
 - `spellbook` (or press Tab) toggles the spellbook panel.
 - `study` a subject between classes.
 - `go to the library`, `go to the village`, `go to the market`: you can only travel to places you have found. Arriving somewhere shows its exits, and going there marks it visited.

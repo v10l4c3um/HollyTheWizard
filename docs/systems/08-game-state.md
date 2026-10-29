@@ -21,7 +21,7 @@ One class with public fields, grouped as:
 | Campaign | `currentYear`, `campaignBlueprint`, `yearBlueprints`, `yearProgress` |
 | Unused | `resources` (a generic numeric map) |
 
-The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state from a save file that `SaveSchema` has already validated, so it applies no defaults; it re-creates `player`, relationships, `worldClock` and `spellbook` through their own `fromJSON`. Saving is `JSON.stringify(state)`; `metadata.saveVersion` is `SAVE_FORMAT_VERSION` and is enforced on load (see 19).
+The constructor builds a fresh game. `fromPlainObject(data)` rebuilds a state from a save file that `SaveSchema` has already validated, so it applies no defaults; it re-creates `player`, relationships, `worldClock` and `spellbook` through their own `fromJSON`. `clone()` makes an independent deep copy through the same serialisation (so a copy and a save cannot disagree); the engine clones the state at the start of every turn and keeps the committed ones as undo history (`GameSession`, 20 turns). Saving is `JSON.stringify(state)`; `metadata.saveVersion` is `SAVE_FORMAT_VERSION` and is enforced on load (see 19).
 
 ## Strengths
 
