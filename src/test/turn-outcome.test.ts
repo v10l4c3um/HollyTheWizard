@@ -53,7 +53,9 @@ describe("TurnOutcome", () => {
 		const outcome = await game.engine.handleCommand("asdf qwer zxcv");
 		expect(outcome.error?.kind).toBe("invalid-input");
 		expect(outcome.narration).toContain("didn't understand");
-		expect(game.logged).toEqual([]);
+		// Not a fault of the game: nothing is logged as a failed turn. (The resolver
+		// still notes, in the same log, that the model had no answer.)
+		expect(game.logged.filter((e) => !e.message.startsWith("[Resolver]"))).toEqual([]);
 	});
 
 	it("reports a missing save as a persistence error and logs the cause", async () => {

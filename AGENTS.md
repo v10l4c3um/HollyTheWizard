@@ -13,5 +13,6 @@ Guidance for anyone (human or AI agent) working in this repository.
 
 - `npm test` runs the Jest suite; `npx tsc --noEmit` type-checks. Both must pass before a commit.
 - `npm run eval:resolver` and `npm run eval:blueprint` measure the language-model parts against a local Ollama. They are manual and not part of `npm test`; run them when you change prompts, grounding or schemas.
+- Log through the injected `Logger` (`src/core/application/ports/Logger.ts`), never `console.*`: the Ink UI owns the terminal and a stray write corrupts it. Components that log take a `Logger` in their constructor and default to `silentLogger`; `createEngine` wires the `FileLogger`, which writes `logs/game.log`.
 - The LLM is required by design. Deterministic fallbacks exist only for tests and development.
 - All game-state changes go through effects (`applyEffects`); the engine does not write state directly.

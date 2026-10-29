@@ -36,6 +36,8 @@ export async function buildTestGame(): Promise<TestGame> {
 	const savesDir = path.join(root, "saves");
 	const logged: TestGame["logged"] = [];
 	const logger = {
+		debug: () => {},
+		warn: () => {},
 		error: (message: string, cause?: unknown) => {
 			logged.push({ message, cause });
 		},

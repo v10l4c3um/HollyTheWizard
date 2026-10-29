@@ -228,7 +228,7 @@ describe("the engine's common pipeline", () => {
 			generateCampaignBlueprint: {} as any,
 			generateYearBlueprint: {} as any,
 			blueprintProgressService: { checkMilestones } as any,
-			logger: { error: jest.fn() },
+			logger: { debug: jest.fn(), warn: jest.fn(), error: jest.fn() },
 		});
 		return { engine, render, checkMilestones };
 	}

@@ -21,9 +21,6 @@ async function main() {
 	const label = process.argv[2] ?? "latest";
 	const runs = Number(process.argv[3] ?? 6);
 
-	for (const method of ["debug", "warn", "error", "log"] as const) {
-		console[method] = () => {};
-	}
 	await probeOllamaConnection(DEFAULT_BLUEPRINT_OLLAMA_CONFIG);
 
 	// Count the requests each generation makes: 1 = valid first time, 2 = repaired.

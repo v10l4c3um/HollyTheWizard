@@ -98,6 +98,8 @@ describe("the world tick in the turn pipeline", () => {
 		(game.engine as any).autosave = new (
 			await import("../core/engine/Autosave")
 		).Autosave(failing, {
+			debug: () => {},
+			warn: () => {},
 			error: (message: string, cause?: unknown) => {
 				game.logged.push({ message, cause });
 			},

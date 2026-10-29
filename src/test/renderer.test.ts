@@ -1,3 +1,4 @@
+import { collectingLogger } from "./helpers/collectingLogger";
 import Renderer from "../core/engine/Renderer";
 import { OLLAMA_RENDER_TIMEOUT_MS } from "../ai/OllamaClient";
 import { OllamaConfig } from "../ai/OllamaConfig";
@@ -24,10 +25,12 @@ const TEST_CONTEXT: RenderContext = {
 describe("Renderer", () => {
 	const originalFetch = global.fetch;
 	let errorSpy: jest.SpyInstance;
+	let logs: ReturnType<typeof collectingLogger>;
 	let warnSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		global.fetch = jest.fn() as unknown as typeof fetch;
+		logs = collectingLogger();
 		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 		warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 	});
@@ -46,7 +49,7 @@ describe("Renderer", () => {
 			json: async () => ({ response: "A calm scene unfolds." }),
 		});
 
-		await new Renderer(TEST_CONFIG).render(TEST_CONTEXT);
+		await new Renderer(TEST_CONFIG, logs).render(TEST_CONTEXT);
 
 		const { prompt } = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
 		expect(prompt).toContain("Wednesday");
@@ -60,7 +63,7 @@ describe("Renderer", () => {
 			json: async () => ({ response: " A calm scene unfolds. " }),
 		});
 
-		const renderer = new Renderer(TEST_CONFIG);
+		const renderer = new Renderer(TEST_CONFIG, logs);
 
 		await expect(renderer.render(TEST_CONTEXT)).resolves.toBe(
 			"A calm scene unfolds.",
@@ -72,11 +75,13 @@ describe("Renderer", () => {
 			new TypeError("connect ECONNREFUSED"),
 		);
 
-		const renderer = new Renderer(TEST_CONFIG);
+		const renderer = new Renderer(TEST_CONFIG, logs);
 		const result = await renderer.render(TEST_CONTEXT);
 
 		expect(result).toBe(TEST_CONTEXT.briefOutput);
-		expect(errorSpy).toHaveBeenCalled();
+		// The failure is logged to the file logger and never printed over the terminal UI.
+		expect(logs.at("error").length).toBeGreaterThan(0);
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
 	it("falls back to the plain facts when Ollama returns malformed JSON", async () => {
@@ -87,11 +92,13 @@ describe("Renderer", () => {
 			},
 		});
 
-		const renderer = new Renderer(TEST_CONFIG);
+		const renderer = new Renderer(TEST_CONFIG, logs);
 		const result = await renderer.render(TEST_CONTEXT);
 
 		expect(result).toBe(TEST_CONTEXT.briefOutput);
-		expect(errorSpy).toHaveBeenCalled();
+		// The failure is logged to the file logger and never printed over the terminal UI.
+		expect(logs.at("error").length).toBeGreaterThan(0);
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
 	it("gives up on a hung model at the render timeout and shows the plain facts", async () => {
@@ -112,7 +119,7 @@ describe("Renderer", () => {
 		);
 
 		let settled = false;
-		const promise = new Renderer(TEST_CONFIG)
+		const promise = new Renderer(TEST_CONFIG, logs)
 			.render(TEST_CONTEXT)
 			.finally(() => (settled = true));
 

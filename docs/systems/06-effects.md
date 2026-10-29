@@ -12,7 +12,7 @@ Defines the vocabulary of state changes (`GameEffect`) and the single function t
 
 | Effect | Applied as |
 |---|---|
-| `ProgressDelta` | Parses `track`; only `subject.<id>.knowledge` is handled (adds to `academicState`). Any other track logs a `console.warn` and does nothing |
+| `ProgressDelta` | Parses `track`; only `subject.<id>.knowledge` is handled (adds to `academicState`). Any other track is logged as a warning and does nothing |
 | `AttributeDelta` / `ResourceDelta` | `player.attributes/resources.applyDelta` |
 | `RelationshipDelta` | `state.relationships[npcId]?.applyDelta` |
 | `FlagSet` | `state.flags[id] = value` |

@@ -4,6 +4,7 @@ import {
 	OLLAMA_RENDER_TIMEOUT_MS,
 } from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
+import { Logger, silentLogger } from "../application/ports/Logger";
 
 function capitalize(text: string): string {
 	return text.charAt(0).toUpperCase() + text.slice(1);
@@ -12,7 +13,10 @@ function capitalize(text: string): string {
 class Renderer {
 	private config: OllamaConfig;
 
-	constructor(config: OllamaConfig) {
+	constructor(
+		config: OllamaConfig,
+		private logger: Logger = silentLogger,
+	) {
 		this.config = config;
 	}
 
@@ -23,10 +27,11 @@ class Renderer {
 			const responseText = await generateWithOllama(this.config, prompt, {
 				context: "renderer",
 				timeoutMs: OLLAMA_RENDER_TIMEOUT_MS,
+				logger: this.logger,
 			});
 			return responseText.trim();
 		} catch (error) {
-			console.error(
+			this.logger.error(
 				`[Renderer] Failed to render narrative: ${
 					error instanceof Error ? error.message : "Unknown error"
 				}`,

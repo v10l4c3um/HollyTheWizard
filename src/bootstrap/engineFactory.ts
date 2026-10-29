@@ -203,7 +203,7 @@ export function createEngine(
 		options.persistenceRepository ?? new JsonPersistenceRepository();
 	const logger = options.logger ?? new FileLogger();
 
-	const llmProvider = new BlueprintLLMProvider(blueprintConfig);
+	const llmProvider = new BlueprintLLMProvider(blueprintConfig, logger);
 	const generateYearBlueprint = new GenerateYearBlueprint(
 		llmProvider,
 		registry,
@@ -213,14 +213,14 @@ export function createEngine(
 	const engine = new GameEngine({
 		registry,
 		bus,
-		resolver: new Resolver(resolverConfig, registry),
-		renderer: new Renderer(rendererConfig),
+		resolver: new Resolver(resolverConfig, registry, logger),
+		renderer: new Renderer(rendererConfig, logger),
 		worldTick: new WorldTick(),
 		autosave: new Autosave(persistenceRepository, logger),
 		handlers: createCommandHandlers({
 			registry,
 			bus,
-			turnResolver: options.turnResolver ?? new TurnResolver(bus),
+			turnResolver: options.turnResolver ?? new TurnResolver(bus, logger),
 			advanceYear: new AdvanceYear(generateYearBlueprint, bus),
 			persistenceRepository:
 				persistenceRepository,

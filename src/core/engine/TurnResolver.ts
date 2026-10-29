@@ -7,6 +7,7 @@ import { CurriculumService } from "../domain/quest/CurriculumService";
 import { SpellRevealService } from "../domain/magic/SpellRevealService";
 import { applySpellUse } from "../domain/magic/SpellProgressionService";
 import { SubjectType } from "../domain/quest/Curriculum";
+import { Logger, silentLogger } from "../application/ports/Logger";
 import { GameBus } from "../domain/events/GameEvents";
 import { applyEffects } from "../domain/effects/EffectApplier";
 import {
@@ -36,7 +37,10 @@ class TurnResolver {
 	private curriculumService: CurriculumService;
 	private spellRevealService: SpellRevealService;
 
-	constructor(private bus: GameBus) {
+	constructor(
+		private bus: GameBus,
+		private logger: Logger = silentLogger,
+	) {
 		this.curriculumService = new CurriculumService();
 		this.spellRevealService = new SpellRevealService();
 	}
@@ -52,14 +56,14 @@ class TurnResolver {
 		if (result.timeCost.type === "minutes") {
 			const beforeTimeOfDay = state.worldClock.timeOfDay;
 			bookkeeping.push(timeAdvanced(result.timeCost.amount));
-			applyEffects(state, bookkeeping, this.bus);
+			applyEffects(state, bookkeeping, this.bus, this.logger);
 			result.timePassed = {
 				minutes: result.timeCost.amount,
 				beforeTimeOfDay,
 				afterTimeOfDay: state.worldClock.timeOfDay,
 			};
 		} else {
-			applyEffects(state, bookkeeping, this.bus);
+			applyEffects(state, bookkeeping, this.bus, this.logger);
 		}
 		result.effects = [...(result.effects ?? []), ...bookkeeping];
 
@@ -202,7 +206,7 @@ class TurnResolver {
 		// Arriving shows you the exits of the new place.
 		const seen = undiscoveredExits(registry, state, destinationId);
 		const moveEffects = arrivalEffects(registry, state, destinationId);
-		applyEffects(state, moveEffects, this.bus);
+		applyEffects(state, moveEffects, this.bus, this.logger);
 
 		this.bus.emit("LocationVisited", {
 			locationId: destinationId,
@@ -296,7 +300,7 @@ class TurnResolver {
 		};
 
 		const outcome = evaluateConversation(ctx);
-		applyEffects(state, outcome.effects, this.bus);
+		applyEffects(state, outcome.effects, this.bus, this.logger);
 
 		this.bus.emit("NpcTalkedTo", { npcId, topic });
 		this.bus.emit("ConversationResolved", {
@@ -357,7 +361,7 @@ class TurnResolver {
 				"study",
 			),
 		];
-		applyEffects(state, effects, this.bus);
+		applyEffects(state, effects, this.bus, this.logger);
 
 		const revealed = this.spellRevealService.findRevealableSpells(
 			registry,
@@ -367,7 +371,7 @@ class TurnResolver {
 		const revealEffects = revealed.map((id) =>
 			spellRevealed(id, state.worldClock.getTotalMinutes()),
 		);
-		applyEffects(state, revealEffects, this.bus);
+		applyEffects(state, revealEffects, this.bus, this.logger);
 		effects.push(...revealEffects);
 
 		const subjectName = schoolData.subjects[subject]?.name || subject;
@@ -483,7 +487,7 @@ class TurnResolver {
 				);
 			}
 		}
-		applyEffects(state, effects, this.bus);
+		applyEffects(state, effects, this.bus, this.logger);
 
 		const spellOpportunities =
 			this.curriculumService.getLessonSpellOpportunities(lesson);
@@ -535,7 +539,7 @@ class TurnResolver {
 			...learnEffects,
 			lessonAdvanced(subject, lesson.id, true),
 		];
-		applyEffects(state, lessonEffects, this.bus);
+		applyEffects(state, lessonEffects, this.bus, this.logger);
 		effects.push(...lessonEffects);
 
 		this.bus.emit("LessonAttended", {
@@ -643,7 +647,7 @@ class TurnResolver {
 		}
 
 		const practiceEffects = [spellStateUpdated(spellId, updatedState)];
-		applyEffects(state, practiceEffects, this.bus);
+		applyEffects(state, practiceEffects, this.bus, this.logger);
 
 		this.bus.emit("SpellPracticed", {
 			spellId,

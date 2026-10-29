@@ -39,14 +39,12 @@ Live accuracy on the local qwen3-4b model (`npm run eval:resolver`, 71 phrases c
 2. **Small-model intent errors are possible.** The prompt rules ("a lesson or lecture is ATTEND_CLASS, a place named after a person is still a place") were written to fix specific misses and the eval set is the only guard; a new phrasing can still go wrong.
 3. **Short conversation memory.** Only the last five in-world turns are remembered. Yes/no answers (the game asks no questions yet), compound sentences ("go to the library and read") and references further back are not handled.
 4. **No example sentences in the prompt.** The model works from rules and lists alone.
-5. **Logging noise.** `console.debug/warn/error` run in the terminal UI on every command.
 
 ## Rework ideas
 
 - **A `CLARIFY` flow** with follow-up questions: today a missing target gives a one-shot hint ("Where do you want to go?") and the player has to retype the whole sentence.
 - **A separate entity-resolution step (idea).** Replace the fuzzy lookup (`EntityMatcher`) with one more LLM call that receives the extracted phrase plus **all** candidates of that kind (every place, person, spell, subject, item, each with id, name, aliases and a short description) and answers with an id or `none`. Why it could be better: it understands paraphrases and descriptions the matcher cannot score ("the place with the books", "the tall professor", "that levitation spell"), needs no hand-written aliases for most cases, and one prompt shape serves every target kind. What it costs: another round trip (about a second on the 4B model) unless it is merged into the command call; the candidate list grows with the content (so it may need pre-filtering by location, schedule and learned spells, which is what `preferred` already is); and the answer must still be accepted only if it is one of the offered ids. The matcher would stay as a free pre-filter and as the verifier of the model's answer. Today's pick step (`Resolver._ground`, step 3) is a restricted version of this: it only runs when the matcher is unsure and offers at most a few candidates.
 - **Few-shot examples** for the phrasings that go wrong most, kept short so the prompt does not grow.
-- Make logging injectable.
 
 ## Open questions
 

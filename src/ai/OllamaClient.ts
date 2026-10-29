@@ -1,4 +1,5 @@
 import { OllamaConfig } from "./OllamaConfig";
+import { Logger, silentLogger } from "../core/application/ports/Logger";
 
 // Per-attempt limits. Local models are slow, and the first call after idle
 // also loads the model, so these are generous; they exist so a stalled
@@ -39,6 +40,8 @@ interface OllamaGenerateOptions {
 	maxRetries?: number;
 	retryBaseDelayMs?: number;
 	timeoutMs?: number;
+	/** Where retries and failures are reported; silent if not given. */
+	logger?: Logger;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -136,6 +139,7 @@ export async function generateWithOllama(
 		maxRetries = OLLAMA_MAX_RETRIES,
 		retryBaseDelayMs = OLLAMA_RETRY_BASE_DELAY_MS,
 		timeoutMs = OLLAMA_REQUEST_TIMEOUT_MS,
+		logger: log = silentLogger,
 	} = options;
 
 	let lastError: OllamaRequestError | null = null;
@@ -144,9 +148,9 @@ export async function generateWithOllama(
 		try {
 			const body = buildGenerateBody(config, prompt, format, temperature);
 			if (context === "resolver" && config.debugMode) {
-				console.debug(`[Ollama] ${context} request body:`, body);
+				log.debug(`[Ollama] ${context} request body:`, body);
 				if (format) {
-					console.debug(`[Ollama] format schema:`, format);
+					log.debug(`[Ollama] format schema:`, format);
 				}
 			}
 
@@ -189,7 +193,7 @@ export async function generateWithOllama(
 
 			if (data.response.trim() === "") {
 				if (context === "resolver") {
-					console.warn(
+					log.warn(
 						`[Ollama] Empty response for resolver request with format: ${format ? JSON.stringify(format) : "none"}`,
 					);
 				}
@@ -216,14 +220,14 @@ export async function generateWithOllama(
 			const isFinalAttempt = attempt === maxRetries;
 
 			if (isFinalAttempt) {
-				console.error(
+				log.error(
 					`[Ollama] ${context} failed after ${attempt + 1} attempt(s): ${lastError.message}`,
 				);
 				throw lastError;
 			}
 
 			const delayMs = retryBaseDelayMs * 2 ** attempt;
-			console.warn(
+			log.warn(
 				`[Ollama] ${context} attempt ${attempt + 1} failed: ${lastError.message}. Retrying in ${delayMs}ms.`,
 			);
 			await sleep(delayMs);

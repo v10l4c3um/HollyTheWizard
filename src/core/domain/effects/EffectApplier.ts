@@ -5,6 +5,7 @@ import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
 import { MAX_RECENT_TURNS } from "../world/RecentTurn";
 import { RelationshipStats } from "../npc/Relationship";
+import { Logger, silentLogger } from "../../application/ports/Logger";
 
 /**
  * Central state-mutation path for `GameEffect`s.
@@ -21,20 +22,22 @@ export function applyEffects(
 	state: GameState,
 	effects: GameEffect[],
 	bus?: GameBus,
+	logger: Logger = silentLogger,
 ): void {
 	for (const effect of effects) {
-		applyEffect(state, effect, bus);
+		applyEffect(state, effect, bus, logger);
 	}
 }
 
 function applyEffect(
 	state: GameState,
 	effect: GameEffect,
-	bus?: GameBus,
+	bus: GameBus | undefined,
+	logger: Logger,
 ): void {
 	switch (effect.type) {
 		case "ProgressDelta":
-			applyProgressDelta(state, effect.track, effect.delta);
+			applyProgressDelta(state, effect.track, effect.delta, logger);
 			break;
 		case "SpellLearned":
 			// Only an `available` spell can be taught: learning never skips
@@ -188,6 +191,7 @@ function applyProgressDelta(
 	state: GameState,
 	track: string,
 	delta: number,
+	logger: Logger,
 ): void {
 	const subjectMatch = track.match(SUBJECT_KNOWLEDGE_TRACK);
 	if (subjectMatch) {
@@ -199,7 +203,7 @@ function applyProgressDelta(
 		return;
 	}
 
-	console.warn(`applyEffects: no handler for ProgressDelta track "${track}"`);
+	logger.warn(`applyEffects: no handler for ProgressDelta track "${track}"`);
 }
 
 function applyInventoryDelta(

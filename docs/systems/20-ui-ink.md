@@ -32,12 +32,11 @@ The whole player-facing experience: a title and menu, a loading screen showing s
 6. **Missing information the player needs.** There is no panel for exits, who is here, active goals, time left in the period, inventory, clues or a journal. Attributes are commented out in the HUD ("TODO: Rework for new attributes"). The player cannot see the effects of an action (numbers, relationship changes) except as prose.
 7. **The Options screen is fake.** It shows static text ("Narration mode: AI / Fallback", "Romance intensity: medium"), changes nothing, and does not even match the state (`romanceIntensity` is 0). The menu entries "Continue" and "Load Save" are the same action.
 8. **UI is coupled to domain classes.** `GameScreen` and `Hud` import `GameState`, and `SpellbookWidget` imports `SpellBook` and spell types directly, contradicting the pipeline doc's claim that the UI has no direct imports of game internals. A view-model layer (plain data for the HUD, log and panels) would isolate it.
-9. **Engine output collides with rendering.** Core code writes `console.log/debug/warn/error` (pack loading, `[TIME DEBUG]`, resolver debug, Ollama request bodies) directly to stdout, which corrupts the Ink screen. There is no logger and no log pane.
-10. **A second registry.** `locationNameResolver` lazily calls `buildRegistry()` again (re-reading all content packs and printing logs) instead of asking the engine's registry for names, and it would show stale names if the engine's content differed.
-11. **Latency handling is minimal.** While the resolver and the narrator run (usually two model calls per turn), the user sees only a yellow border; there is no "thinking" message, elapsed time, streaming, or cancel (see 18).
-12. **Quit and error paths are abrupt.** Startup errors flash for 1.8 s and exit, and "quit" in game does not offer to save.
-13. **Accessibility and portability.** Colour is the only carrier for several states (spell states, bars), emoji icons assume font support, layouts assume a wide terminal, and nothing handles resize or small windows. There is no plain/no-colour mode.
-14. **No tests** for any component (Ink offers `ink-testing-library`), including the input parser.
+9. **A second registry.** `locationNameResolver` lazily calls `buildRegistry()` again (re-reading all content packs and printing logs) instead of asking the engine's registry for names, and it would show stale names if the engine's content differed.
+10. **Latency handling is minimal.** While the resolver and the narrator run (usually two model calls per turn), the user sees only a yellow border; there is no "thinking" message, elapsed time, streaming, or cancel (see 18).
+11. **Quit and error paths are abrupt.** Startup errors flash for 1.8 s and exit, and "quit" in game does not offer to save.
+12. **Accessibility and portability.** Colour is the only carrier for several states (spell states, bars), emoji icons assume font support, layouts assume a wide terminal, and nothing handles resize or small windows. There is no plain/no-colour mode.
+13. **No tests** for any component (Ink offers `ink-testing-library`), including the input parser.
 
 ## Rework ideas
 

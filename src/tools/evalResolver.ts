@@ -36,10 +36,6 @@ async function main() {
 		),
 	) as { cases: Case[] };
 
-	// The resolver logs every parse; keep the report readable.
-	for (const method of ["debug", "warn", "error", "log"] as const) {
-		console[method] = () => {};
-	}
 
 	await probeOllamaConnection(DEFAULT_RESOLVER_OLLAMA_CONFIG);
 	const registry = buildRegistry();

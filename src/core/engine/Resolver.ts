@@ -12,6 +12,7 @@ import { parseFollowUp } from "./FollowUp";
 import { buildCommand, cleanReply, givenTarget, isEcho } from "./CommandSemantics";
 import { buildCommandPrompt, buildPickPrompt } from "./ResolverPrompts";
 import { NamedEntity, WorldView, buildStaticWorldView } from "./WorldView";
+import { Logger, silentLogger } from "../application/ports/Logger";
 
 /** Zod schema for "which of these options does the player mean?". */
 const PickResponseSchema = z.object({ id: z.string() });
@@ -50,18 +51,19 @@ class Resolver {
 	constructor(
 		private config: OllamaConfig,
 		private registry?: Registry,
+		private logger: Logger = silentLogger,
 	) {}
 
 	async resolve(input: string, view?: WorldView): Promise<Command> {
 		const fast = parseFastPath(input);
 		if (fast) {
-			console.debug(`[Resolver] "${input}" → fast path → ${JSON.stringify(fast)}`);
+			this.logger.debug(`[Resolver] "${input}" → fast path → ${JSON.stringify(fast)}`);
 			return fast;
 		}
 
 		const followUp = view ? parseFollowUp(input, view) : null;
 		if (followUp) {
-			console.debug(`[Resolver] "${input}" → follow-up → ${JSON.stringify(followUp)}`);
+			this.logger.debug(`[Resolver] "${input}" → follow-up → ${JSON.stringify(followUp)}`);
 			return followUp;
 		}
 
@@ -75,10 +77,10 @@ class Resolver {
 			const grounded = await this._groundReply(cleaned, input, world);
 			const command = buildCommand(grounded, input);
 
-			console.debug(`[Resolver] "${input}" → ${JSON.stringify(command)}`);
+			this.logger.debug(`[Resolver] "${input}" → ${JSON.stringify(command)}`);
 			return command;
 		} catch (error) {
-			console.error(
+			this.logger.error(
 				`[Resolver] Failed to resolve "${input}": ${
 					error instanceof Error ? error.message : "Unknown error"
 				}`,
@@ -96,6 +98,7 @@ class Resolver {
 			// Reading a command is not creative: the same input should give the same parse.
 			temperature: 0,
 			timeoutMs: OLLAMA_RESOLVER_TIMEOUT_MS,
+			logger: this.logger,
 		});
 
 		let parsed: unknown;
@@ -225,7 +228,7 @@ class Resolver {
 			const pick = await this._pick(buildPickPrompt(LABEL[kind], input, text, offered));
 			if (offeredIds.includes(pick.id)) return { value: pick.id, matched: true };
 		} catch (error) {
-			console.warn(
+			this.logger.warn(
 				`[Resolver] Could not pick a ${LABEL[kind]} for "${text}": ${
 					error instanceof Error ? error.message : "Unknown error"
 				}`,
@@ -240,6 +243,7 @@ class Resolver {
 			format: jsonSchemaFor(PickResponseSchema),
 			temperature: 0,
 			timeoutMs: OLLAMA_RESOLVER_TIMEOUT_MS,
+			logger: this.logger,
 		});
 		return PickResponseSchema.parse(JSON.parse(text));
 	}

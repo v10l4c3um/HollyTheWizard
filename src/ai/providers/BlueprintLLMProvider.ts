@@ -4,6 +4,7 @@ import {
 	generateWithOllama,
 	OLLAMA_BLUEPRINT_TIMEOUT_MS,
 } from "../OllamaClient";
+import { Logger, silentLogger } from "../../core/application/ports/Logger";
 
 type GenerateAttempt<T> =
 	| { ok: true; value: T }
@@ -24,7 +25,10 @@ type GenerateAttempt<T> =
  * callers can fall back to a deterministic blueprint.
  */
 export class BlueprintLLMProvider {
-	constructor(private config: OllamaConfig) {}
+	constructor(
+		private config: OllamaConfig,
+		private logger: Logger = silentLogger,
+	) {}
 
 	async generateJson<T>(
 		prompt: string,
@@ -37,7 +41,7 @@ export class BlueprintLLMProvider {
 			return first.value;
 		}
 		if (first.requestFailed) {
-			console.debug(
+			this.logger.debug(
 				`[BlueprintLLMProvider] Request failed, not repairing: ${first.errors.join("; ")}`,
 			);
 			return null;
@@ -53,7 +57,7 @@ export class BlueprintLLMProvider {
 			return repaired.value;
 		}
 
-		console.debug(
+		this.logger.debug(
 			`[BlueprintLLMProvider] Generation failed after repair pass: ${repaired.errors.join("; ")}`,
 		);
 		return null;
@@ -72,6 +76,7 @@ export class BlueprintLLMProvider {
 				// for a schema that cannot be expressed as JSON Schema.
 				format: jsonSchemaFor(schema),
 				timeoutMs: OLLAMA_BLUEPRINT_TIMEOUT_MS,
+				logger: this.logger,
 			});
 
 			let parsed: unknown;

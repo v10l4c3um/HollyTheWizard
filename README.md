@@ -21,7 +21,7 @@ npm run build  # type-check / compile with tsc
 npm run eval:resolver  # how well your local model understands free-text commands (needs Ollama)
 ```
 
-Saves are written as JSON to `./saves/`.
+Saves are written as JSON to `./saves/`. Diagnostics (retries, model failures, how each sentence was parsed) go to `./logs/game.log`, never to the terminal.
 
 ## Project layout
 

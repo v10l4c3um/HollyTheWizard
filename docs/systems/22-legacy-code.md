@@ -15,7 +15,6 @@ Scope: code, config and docs that are unused, duplicated, stubbed or misleading.
 | Events never emitted: `AttributeGained`, `QuestFlagSet`, `QuestActivated`, `QuestCompleted` | types | Declared, never emitted | grep of `emit(` | 07 |
 | `GameState.resources`, `academicState.attributes`, `Player.inventory`, `Player.health` | fields | Duplicate or unused stores | See 08 and 10 | 08, 10 |
 | `GameState.knownNPCIds`, `settings.romanceIntensity` | fields | Never written (`knownNPCIds`) or never read (`romanceIntensity`) | See 08, 13, 14 | 08, 14 |
-| `console.*` calls in `Resolver`, `Renderer`, `EffectApplier`, `OllamaClient`, `BlueprintLLMProvider` | statements | Output printed into the Ink terminal UI on ordinary turns | See 03, 20 | 03, 20 |
 | `docs/` references | docs | Code comments cite documents that do not exist (`docs/partial-blueprint-yearly-plan.md`, `docs/event-effect-conversion-plan.md`) | 16 comments in `src/core` | 06, 15 |
 | `ui/ink/package.json` (`"type": "module"`) vs root `tsconfig.json` (`commonjs`) | config | Two module systems in one repo | See 21 | 21 |
 

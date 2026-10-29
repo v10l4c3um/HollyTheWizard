@@ -1,3 +1,4 @@
+import { collectingLogger } from "./helpers/collectingLogger";
 import Resolver from "../core/engine/Resolver";
 import Registry from "../core/Registry";
 import NPC from "../core/domain/npc/Npc";
@@ -40,10 +41,12 @@ function mockOllamaResponses(...responses: string[]) {
 describe("Resolver", () => {
 	const originalFetch = global.fetch;
 	let errorSpy: jest.SpyInstance;
+	let logs: ReturnType<typeof collectingLogger>;
 	let warnSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		global.fetch = jest.fn() as unknown as typeof fetch;
+		logs = collectingLogger();
 		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 		warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 	});
@@ -57,7 +60,7 @@ describe("Resolver", () => {
 	});
 
 	it("resolves save and load without calling the model", async () => {
-		const resolver = new Resolver(TEST_CONFIG);
+		const resolver = new Resolver(TEST_CONFIG, undefined, logs);
 
 		await expect(resolver.resolve("save game1")).resolves.toEqual({
 			type: "SAVE",
@@ -77,7 +80,7 @@ describe("Resolver", () => {
 			JSON.stringify({ duration: 1 }),
 		);
 
-		await new Resolver(TEST_CONFIG).resolve("save the day by resting");
+		await new Resolver(TEST_CONFIG, undefined, logs).resolve("save the day by resting");
 
 		expect(global.fetch).toHaveBeenCalled();
 	});
@@ -88,7 +91,7 @@ describe("Resolver", () => {
 			JSON.stringify({ target: "forest" }),
 		);
 
-		const resolver = new Resolver(TEST_CONFIG);
+		const resolver = new Resolver(TEST_CONFIG, undefined, logs);
 		await expect(resolver.resolve("go to the forest")).resolves.toEqual({
 			type: "MOVE",
 			destinationId: "forest",
@@ -101,7 +104,7 @@ describe("Resolver", () => {
 			JSON.stringify({ target: "forest" }),
 		);
 
-		await new Resolver(TEST_CONFIG).resolve("go to the forest");
+		await new Resolver(TEST_CONFIG, undefined, logs).resolve("go to the forest");
 
 		expect(global.fetch).toHaveBeenCalledTimes(1);
 	});
@@ -112,7 +115,7 @@ describe("Resolver", () => {
 			json: async () => ({ response: '{"type": "REST", "duration": "3"}' }),
 		});
 
-		await expect(new Resolver(TEST_CONFIG).resolve("rest for 3 hours")).resolves.toEqual({
+		await expect(new Resolver(TEST_CONFIG, undefined, logs).resolve("rest for 3 hours")).resolves.toEqual({
 			type: "REST",
 			duration: 3,
 		});
@@ -123,11 +126,13 @@ describe("Resolver", () => {
 			new TypeError("connect ECONNREFUSED"),
 		);
 
-		const resolver = new Resolver(TEST_CONFIG);
+		const resolver = new Resolver(TEST_CONFIG, undefined, logs);
 		const result = await resolver.resolve("go somewhere");
 
 		expect(result).toEqual({ type: "UNKNOWN", input: "go somewhere" });
-		expect(errorSpy).toHaveBeenCalled();
+		// The failure is logged to the file logger and never printed over the terminal UI.
+		expect(logs.at("error").length).toBeGreaterThan(0);
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
 	it("gives up on a hung model at the resolver timeout and reports it as not understood", async () => {
@@ -148,7 +153,7 @@ describe("Resolver", () => {
 		);
 
 		let settled = false;
-		const promise = new Resolver(TEST_CONFIG)
+		const promise = new Resolver(TEST_CONFIG, undefined, logs)
 			.resolve("go to the forest")
 			.finally(() => (settled = true));
 
@@ -166,11 +171,13 @@ describe("Resolver", () => {
 	it("returns an unknown command when Ollama returns non-JSON", async () => {
 		mockOllamaResponses("not-json-at-all");
 
-		const resolver = new Resolver(TEST_CONFIG);
+		const resolver = new Resolver(TEST_CONFIG, undefined, logs);
 		const result = await resolver.resolve("study charms");
 
 		expect(result).toEqual({ type: "UNKNOWN", input: "study charms" });
-		expect(errorSpy).toHaveBeenCalled();
+		// The failure is logged to the file logger and never printed over the terminal UI.
+		expect(logs.at("error").length).toBeGreaterThan(0);
+		expect(errorSpy).not.toHaveBeenCalled();
 	});
 
 	describe("replies that are not a command", () => {
@@ -188,15 +195,17 @@ describe("Resolver", () => {
 			["a field of the wrong type", { type: "MOVE", destinationId: 42 }],
 		])("is not repaired but reported as not understood: %s", async (_label, body) => {
 			reply(body);
-			const result = await new Resolver(TEST_CONFIG).resolve("do something");
+			const result = await new Resolver(TEST_CONFIG, undefined, logs).resolve("do something");
 			expect(result).toEqual({ type: "UNKNOWN", input: "do something" });
-			expect(errorSpy).toHaveBeenCalled();
+			// The failure is logged to the file logger and never printed over the terminal UI.
+		expect(logs.at("error").length).toBeGreaterThan(0);
+		expect(errorSpy).not.toHaveBeenCalled();
 			expect(global.fetch).toHaveBeenCalledTimes(1);
 		});
 
 		it("accepts the model saying it does not understand", async () => {
 			reply({ type: "UNKNOWN" });
-			expect(await new Resolver(TEST_CONFIG).resolve("blah blah")).toEqual({
+			expect(await new Resolver(TEST_CONFIG, undefined, logs).resolve("blah blah")).toEqual({
 				type: "UNKNOWN",
 				input: "blah blah",
 			});
@@ -229,7 +238,7 @@ describe("Resolver", () => {
 
 		it("resolves a clear name to its id without another model call", async () => {
 			mockOllamaResponses(...talk("Hagrid"));
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to Hagrid",
 			);
 
@@ -239,7 +248,7 @@ describe("Resolver", () => {
 
 		it("resolves part of a full name the same way", async () => {
 			mockOllamaResponses(...talk("Rubeus"));
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to Rubeus",
 			);
 
@@ -252,7 +261,7 @@ describe("Resolver", () => {
 				...talk("Weasley"),
 				JSON.stringify({ id: "percy_weasley" }),
 			);
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to the prefect Weasley",
 			);
 
@@ -269,7 +278,7 @@ describe("Resolver", () => {
 				...talk("the gamekeeper"),
 				JSON.stringify({ id: "hagrid" }),
 			);
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to the gamekeeper",
 			);
 
@@ -281,7 +290,7 @@ describe("Resolver", () => {
 
 		it("keeps the player's text when the model answers none", async () => {
 			mockOllamaResponses(...talk("Gandalf"), JSON.stringify({ id: "none" }));
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to Gandalf",
 			);
 
@@ -293,7 +302,7 @@ describe("Resolver", () => {
 				...talk("Weasley"),
 				JSON.stringify({ id: "hagrid" }),
 			);
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to Weasley",
 			);
 
@@ -302,7 +311,7 @@ describe("Resolver", () => {
 
 		it("keeps the player's text, and does not fall back to REST, when the pick call fails", async () => {
 			mockOllamaResponses(...talk("Weasley"), "not-json-at-all");
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to Weasley",
 			);
 
@@ -316,7 +325,7 @@ describe("Resolver", () => {
 				]),
 			);
 			mockOllamaResponses(...talk("the boy who lived"));
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"talk to the boy who lived",
 			);
 
@@ -334,14 +343,14 @@ describe("Resolver", () => {
 				...talk("Weasley"),
 				JSON.stringify({ id: "percy_weasley" }),
 			);
-			await new Resolver(TEST_CONFIG, registry).resolve("talk to Weasley");
+			await new Resolver(TEST_CONFIG, registry, logs).resolve("talk to Weasley");
 
 			expect(promptOfCall(1)).toContain("the head boy");
 		});
 
 		it("does nothing extra without a registry", async () => {
 			mockOllamaResponses(...talk("Hagrid"));
-			const command = await new Resolver(TEST_CONFIG).resolve("talk to Hagrid");
+			const command = await new Resolver(TEST_CONFIG, undefined, logs).resolve("talk to Hagrid");
 
 			expect(command).toMatchObject({ type: "TALK", npcId: "Hagrid" });
 			expect(fetchCalls()).toHaveLength(1);
@@ -352,7 +361,7 @@ describe("Resolver", () => {
 				JSON.stringify({ intent: "MOVE" }),
 				JSON.stringify({ target: "Hagrid" }),
 			);
-			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+			const command = await new Resolver(TEST_CONFIG, registry, logs).resolve(
 				"go to Hagrid",
 			);
 
