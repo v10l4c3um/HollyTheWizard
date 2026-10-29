@@ -232,9 +232,15 @@ function replySchemaOf(type: CommandType, strict: boolean): z.ZodObject {
 	for (const [key, field] of Object.entries(definition.schema.shape)) {
 		if (key === "type" || definition.internalFields?.includes(key)) continue;
 		const stricter = strict ? definition.replyFields?.[key] : undefined;
-		shape[key] = (stricter ?? (field as z.ZodType)).optional();
+		shape[key] = (stricter ?? (strict ? (field as z.ZodType) : lenient(field as z.ZodType))).optional();
 	}
 	return z.object(shape);
+}
+
+/** Lenient reading: a number the model wrote as text ("3") is still a number. */
+function lenient(field: z.ZodType): z.ZodType {
+	const inner = field instanceof z.ZodOptional ? field.unwrap() : field;
+	return inner instanceof z.ZodNumber ? z.coerce.number() : field;
 }
 
 const MODEL_TYPES = COMMAND_TYPES.filter((type) => COMMANDS[type].modelFacing);

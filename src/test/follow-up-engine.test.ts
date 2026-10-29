@@ -73,13 +73,13 @@ describe("what the player just did shapes the next sentence", () => {
 		await say("talk to Hermione", "TALK", { target: "hermione_granger" });
 		const outcome = await say("ask her about the exam", "TALK", {
 			target: "her",
-			conversationTopic: "exam",
+			conversationTopic: "academic_performance",
 		});
 		expect(outcome.error).toBeUndefined();
 		expect(turns()[1].command).toMatchObject({
 			type: "TALK",
 			npcId: "hermione_granger",
-			conversationTopic: "exam",
+			conversationTopic: "academic_performance",
 		});
 	});
 

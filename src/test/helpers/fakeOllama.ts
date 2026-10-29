@@ -1,3 +1,4 @@
+import { COMMANDS, CommandType } from "../../core/domain/commands/CommandDefinitions";
 import type { OllamaConfig } from "../../ai/OllamaConfig";
 
 /**
@@ -73,11 +74,24 @@ function answerResolver(prompt: string): string {
 		throw new Error(`fakeOllama: no script for player input "${input}"`);
 	}
 
-	if (prompt.startsWith("You are an intent classifier")) {
-		return JSON.stringify({ intent: line.intent });
-	}
 	if (prompt.startsWith("You are matching a name")) {
 		return JSON.stringify({ id: line.pick ?? "none" });
 	}
-	return JSON.stringify(line.args ?? {});
+	return JSON.stringify(commandReply(line));
+}
+
+/**
+ * The model's single reply for a scripted line. Scripts say `{ intent, args:
+ * { target, duration, conversationTopic, actionType } }`; `target` is
+ * translated to the command's own target field, as a real model would name it.
+ */
+export function commandReply(line: ScriptedLine): Record<string, unknown> {
+	const type = line.intent as CommandType;
+	const { target, ...rest } = line.args ?? {};
+	const reply: Record<string, unknown> = { type, ...rest };
+	if (target !== undefined) {
+		const field = COMMANDS[type]?.target?.field ?? (type === "SAVE" || type === "LOAD" ? "filename" : undefined);
+		if (field) reply[field] = target;
+	}
+	return reply;
 }

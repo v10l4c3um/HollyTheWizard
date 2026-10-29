@@ -10,6 +10,7 @@ import { buildRegistry } from "../bootstrap/engineFactory";
 import { buildWorldView, WorldView } from "../core/engine/WorldView";
 import { OllamaConfig } from "../ai/OllamaConfig";
 import { moveToNpc } from "./helpers/placePlayer";
+import { commandReply } from "./helpers/fakeOllama";
 import { validState } from "./helpers/validState";
 
 const TEST_CONFIG: OllamaConfig = {
@@ -35,8 +36,13 @@ afterEach(() => {
 	global.fetch = originalFetch;
 });
 
-/** Each call to the model returns the next of these JSON replies. */
-function model(...replies: object[]) {
+/**
+ * The model's replies, in order. The first is the whole command, written the
+ * old way as `(intent, args)` for readability (`target` becomes the command's
+ * own target field); any further ones answer "which of these do you mean?".
+ */
+function model(first?: { intent: string }, args: Record<string, unknown> = {}, ...picks: object[]) {
+	const replies: object[] = first ? [commandReply({ intent: first.intent, args }), ...picks] : [];
 	let call = 0;
 	(global.fetch as jest.Mock).mockImplementation(() =>
 		Promise.resolve({
@@ -70,7 +76,7 @@ describe("places", () => {
 		model({ intent: "MOVE" }, { target });
 		const command = await resolve("go to the library", view());
 		expect(command).toEqual({ type: "MOVE", destinationId: "library" });
-		expect(calls()).toHaveLength(2);
+		expect(calls()).toHaveLength(1);
 	});
 
 	it.each([
@@ -86,7 +92,7 @@ describe("places", () => {
 			type: "MOVE",
 			destinationId: id,
 		});
-		expect(calls()).toHaveLength(2);
+		expect(calls()).toHaveLength(1);
 	});
 
 	it("tells the classifier a place's nicknames so \"visit Hagrid's hut\" is a move", async () => {
@@ -109,8 +115,8 @@ describe("places", () => {
 			type: "MOVE",
 			destinationId: "library",
 		});
-		expect(calls()).toHaveLength(3);
-		expect(bodyOf(2).prompt).toContain("library: Library");
+		expect(calls()).toHaveLength(2);
+		expect(bodyOf(1).prompt).toContain("library: Library");
 	});
 
 	it("still grounds a place that is not reachable from here, so the rules can refuse it properly", async () => {
@@ -184,28 +190,28 @@ describe("people, subjects, spells", () => {
 });
 
 describe("what the model is told", () => {
-	it("gets a JSON schema, not free-form JSON, so it cannot invent keys", async () => {
+	it("gets one JSON schema for the whole command, so it cannot invent keys or types", async () => {
 		model({ intent: "MOVE" }, { target: "library" });
 		await resolve("go to the library", viewAt("hallway"));
-		expect(bodyOf(0).format).toMatchObject({ type: "object" });
-		expect(bodyOf(0).format.properties.intent).toBeDefined();
-		expect(bodyOf(1).format.properties.target).toBeDefined();
+		expect(calls()).toHaveLength(1);
+		const branches = bodyOf(0).format.oneOf ?? bodyOf(0).format.anyOf;
+		expect(branches.map((b: any) => b.properties.type.const)).toEqual(
+			expect.arrayContaining(["MOVE", "TALK", "STUDY", "REST", "UNKNOWN"]),
+		);
+		expect(branches.find((b: any) => b.properties.type.const === "MOVE").properties.destinationId).toBeDefined();
 	});
 
-	it("asks for a repeatable answer: temperature 0 on every call", async () => {
+	it("asks for a repeatable answer: temperature 0", async () => {
 		model({ intent: "MOVE" }, { target: "library" });
 		await resolve("go to the library", viewAt("hallway"));
 		expect(bodyOf(0).options).toEqual({ temperature: 0 });
-		expect(bodyOf(1).options).toEqual({ temperature: 0 });
 	});
 
 	it("names the player so third-person sentences are read as the player acting", async () => {
 		model({ intent: "MOVE" }, { target: "library" });
 		const view = { ...viewAt("hallway"), playerName: "Harry" };
 		await resolve("Harry goes to the library in main building", view);
-		for (const i of [0, 1]) {
-			expect(bodyOf(i).prompt).toContain('"Harry goes to the library"');
-		}
+		expect(bodyOf(0).prompt).toContain('"Harry goes to the library"');
 	});
 
 	it("tells the classifier that going to a place is a move, whatever the place is called", async () => {
@@ -218,22 +224,26 @@ describe("what the model is told", () => {
 		expect(prompt).toContain("ATTEND_CLASS is only for attending the lesson itself");
 	});
 
-	it("shows the places that can be reached from here, as ids with names", async () => {
+	it("shows what the player can see: places to reach, people here, subjects, spells", async () => {
 		model({ intent: "MOVE" }, { target: "library" });
-		await resolve("go to the library", viewAt("great_hall"));
-		const prompt = bodyOf(1).prompt;
-		expect(prompt).toContain("Great Hall");
+		await resolve("go to the library", viewAt("great_hall", (s) => moveToNpc(s, registry, "hagrid")));
+		const prompt = bodyOf(0).prompt;
+		expect(prompt).toContain("The player is in the School Grounds.");
 		expect(prompt).toContain("hallway = Main Corridor");
-		expect(prompt).toContain('shape: {"target"');
+		expect(prompt).toContain("hagrid = Rubeus Hagrid");
+		expect(prompt).toContain("charms = Charms");
+		expect(prompt).toContain("levitate = Wingardium Leviosa");
 	});
 
-	it("shows only the list that matters for the intent", async () => {
-		model({ intent: "TALK" }, { target: "hagrid" });
-		await resolve("talk to hagrid", viewAt("great_hall", (s) => moveToNpc(s, registry, "hagrid")));
-		const prompt = bodyOf(1).prompt;
-		expect(prompt).toContain("People here right now");
-		expect(prompt).toContain("hagrid = Rubeus Hagrid");
-		expect(prompt).not.toContain("Places they can reach");
+	it("lists every command the model may answer with, and the topics it may use", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		await resolve("go to the library", viewAt("hallway"));
+		const prompt = bodyOf(0).prompt;
+		for (const type of ["MOVE", "TALK", "STUDY", "ATTEND_CLASS", "PRACTICE", "INTERACT", "REST", "SAVE", "LOAD", "ADVANCE_YEAR", "UNKNOWN"]) {
+			expect(prompt).toContain(`- ${type}:`);
+		}
+		expect(prompt).not.toContain("- UNDO:");
+		expect(prompt).toContain("magical_creatures");
 	});
 });
 
@@ -301,7 +311,7 @@ describe("a target the player never gave is asked for, not guessed", () => {
 	it("does not spend a model call grounding a non-answer", async () => {
 		model({ intent: "MOVE" }, { target: "none" });
 		await resolve("go", viewAt("hallway"));
-		expect(calls()).toHaveLength(2);
+		expect(calls()).toHaveLength(1);
 	});
 
 	it("never turns a missing study subject into charms", async () => {
@@ -364,7 +374,7 @@ describe("sentences that depend on what just happened", () => {
 	])("%s: %p ('%s') means the newest matching thing", async (intent, input, target, expected) => {
 		model({ intent }, { target });
 		expect(await resolve(input, viewAt("great_hall", past))).toMatchObject(expected);
-		expect(calls()).toHaveLength(2);
+		expect(calls()).toHaveLength(1);
 	});
 
 	it.each([
@@ -421,7 +431,7 @@ describe("sentences that depend on what just happened", () => {
 	it("tells the model what just happened, only when something did", async () => {
 		model({ intent: "TALK" }, { target: "hermione_granger" });
 		await resolve("ask her about it", viewAt("great_hall", past));
-		const prompt = bodyOf(1).prompt;
+		const prompt = bodyOf(0).prompt;
 		expect(prompt).toContain("What the player did most recently");
 		expect(prompt).toContain('"talk to Hermione" → talked to Hermione Granger (hermione_granger)');
 		expect(prompt).toContain("most recent matching thing");
@@ -429,7 +439,7 @@ describe("sentences that depend on what just happened", () => {
 		(global.fetch as jest.Mock).mockClear();
 		model({ intent: "TALK" }, { target: "hagrid" });
 		await resolve("talk to hagrid", viewAt("great_hall"));
-		expect(bodyOf(1).prompt).not.toContain("What the player did most recently");
+		expect(bodyOf(0).prompt).not.toContain("What the player did most recently");
 	});
 
 	it("repeats and goes back without calling the model", async () => {

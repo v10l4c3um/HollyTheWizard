@@ -610,6 +610,50 @@
    "expect": {
     "type": "UNKNOWN"
    }
+  },
+  {
+   "input": "ask Hagrid about the creatures in the forest",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid",
+    "conversationTopic": "magical_creatures"
+   }
+  },
+  {
+   "input": "chat with Hagrid about quidditch",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid",
+    "conversationTopic": "quidditch"
+   }
+  },
+  {
+   "input": "study potions for 3 hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "potions",
+    "duration": 3
+   }
+  },
+  {
+   "input": "rest for 2 hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "REST",
+    "duration": 2
+   }
+  },
+  {
+   "input": "practice alohomora for 2 hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "unlock",
+    "duration": 2
+   }
   }
  ]
 }

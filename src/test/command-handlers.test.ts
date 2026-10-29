@@ -1,8 +1,7 @@
 import GameState from "../core/domain/world/GameState";
 import Registry from "../core/Registry";
 import { GameEngine } from "../core/engine/GameEngine";
-import { Command } from "../core/domain/commands/CommandDefinitions";
-import { INTENT_TYPES } from "../core/engine/ResolverSchemas";
+import { COMMAND_TYPES, Command } from "../core/domain/commands/CommandDefinitions";
 import { createCommandHandlers } from "../core/engine/handlers";
 import { CommandHandlerMap } from "../core/engine/handlers/types";
 import { GameSession } from "../core/engine/GameSession";
@@ -54,8 +53,7 @@ function buildHandlers(repo = fakeRepository()) {
 describe("the command handler map", () => {
 	it("has a handler for every command the resolver can produce", () => {
 		const { handlers } = buildHandlers();
-		const commandTypes = [...INTENT_TYPES, "UNKNOWN", "UNDO"] as Command["type"][];
-		for (const type of commandTypes) {
+		for (const type of COMMAND_TYPES) {
 			expect(typeof handlers[type]).toBe("function");
 		}
 	});

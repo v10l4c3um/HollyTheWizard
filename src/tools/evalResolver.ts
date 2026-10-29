@@ -22,7 +22,7 @@ interface Case {
 	at: string;
 	/** Turns the player took just before this phrase (seeded into the state). */
 	after?: { input: string; command: Record<string, unknown> }[];
-	expect: Record<string, string>;
+	expect: Record<string, string | number>;
 }
 
 async function main() {
