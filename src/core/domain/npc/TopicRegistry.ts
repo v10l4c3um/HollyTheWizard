@@ -34,7 +34,7 @@ export const TOPICS: Record<string, TopicDefinition> = {
 		category: "secret",
 		sensitivity: "sensitive",
 		minTrust: 60,
-		locationRelevance: ["restricted_section", "dungeons"],
+		locationRelevance: ["library", "dungeons"],
 		cooldownTurns: 5,
 	},
 	personal_history: {
@@ -63,7 +63,7 @@ export const TOPICS: Record<string, TopicDefinition> = {
 		id: "magical_creatures",
 		category: "lore",
 		sensitivity: "open",
-		locationRelevance: ["grounds", "forbidden_forest", "hagrid_hut"],
+		locationRelevance: ["grounds", "forest", "hagrid_hut"],
 		cooldownTurns: 2,
 	},
 	school_gossip: {
@@ -91,7 +91,7 @@ export const TOPICS: Record<string, TopicDefinition> = {
 		id: "quidditch",
 		category: "social",
 		sensitivity: "open",
-		locationRelevance: ["quidditch_pitch", "common_room"],
+		locationRelevance: ["grounds", "common_room"],
 		cooldownTurns: 1,
 	},
 	wizarding_lore: {

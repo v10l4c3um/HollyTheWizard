@@ -1,7 +1,10 @@
 {
-  "name": "Advanced Spells",
+  "format": 2,
+  "id": "spells.advanced",
   "version": "2.0.0",
+  "name": "Advanced Spells",
   "description": "Advanced spells for experienced wizards",
+  "requires": [],
   "spells": [
     {
       "definition": {
@@ -21,10 +24,7 @@
         "backfireRisk": "medium",
         "learningDifficulty": 0.6,
         "practiceRequirement": 25,
-        "scaling": {
-          "intellect": 0.9,
-          "focus": 0.4
-        }
+        "scaling": {"intellect": 0.9, "focus": 0.4}
       }
     },
     {
@@ -45,10 +45,7 @@
         "backfireRisk": "medium",
         "learningDifficulty": 0.65,
         "practiceRequirement": 30,
-        "scaling": {
-          "intellect": 0.8,
-          "focus": 0.6
-        }
+        "scaling": {"intellect": 0.8, "focus": 0.6}
       }
     },
     {
@@ -69,10 +66,7 @@
         "backfireRisk": "medium",
         "learningDifficulty": 0.7,
         "practiceRequirement": 35,
-        "scaling": {
-          "intellect": 0.9,
-          "empathy": 0.5
-        }
+        "scaling": {"intellect": 0.9, "empathy": 0.5}
       }
     },
     {
@@ -93,10 +87,7 @@
         "backfireRisk": "low",
         "learningDifficulty": 0.55,
         "practiceRequirement": 20,
-        "scaling": {
-          "intellect": 0.7,
-          "focus": 0.5
-        }
+        "scaling": {"intellect": 0.7, "focus": 0.5}
       }
     }
   ]

@@ -1,7 +1,10 @@
 {
-  "name": "Core Spells",
+  "format": 2,
+  "id": "spells.core",
   "version": "2.0.0",
+  "name": "Core Spells",
   "description": "Basic spells available to all wizards",
+  "requires": [],
   "spells": [
     {
       "definition": {
@@ -21,10 +24,7 @@
         "backfireRisk": "low",
         "learningDifficulty": 0.4,
         "practiceRequirement": 15,
-        "scaling": {
-          "intellect": 0.8,
-          "focus": 0.3
-        }
+        "scaling": {"intellect": 0.8, "focus": 0.3}
       }
     },
     {
@@ -45,10 +45,7 @@
         "backfireRisk": "low",
         "learningDifficulty": 0.35,
         "practiceRequirement": 12,
-        "scaling": {
-          "intellect": 0.7,
-          "focus": 0.4
-        }
+        "scaling": {"intellect": 0.7, "focus": 0.4}
       }
     },
     {
@@ -69,10 +66,7 @@
         "backfireRisk": "none",
         "learningDifficulty": 0.15,
         "practiceRequirement": 8,
-        "scaling": {
-          "intellect": 0.5,
-          "focus": 0.5
-        }
+        "scaling": {"intellect": 0.5, "focus": 0.5}
       }
     },
     {
@@ -93,10 +87,7 @@
         "backfireRisk": "none",
         "learningDifficulty": 0.2,
         "practiceRequirement": 10,
-        "scaling": {
-          "intellect": 0.6,
-          "empathy": 0.4
-        }
+        "scaling": {"intellect": 0.6, "empathy": 0.4}
       }
     },
     {
@@ -117,10 +108,7 @@
         "backfireRisk": "low",
         "learningDifficulty": 0.25,
         "practiceRequirement": 12,
-        "scaling": {
-          "intellect": 0.7,
-          "focus": 0.3
-        }
+        "scaling": {"intellect": 0.7, "focus": 0.3}
       }
     },
     {
@@ -141,9 +129,7 @@
         "backfireRisk": "none",
         "learningDifficulty": 0.05,
         "practiceRequirement": 3,
-        "scaling": {
-          "intellect": 0.3
-        }
+        "scaling": {"intellect": 0.3}
       }
     },
     {
@@ -164,10 +150,7 @@
         "backfireRisk": "high",
         "learningDifficulty": 0.85,
         "practiceRequirement": 40,
-        "scaling": {
-          "intellect": 1.2,
-          "focus": 0.5
-        }
+        "scaling": {"intellect": 1.2, "focus": 0.5}
       }
     },
     {
@@ -188,9 +171,7 @@
         "backfireRisk": "high",
         "learningDifficulty": 0.75,
         "practiceRequirement": 35,
-        "scaling": {
-          "intellect": 1.0
-        }
+        "scaling": {"intellect": 1.0}
       }
     }
   ]

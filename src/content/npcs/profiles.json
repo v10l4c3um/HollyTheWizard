@@ -1,7 +1,10 @@
 {
-  "name": "NPC Conversation Profiles",
+  "format": 2,
+  "id": "npcs.profiles",
   "version": "1.0.0",
+  "name": "NPC Conversation Profiles",
   "description": "Authored conversation metadata for core NPCs",
+  "requires": [{"id": "npcs.core"}],
   "profiles": [
     {
       "npcId": "professor_snape",
@@ -16,13 +19,7 @@
         "magical_creatures": -1,
         "wizarding_lore": 1
       },
-      "locationModifiers": {
-        "classroom": 1,
-        "dungeons": 1,
-        "hallway": -1,
-        "grounds": -1,
-        "common_room": -2
-      }
+      "locationModifiers": {"classroom": 1, "dungeons": 1, "hallway": -1, "grounds": -1, "common_room": -2}
     },
     {
       "npcId": "hagrid",
@@ -36,13 +33,7 @@
         "school_gossip": 1,
         "academic_performance": -1
       },
-      "locationModifiers": {
-        "hagrid_hut": 2,
-        "forbidden_forest": 2,
-        "grounds": 1,
-        "classroom": -1,
-        "dungeons": -2
-      }
+      "locationModifiers": {"hagrid_hut": 2, "forest": 2, "grounds": 1, "classroom": -1, "dungeons": -2}
     },
     {
       "npcId": "dumbledore",
@@ -56,12 +47,7 @@
         "daily_chat": 1,
         "personal_history": -1
       },
-      "locationModifiers": {
-        "headmaster_office": 2,
-        "great_hall": 1,
-        "classroom": 1,
-        "dungeons": -1
-      }
+      "locationModifiers": {"headmaster_office": 2, "great_hall": 1, "classroom": 1, "dungeons": -1}
     },
     {
       "npcId": "harry_potter",
@@ -76,12 +62,7 @@
         "romance": 1,
         "magical_creatures": 1
       },
-      "locationModifiers": {
-        "quidditch_pitch": 2,
-        "common_room": 1,
-        "classroom": -1,
-        "dungeons": -2
-      }
+      "locationModifiers": {"grounds": 2, "common_room": 1, "classroom": -1, "dungeons": -2}
     },
     {
       "npcId": "hermione_granger",
@@ -96,13 +77,7 @@
         "magical_creatures": 1,
         "daily_chat": 1
       },
-      "locationModifiers": {
-        "library": 2,
-        "classroom": 2,
-        "common_room": 1,
-        "quidditch_pitch": -1,
-        "dungeons": 0
-      }
+      "locationModifiers": {"library": 2, "classroom": 2, "common_room": 1, "grounds": -1, "dungeons": 0}
     },
     {
       "npcId": "ron_weasley",
@@ -119,7 +94,7 @@
       },
       "locationModifiers": {
         "common_room": 2,
-        "quidditch_pitch": 2,
+        "grounds": 2,
         "great_hall": 1,
         "library": -1,
         "classroom": -1,

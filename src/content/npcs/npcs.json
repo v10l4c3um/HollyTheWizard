@@ -1,7 +1,10 @@
 {
-  "name": "Core NPCs",
+  "format": 2,
+  "id": "npcs.core",
   "version": "1.0.0",
+  "name": "Core NPCs",
   "description": "Basic NPCs available in the wizarding world",
+  "requires": [],
   "npcs": [
     {
       "id": "professor_snape",
@@ -15,18 +18,8 @@
       "tag_description": "Strict and intimidating, but ultimately caring",
       "schedule": {
         "home": "dungeons",
-        "teaches": [
-          "potions",
-          "defense-against-the-dark-arts"
-        ],
-        "slots": [
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
-        ]
+        "teaches": ["potions", "defense-against-the-dark-arts"],
+        "slots": [{"periods": ["evening"], "location": "great_hall"}]
       }
     },
     {
@@ -42,19 +35,8 @@
       "schedule": {
         "home": "hagrid_hut",
         "slots": [
-          {
-            "periods": [
-              "morning",
-              "afternoon"
-            ],
-            "location": "grounds"
-          },
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
+          {"periods": ["morning", "afternoon"], "location": "grounds"},
+          {"periods": ["evening"], "location": "great_hall"}
         ]
       }
     },
@@ -70,17 +52,8 @@
       "tag_description": "Wise, benevolent, and thoughtful leader",
       "schedule": {
         "home": "headmaster_office",
-        "teaches": [
-          "transfiguration"
-        ],
-        "slots": [
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
-        ]
+        "teaches": ["transfiguration"],
+        "slots": [{"periods": ["evening"], "location": "great_hall"}]
       }
     },
     {
@@ -97,19 +70,8 @@
         "home": "common_room",
         "attendsClasses": true,
         "slots": [
-          {
-            "periods": [
-              "morning",
-              "afternoon"
-            ],
-            "location": "grounds"
-          },
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
+          {"periods": ["morning", "afternoon"], "location": "grounds"},
+          {"periods": ["evening"], "location": "great_hall"}
         ]
       }
     },
@@ -126,65 +88,31 @@
         "home": "common_room",
         "attendsClasses": true,
         "slots": [
-          {
-            "periods": [
-              "morning",
-              "afternoon"
-            ],
-            "location": "library"
-          },
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
+          {"periods": ["morning", "afternoon"], "location": "library"},
+          {"periods": ["evening"], "location": "great_hall"}
         ]
       }
     },
     {
       "id": "ron_weasley",
       "name": "Ron Weasley",
-      "dialogue": [
-        "I can't believe you did that!",
-        "That's brilliant, Harry!",
-        "I want to be a wizard too!"
-      ],
+      "dialogue": ["I can't believe you did that!", "That's brilliant, Harry!", "I want to be a wizard too!"],
       "tag_description": "Loyal, funny, and supportive friend",
       "schedule": {
         "home": "common_room",
         "attendsClasses": true,
         "slots": [
-          {
-            "periods": [
-              "morning"
-            ],
-            "location": "great_hall"
-          },
-          {
-            "periods": [
-              "afternoon"
-            ],
-            "location": "common_room"
-          },
-          {
-            "periods": [
-              "evening"
-            ],
-            "location": "great_hall"
-          }
+          {"periods": ["morning"], "location": "great_hall"},
+          {"periods": ["afternoon"], "location": "common_room"},
+          {"periods": ["evening"], "location": "great_hall"}
         ]
       }
     },
     {
       "id": "villager",
       "name": "Villager",
-      "dialogue": [
-        "A friendly villager who seems eager to chat."
-      ],
-      "schedule": {
-        "home": "startingVillage"
-      }
+      "dialogue": ["A friendly villager who seems eager to chat."],
+      "schedule": {"home": "startingVillage"}
     }
   ]
 }

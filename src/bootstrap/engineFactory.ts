@@ -3,7 +3,6 @@ import { GameEngine } from "../core/engine/GameEngine";
 import Registry from "../core/Registry";
 import { createGameBus, GameBus } from "../core/domain/events/GameEvents";
 import ContentLoader from "../core/content/ContentLoader";
-import { SchoolDataLoader } from "../core/content/SchoolDataLoader";
 import { ContentError } from "../core/content/ContentError";
 import { lintContent } from "../core/content/ContentLinter";
 import {
@@ -37,7 +36,7 @@ export type StartupProgressStatus = "pending" | "in_progress" | "done";
 export interface StartupProgressUpdate {
 	id:
 		| "content-packs"
-		| "school-data"
+		| "content-check"
 		| "spellbook"
 		| "ollama-check"
 		| "campaign-blueprint"
@@ -52,10 +51,8 @@ export interface StartupProgressUpdate {
 type StartupProgressReporter = (update: StartupProgressUpdate) => void;
 
 export interface RegistryOptions {
-	/** Where the content packs are; defaults to the shipped ones. */
-	packDirectory?: string;
-	/** Where subjects, curriculum and timetables are; defaults to the shipped ones. */
-	curriculumDirectory?: string;
+	/** The content directory (world/, npcs/, spells/, curriculum/); defaults to the shipped one. */
+	contentDirectory?: string;
 }
 
 /**
@@ -74,7 +71,7 @@ export function buildRegistry(
 		label: "Loading content packs",
 		status: "in_progress",
 	});
-	new ContentLoader(options.packDirectory).loadAllPacks(registry, (progress) => {
+	const origins = new ContentLoader(options.contentDirectory).load(registry, (progress) => {
 		onProgress?.({
 			id: "content-packs",
 			label: "Loading content packs",
@@ -91,23 +88,19 @@ export function buildRegistry(
 	});
 
 	onProgress?.({
-		id: "school-data",
-		label: "Loading school data",
+		id: "content-check",
+		label: "Checking content",
 		status: "in_progress",
 	});
-	registry.registerSchoolData(
-		new SchoolDataLoader(options.curriculumDirectory).loadSchoolData(),
-	);
-
-	const problems = lintContent(registry);
+	const problems = lintContent(registry, { origins });
 	if (problems.length > 0) {
 		throw new ContentError(problems);
 	}
 	// Loading is over: content can no longer change.
 	registry.freeze();
 	onProgress?.({
-		id: "school-data",
-		label: "Loading school data",
+		id: "content-check",
+		label: "Checking content",
 		status: "done",
 	});
 

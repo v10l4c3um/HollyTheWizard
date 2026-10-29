@@ -47,8 +47,8 @@ const INITIAL_STARTUP_MILESTONES: StartupProgressUpdate[] = [
         total: 0,
     },
     {
-        id: "school-data",
-        label: "Loading school data",
+        id: "content-check",
+        label: "Checking content",
         status: "pending",
     },
     {

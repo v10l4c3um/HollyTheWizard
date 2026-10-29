@@ -1,13 +1,9 @@
 import { lintContent } from "../core/content/ContentLinter";
+import ContentLoader from "../core/content/ContentLoader";
 import { ContentError } from "../core/content/ContentError";
-import {
-	CurriculumFileSchema,
-	PackManifestSchema,
-	SubjectsFileSchema,
-	TimetablesFileSchema,
-} from "../core/content/ContentSchemas";
 import Registry from "../core/Registry";
 import Location from "../core/domain/world/Location";
+import { TOPICS } from "../core/domain/npc/TopicRegistry";
 import { START_LOCATION_ID } from "../core/domain/world/GameState";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import {
@@ -20,7 +16,7 @@ import {
 	profile,
 	spell,
 	subjects,
-	tempDir,
+	contentDir,
 	timetables,
 } from "./helpers/contentFixtures";
 
@@ -29,7 +25,7 @@ interface World {
 	npcs: ReturnType<typeof npc>[];
 	profiles: ReturnType<typeof profile>[];
 	spells: ReturnType<typeof spell>[];
-	subjects: Record<string, unknown>;
+	subjects: ReturnType<typeof subjects>;
 	curriculums: ReturnType<typeof curriculum>[];
 	timetables: ReturnType<typeof timetables>;
 }
@@ -59,33 +55,39 @@ function goodWorld(): World {
 	};
 }
 
-function registryOf(world: World): Registry {
-	const registry = new Registry();
-	const pack = PackManifestSchema.parse(
-		manifest({
-			locations: world.locations,
-			npcs: world.npcs,
-			profiles: world.profiles,
-			spells: world.spells,
-		}),
-	);
-	for (const l of pack.locations ?? []) {
-		registry.registerLocation(
-			new Location(l.id, l.displayName, l.description, l.connectedLocationsIds, l.aliases),
-		);
-	}
-	pack.npcs?.forEach((n) => registry.registerNPC(n));
-	pack.profiles?.forEach((p) => registry.registerNpcProfile(p));
-	pack.spells?.forEach((s) => registry.registerSpell(s));
-	registry.registerSchoolData({
-		subjects: SubjectsFileSchema.parse(world.subjects) as never,
-		curriculums: world.curriculums.map((c) => CurriculumFileSchema.parse(c)),
-		timetables: Object.values(TimetablesFileSchema.parse(world.timetables)),
-	});
-	return registry;
+/** Writes a world as packs, one per domain, the way a content directory is laid out. */
+function writeWorld(dir: ReturnType<typeof contentDir>, world: World) {
+	dir.write("world/world.json", manifest({ locations: world.locations }, { id: "t.world" }));
+	dir.write("npcs/npcs.json", manifest({ npcs: world.npcs, profiles: world.profiles }, { id: "t.npcs" }));
+	dir.write("spells/spells.json", manifest({ spells: world.spells }, { id: "t.spells" }));
+	dir.write("curriculum/subjects.json", manifest({ subjects: world.subjects }, { id: "t.subjects" }));
+	dir.write("curriculum/curriculums.json", manifest({ curriculums: world.curriculums }, { id: "t.curriculums" }));
+	dir.write("curriculum/timetables.json", manifest({ timetables: world.timetables }, { id: "t.timetables" }));
 }
 
-const lint = (world: World) => lintContent(registryOf(world));
+function loaded(world: World) {
+	const dir = contentDir();
+	try {
+		writeWorld(dir, world);
+		const registry = new Registry();
+		const origins = new ContentLoader(dir.dir).load(registry);
+		return { registry, origins };
+	} finally {
+		dir.remove();
+	}
+}
+
+function registryOf(world: World): Registry {
+	return loaded(world).registry;
+}
+
+/** The game's topics, minus the places they are "natural" in (the test worlds have few places). */
+const TOPICS_WITHOUT_PLACES: typeof TOPICS = Object.fromEntries(
+	Object.entries(TOPICS).map(([id, topic]) => [id, { ...topic, locationRelevance: undefined }]),
+);
+
+const lint = (world: World, topics = TOPICS_WITHOUT_PLACES) =>
+	lintContent(registryOf(world), { topics });
 
 describe("lintContent", () => {
 	it("finds nothing wrong with a consistent world", () => {
@@ -146,6 +148,59 @@ describe("lintContent", () => {
 			world.locations.push(location("cave", []));
 			world.locations[1] = location("forest", [START_LOCATION_ID, "cave"]);
 			expect(lint(world)).toEqual([]);
+		});
+	});
+
+	describe("places named by other content", () => {
+		it("rejects a profile modifier for a place that does not exist", () => {
+			const world = goodWorld();
+			world.profiles[0] = profile("anna", { locationModifiers: { mars: 1, forest: 1 } });
+			expect(lint(world)).toEqual(['Profile "anna" has a modifier for unknown location "mars"']);
+		});
+
+		it("rejects a topic that is natural in a place that does not exist", () => {
+			const topics = {
+				...TOPICS_WITHOUT_PLACES,
+				daily_chat: { ...TOPICS.daily_chat, locationRelevance: ["forest", "mars"] },
+			};
+			expect(lint(goodWorld(), topics)).toEqual([
+				'Topic "daily_chat" is relevant at unknown location "mars"',
+			]);
+		});
+
+		it("rejects a spell condition at a place that does not exist", () => {
+			const world = goodWorld();
+			world.spells = [
+				spell("glow", {
+					definition: {
+						...spell("glow").definition,
+						revealCondition: { type: "location", value: "mars" },
+					},
+				}),
+			];
+			expect(lint(world)).toEqual(['Spell "glow" has a reveal condition at unknown location "mars"']);
+		});
+	});
+
+	describe("where the problem is", () => {
+		it("prefixes a problem with the file, line and column of the content it is about", () => {
+			const world = goodWorld();
+			world.locations[1] = location("forest", [START_LOCATION_ID, "mars"]);
+			const { registry, origins } = loaded(world);
+
+			const [problem] = lintContent(registry, { origins, topics: TOPICS_WITHOUT_PLACES });
+
+			expect(problem).toMatch(/^world\/world\.json:\d+:\d+: Location "forest" connects to unknown location "mars"$/);
+		});
+
+		it("points at the lesson, not just the file", () => {
+			const world = goodWorld();
+			((world.curriculums[0].lessons[1] as any).revealOpportunities[0]).spellId = "nope";
+			const { registry, origins } = loaded(world);
+
+			const [problem] = lintContent(registry, { origins, topics: TOPICS_WITHOUT_PLACES });
+
+			expect(problem).toMatch(/^curriculum\/curriculums\.json:\d+:\d+: Lesson "charms-1-2" reveals unknown spell "nope"$/);
 		});
 	});
 
@@ -285,31 +340,16 @@ describe("starting the game with content", () => {
 	});
 
 	it("refuses to start on content that fails the checks, listing every problem", () => {
-		const packs = tempDir();
-		const school = tempDir();
+		const dir = contentDir();
 		try {
 			const world = goodWorld();
 			world.locations[1] = location("forest", [START_LOCATION_ID, "mars"]);
 			world.profiles.push(profile("ghost"));
-			packs.write(
-				"all.json",
-				manifest({
-					locations: world.locations,
-					npcs: world.npcs,
-					profiles: world.profiles,
-					spells: world.spells,
-				}),
-			);
-			school.write("subjects.json", world.subjects);
-			school.write("year1-charms.json", world.curriculums[0]);
-			school.write("timetables.json", world.timetables);
+			writeWorld(dir, world);
 
 			let thrown: unknown;
 			try {
-				buildRegistry(undefined, {
-					packDirectory: packs.dir,
-					curriculumDirectory: school.dir,
-				});
+				buildRegistry(undefined, { contentDirectory: dir.dir });
 			} catch (error) {
 				thrown = error;
 			}
@@ -319,8 +359,7 @@ describe("starting the game with content", () => {
 			expect(message).toContain('connects to unknown location "mars"');
 			expect(message).toContain('Profile for unknown NPC "ghost"');
 		} finally {
-			packs.remove();
-			school.remove();
+			dir.remove();
 		}
 	});
 });

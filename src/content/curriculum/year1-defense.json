@@ -1,79 +1,67 @@
 {
-  "subjectType": "defense-against-the-dark-arts",
-  "year": 1,
-  "lessons": [
+  "format": 2,
+  "id": "curriculum.year1-defense",
+  "version": "1.0.0",
+  "name": "Defense-Against-The-Dark-Arts year 1",
+  "requires": [{"id": "curriculum.subjects"}, {"id": "spells.core"}, {"id": "spells.year1"}],
+  "curriculums": [
     {
-      "id": "defense-1-1",
       "subjectType": "defense-against-the-dark-arts",
       "year": 1,
-      "order": 1,
-      "title": "Introduction to Dark Creatures",
-      "topic": "Understanding common dark creatures and basic defensive principles",
-      "importance": "routine",
-      "rewards": {
-        "attributes": ["INT", "PER"],
-        "subjectKnowledge": {
-          "defense-against-the-dark-arts": 5
-        }
-      }
-    },
-    {
-      "id": "defense-1-2",
-      "subjectType": "defense-against-the-dark-arts",
-      "year": 1,
-      "order": 2,
-      "title": "The Shield Charm",
-      "topic": "Protego for deflecting minor hexes and jinxes",
-      "importance": "important",
-      "rewards": {
-        "attributes": ["WIL", "CON"],
-        "subjectKnowledge": {
-          "defense-against-the-dark-arts": 10
-        }
-      },
-      "revealOpportunities": [
+      "lessons": [
         {
-          "spellId": "shield",
-          "grants": "learned",
-          "chance": 1.0,
-          "requirements": [
-            {
-              "type": "subjectKnowledge",
-              "subjectId": "defense-against-the-dark-arts",
-              "min": 5
-            }
-          ],
-          "source": "lesson"
-        }
-      ]
-    },
-    {
-      "id": "defense-1-3",
-      "subjectType": "defense-against-the-dark-arts",
-      "year": 1,
-      "order": 3,
-      "title": "The Disarming Charm",
-      "topic": "Expelliarmus for disarming opponents",
-      "importance": "important",
-      "rewards": {
-        "attributes": ["DEX", "WIL"],
-        "subjectKnowledge": {
-          "defense-against-the-dark-arts": 12
-        }
-      },
-      "revealOpportunities": [
+          "id": "defense-1-1",
+          "subjectType": "defense-against-the-dark-arts",
+          "year": 1,
+          "order": 1,
+          "title": "Introduction to Dark Creatures",
+          "topic": "Understanding common dark creatures and basic defensive principles",
+          "importance": "routine",
+          "rewards": {"attributes": ["INT", "PER"], "subjectKnowledge": {"defense-against-the-dark-arts": 5}}
+        },
         {
-          "spellId": "disarm",
-          "grants": "learned",
-          "chance": 1.0,
-          "requirements": [
+          "id": "defense-1-2",
+          "subjectType": "defense-against-the-dark-arts",
+          "year": 1,
+          "order": 2,
+          "title": "The Shield Charm",
+          "topic": "Protego for deflecting minor hexes and jinxes",
+          "importance": "important",
+          "rewards": {"attributes": ["WIL", "CON"], "subjectKnowledge": {"defense-against-the-dark-arts": 10}},
+          "revealOpportunities": [
             {
-              "type": "subjectKnowledge",
-              "subjectId": "defense-against-the-dark-arts",
-              "min": 10
+              "spellId": "shield",
+              "grants": "learned",
+              "chance": 1.0,
+              "requirements": [{"type": "subjectKnowledge", "subjectId": "defense-against-the-dark-arts", "min": 5}],
+              "source": "lesson"
             }
-          ],
-          "source": "lesson"
+          ]
+        },
+        {
+          "id": "defense-1-3",
+          "subjectType": "defense-against-the-dark-arts",
+          "year": 1,
+          "order": 3,
+          "title": "The Disarming Charm",
+          "topic": "Expelliarmus for disarming opponents",
+          "importance": "important",
+          "rewards": {"attributes": ["DEX", "WIL"], "subjectKnowledge": {"defense-against-the-dark-arts": 12}},
+          "revealOpportunities": [
+            {
+              "spellId": "disarm",
+              "grants": "learned",
+              "chance": 1.0,
+              "requirements": [
+                {
+                  "type": "subjectKnowledge",
+                  "subjectId": "defense-against-the-dark-arts",
+                  "min": 10
+                }
+              ],
+              "source": "lesson"
+            }
+          ]
         }
       ]
     }

@@ -1,28 +1,84 @@
 {
-  "year1": {
-    "year": 1,
-    "slots": [
-      { "day": "monday", "period": "morning", "type": "class", "subject": "charms", "location": "classroom" },
-      { "day": "monday", "period": "afternoon", "type": "class", "subject": "potions", "location": "dungeons" },
-      { "day": "monday", "period": "evening", "type": "free" },
-      { "day": "tuesday", "period": "morning", "type": "class", "subject": "defense-against-the-dark-arts", "location": "classroom" },
-      { "day": "tuesday", "period": "afternoon", "type": "class", "subject": "transfiguration", "location": "classroom" },
-      { "day": "tuesday", "period": "evening", "type": "free" },
-      { "day": "wednesday", "period": "morning", "type": "class", "subject": "herbology", "location": "greenhouse" },
-      { "day": "wednesday", "period": "afternoon", "type": "free" },
-      { "day": "wednesday", "period": "evening", "type": "free" },
-      { "day": "thursday", "period": "morning", "type": "class", "subject": "charms", "location": "classroom" },
-      { "day": "thursday", "period": "afternoon", "type": "class", "subject": "potions", "location": "dungeons" },
-      { "day": "thursday", "period": "evening", "type": "free" },
-      { "day": "friday", "period": "morning", "type": "class", "subject": "defense-against-the-dark-arts", "location": "classroom" },
-      { "day": "friday", "period": "afternoon", "type": "free" },
-      { "day": "friday", "period": "evening", "type": "free" },
-      { "day": "saturday", "period": "morning", "type": "free" },
-      { "day": "saturday", "period": "afternoon", "type": "free" },
-      { "day": "saturday", "period": "evening", "type": "free" },
-      { "day": "sunday", "period": "morning", "type": "free" },
-      { "day": "sunday", "period": "afternoon", "type": "free" },
-      { "day": "sunday", "period": "evening", "type": "curfew" }
-    ]
-  }
+  "format": 2,
+  "id": "curriculum.timetables",
+  "version": "1.0.0",
+  "name": "Timetables",
+  "description": "The weekly class timetable of each year",
+  "requires": [{"id": "curriculum.subjects"}, {"id": "world.school"}],
+  "timetables": [
+    {
+      "year": 1,
+      "slots": [
+        {
+          "day": "monday",
+          "period": "morning",
+          "type": "class",
+          "subject": "charms",
+          "location": "classroom"
+        },
+        {
+          "day": "monday",
+          "period": "afternoon",
+          "type": "class",
+          "subject": "potions",
+          "location": "dungeons"
+        },
+        {"day": "monday", "period": "evening", "type": "free"},
+        {
+          "day": "tuesday",
+          "period": "morning",
+          "type": "class",
+          "subject": "defense-against-the-dark-arts",
+          "location": "classroom"
+        },
+        {
+          "day": "tuesday",
+          "period": "afternoon",
+          "type": "class",
+          "subject": "transfiguration",
+          "location": "classroom"
+        },
+        {"day": "tuesday", "period": "evening", "type": "free"},
+        {
+          "day": "wednesday",
+          "period": "morning",
+          "type": "class",
+          "subject": "herbology",
+          "location": "greenhouse"
+        },
+        {"day": "wednesday", "period": "afternoon", "type": "free"},
+        {"day": "wednesday", "period": "evening", "type": "free"},
+        {
+          "day": "thursday",
+          "period": "morning",
+          "type": "class",
+          "subject": "charms",
+          "location": "classroom"
+        },
+        {
+          "day": "thursday",
+          "period": "afternoon",
+          "type": "class",
+          "subject": "potions",
+          "location": "dungeons"
+        },
+        {"day": "thursday", "period": "evening", "type": "free"},
+        {
+          "day": "friday",
+          "period": "morning",
+          "type": "class",
+          "subject": "defense-against-the-dark-arts",
+          "location": "classroom"
+        },
+        {"day": "friday", "period": "afternoon", "type": "free"},
+        {"day": "friday", "period": "evening", "type": "free"},
+        {"day": "saturday", "period": "morning", "type": "free"},
+        {"day": "saturday", "period": "afternoon", "type": "free"},
+        {"day": "saturday", "period": "evening", "type": "free"},
+        {"day": "sunday", "period": "morning", "type": "free"},
+        {"day": "sunday", "period": "afternoon", "type": "free"},
+        {"day": "sunday", "period": "evening", "type": "curfew"}
+      ]
+    }
+  ]
 }

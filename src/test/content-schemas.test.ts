@@ -1,10 +1,4 @@
-import {
-	CurriculumFileSchema,
-	formatIssues,
-	PackManifestSchema,
-	SubjectsFileSchema,
-	TimetablesFileSchema,
-} from "../core/content/ContentSchemas";
+import { formatIssues, PackManifestSchema } from "../core/content/ContentSchemas";
 import {
 	classSlot,
 	curriculum,
@@ -17,6 +11,16 @@ import {
 	subjects,
 	timetables,
 } from "./helpers/contentFixtures";
+
+/** The school content schemas, reached the way packs reach them: through a manifest. */
+const inPack = (key: string) => ({
+	safeParse: (data: unknown) => PackManifestSchema.safeParse(manifest({ [key]: data })),
+});
+const CurriculumFileSchema = {
+	safeParse: (data: unknown) => PackManifestSchema.safeParse(manifest({ curriculums: [data] })),
+};
+const SubjectsFileSchema = inPack("subjects");
+const TimetablesFileSchema = inPack("timetables");
 
 /** Every message names the file and where in it the problem is. */
 function problems(
@@ -263,16 +267,13 @@ describe("curriculum schema", () => {
 });
 
 describe("subjects schema", () => {
-	it("accepts definitions keyed by their own type", () => {
-		expect(
-			SubjectsFileSchema.safeParse(subjects("charms", "potions")).success,
-		).toBe(true);
+	it("accepts definitions of known subjects", () => {
+		expect(SubjectsFileSchema.safeParse(subjects("charms", "potions")).success).toBe(true);
 	});
 
-	it("rejects a definition filed under the wrong key", () => {
-		const data = { charms: { type: "potions", name: "X", description: "Y" } };
-		const found = problems(SubjectsFileSchema, data);
-		expect(found.join("\n")).toContain("charms");
+	it("rejects a subject the game does not know", () => {
+		const found = problems(SubjectsFileSchema, subjects("cooking"));
+		expect(found.join("\n")).toContain("subjects.0.type");
 	});
 });
 
@@ -307,5 +308,34 @@ describe("timetable schema", () => {
 		);
 		expect(found.join("\n")).toContain("day");
 		expect(found.join("\n")).toContain("period");
+	});
+});
+
+describe("manifest v2 header", () => {
+	const text = (data: unknown) => problems(PackManifestSchema, data).join("\n");
+
+	it("fills in no requirements and no overrides", () => {
+		const result = PackManifestSchema.parse(manifest({}));
+		expect(result.requires).toEqual([]);
+		expect(result.overrides).toEqual({});
+	});
+
+	it("needs format 2", () => {
+		const { format: _f, ...old } = manifest({});
+		expect(text(old)).toContain("format");
+		expect(text(manifest({}, { format: 1 }))).toContain("format");
+	});
+
+	it("needs an id and a version in the right shape", () => {
+		expect(text(manifest({}, { id: "Bad Id" }))).toContain("id");
+		expect(text(manifest({}, { version: "1.0" }))).toContain("version");
+		const { id: _id, ...noId } = manifest({});
+		expect(text(noId)).toContain("id");
+	});
+
+	it("accepts requirements and overrides, and rejects unknown override types", () => {
+		const ok = manifest({}, { requires: [{ id: "world.school", version: "1.2.0" }], overrides: { npcs: ["anna"] } });
+		expect(PackManifestSchema.safeParse(ok).success).toBe(true);
+		expect(text(manifest({}, { overrides: { monsters: ["x"] } }))).toContain("monsters");
 	});
 });
