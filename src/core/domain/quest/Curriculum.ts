@@ -1,4 +1,26 @@
 import { AttributeId } from "../player/PlayerStats";
+import type {
+	LessonDefinition,
+	LessonReward,
+	Requirement,
+	SpellRevealOpportunity,
+	SubjectCurriculum,
+	SubjectDefinition,
+	TimetableSlot,
+	WeeklyTimetable,
+} from "./CurriculumContent";
+
+/** What a content pack may say about school life; the schemas live in `CurriculumContent.ts`. */
+export type {
+	LessonDefinition,
+	LessonReward,
+	Requirement,
+	SpellRevealOpportunity,
+	SubjectCurriculum,
+	SubjectDefinition,
+	TimetableSlot,
+	WeeklyTimetable,
+};
 
 export const SCHOOL_YEARS = [1, 2, 3, 4, 5, 6, 7] as const;
 
@@ -57,95 +79,6 @@ export const SUBJECT_TYPES = [
 ] as const;
 
 export type SubjectType = (typeof SUBJECT_TYPES)[number];
-
-export interface SubjectDefinition {
-	type: SubjectType;
-	name: string;
-	description: string;
-}
-
-export interface SubjectCurriculum {
-	subjectType: SubjectType;
-	year: SchoolYear;
-	lessons: LessonDefinition[];
-}
-
-export interface LessonReward {
-	attributes?: AttributeId[];
-	subjectKnowledge?: Partial<Record<SubjectType, number>>;
-}
-
-export type Requirement =
-	| {
-			type: "attribute";
-			id: AttributeId;
-			min: number;
-	  }
-	| {
-			type: "subjectKnowledge";
-			subjectId: SubjectType;
-			min: number;
-	  }
-	| {
-			type: "year";
-			min: SchoolYear;
-	  }
-	| {
-			type: "spellKnown";
-			spellId: string;
-	  };
-
-export interface SpellRevealOpportunity {
-	spellId: string;
-	chance: number; // 0-1
-
-	/**
-	 * What a successful opportunity does: "available" only lets the player know
-	 * of the spell (a rumour, a sighting); "learned" means the source teaches it.
-	 * Defaults to "available".
-	 */
-	grants?: "available" | "learned";
-
-	requirements: Requirement[];
-
-	source: "lesson" | "location" | "event" | "npc" | "item";
-}
-
-export interface LessonDefinition {
-	id: string;
-
-	subjectType: SubjectType;
-	year: SchoolYear;
-
-	order: number;
-	title: string;
-
-	topic: string;
-
-	// Optional, might be discarded in future
-	importance: "routine" | "important" | "exam" | "story";
-
-	rewards: LessonReward;
-
-	revealOpportunities?: SpellRevealOpportunity[];
-}
-
-export interface TimetableSlot {
-	day: DayOfWeek;
-	period: Period;
-
-	type: "class" | "free" | "curfew";
-
-	subject?: SubjectType;
-
-	/** Where a class is held. Required for class slots. */
-	location?: string;
-}
-
-export interface WeeklyTimetable {
-	year: SchoolYear;
-	slots: TimetableSlot[];
-}
 
 export interface SubjectProgress {
 	subject: SubjectType;

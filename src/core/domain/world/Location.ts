@@ -1,3 +1,19 @@
+import { z } from "zod";
+
+/** The shape of a place in a content pack; the `Location` class is built from it. */
+export const LocationSchema = z.strictObject({
+	id: z.string().min(1),
+	displayName: z.string().min(1),
+	description: z.string(),
+	connectedLocationsIds: z.array(z.string()),
+	/** Other names players use for the place ("the hut", "outside"). */
+	aliases: z.array(z.string()).default([]),
+	/** Nobody overhears here, so conversations can go further. */
+	private: z.boolean().default(false),
+});
+
+export type LocationData = z.infer<typeof LocationSchema>;
+
 class Location {
 	id: string;
 	displayName: string;

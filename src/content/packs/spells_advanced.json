@@ -12,7 +12,6 @@
         "usageType": "combat",
         "range": "ranged",
         "targetType": "group",
-        "requiredConditions": [],
         "visuals": "Lightning arcs between enemies",
         "sound": "crackle-boom",
         "loreTag": "storm_magic"
@@ -37,7 +36,6 @@
         "usageType": "utility",
         "range": "short",
         "targetType": "self",
-        "requiredConditions": [],
         "visuals": "Reality bends around you",
         "sound": "pop-whoosh",
         "loreTag": "spatial_magic"
@@ -62,7 +60,6 @@
         "usageType": "utility",
         "range": "self",
         "targetType": "passive",
-        "requiredConditions": [],
         "visuals": "A creature materializes",
         "sound": "mystical-chime",
         "loreTag": "summoning_magic"
@@ -87,7 +84,6 @@
         "usageType": "utility",
         "range": "self",
         "targetType": "self",
-        "requiredConditions": [],
         "visuals": "Magical energy bounces back",
         "sound": "ding",
         "loreTag": "protection_magic"

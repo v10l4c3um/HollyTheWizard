@@ -1,28 +1,51 @@
-export interface SpellDefinition {
-	id: string;
-	name: string;
-	description: string;
+import { z } from "zod";
 
-	level: "unknown" | "novice" | "apprentice" | "advanced" | "expert";
+/**
+ * The shape of a spell in a content pack. The schemas are the single source:
+ * the types below are inferred from them, so what a pack may contain and what
+ * the game reads cannot drift apart. Objects are strict, so a misspelled key
+ * is an error instead of being silently ignored.
+ */
 
-	usageType: "combat" | "utility" | "passive";
+const ConditionSchema = z.strictObject({
+	type: z.enum(["quest", "attribute", "item", "location"]),
+	value: z.union([z.string(), z.number()]),
+	/** e.g. "found in a book", "taught by a professor". */
+	source: z.string().optional(),
+});
 
-	range: "self" | "touch" | "short" | "ranged";
-	targetType: "self" | "single" | "group" | "area" | "passive";
+export const SpellDefinitionSchema = z.strictObject({
+	id: z.string().min(1),
+	name: z.string(),
+	description: z.string(),
+	level: z.enum(["unknown", "novice", "apprentice", "advanced", "expert"]),
+	usageType: z.enum(["combat", "utility", "passive"]),
+	range: z.enum(["self", "touch", "short", "ranged"]),
+	targetType: z.enum(["self", "single", "group", "area", "passive"]),
+	revealCondition: ConditionSchema.optional(),
+	castCondition: ConditionSchema.optional(),
+	visuals: z.string().optional(),
+	sound: z.string().optional(),
+	loreTag: z.string().optional(),
+});
 
-	revealCondition?: RequiredCondition;
-	castCondition?: RequiredCondition;
+export const SpellBalanceSchema = z.strictObject({
+	manaCost: z.number().min(0),
+	backfireRisk: z.enum(["none", "low", "medium", "high"]),
+	/** 0 to 1. */
+	learningDifficulty: z.number().min(0).max(1),
+	practiceRequirement: z.number().positive(),
+	scaling: z.record(z.string(), z.number()),
+});
 
-	visuals?: string;
-	sound?: string;
-	loreTag?: string;
-}
+export const SpellSchema = z.strictObject({
+	definition: SpellDefinitionSchema,
+	balance: SpellBalanceSchema,
+});
 
-interface RequiredCondition {
-	type: "quest" | "attribute" | "item" | "location";
-	value: string | number;
-	source?: string; // e.g., "found in a book", "taught by a professor", etc.
-}
+export type SpellDefinition = z.infer<typeof SpellDefinitionSchema>;
+export type SpellBalance = z.infer<typeof SpellBalanceSchema>;
+export type Spell = z.infer<typeof SpellSchema>;
 
 export type SpellKnowledgeState =
 	| "hidden" // player is not ready
@@ -42,17 +65,6 @@ Mastery 50: cast reliably in combat
 Mastery 75: reduced mana cost
 Mastery 90: ???
 */
-
-export interface SpellBalance {
-	manaCost: number;
-
-	backfireRisk: "none" | "low" | "medium" | "high";
-
-	learningDifficulty: number; // 0–1
-	practiceRequirement: number;
-
-	scaling: Record<string, number>;
-}
 
 export interface SpellState {
 	spellId: string;
@@ -75,8 +87,3 @@ export interface SpellState {
 	becameAvailableAt?: number;
 }
 
-export interface Spell {
-	definition: SpellDefinition;
-	balance: SpellBalance;
-	state?: SpellState;
-}

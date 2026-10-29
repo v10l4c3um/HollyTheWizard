@@ -69,19 +69,17 @@ describe("pack manifest schema", () => {
 		expect(result.locations?.map((l) => l.private)).toEqual([true, false]);
 	});
 
-	it("keeps accepting the unused fields the shipped content carries", () => {
-		const withLegacy = manifest({
-			npcs: [npc("anna", { affinity: 85 })],
+	it("no longer accepts the fields the game never read", () => {
+		const withLegacy = manifest({ npcs: [npc("anna", { affinity: 85 })] });
+		expect(PackManifestSchema.safeParse(withLegacy).success).toBe(false);
+		const oldSpell = manifest({
 			spells: [
 				spell("glow", {
-					definition: {
-						...spell("glow").definition,
-						requiredConditions: [],
-					},
+					definition: { ...spell("glow").definition, requiredConditions: [] },
 				}),
 			],
 		});
-		expect(PackManifestSchema.safeParse(withLegacy).success).toBe(true);
+		expect(PackManifestSchema.safeParse(oldSpell).success).toBe(false);
 	});
 
 	describe("NPC schedules", () => {
