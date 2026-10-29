@@ -124,3 +124,16 @@ export type GameBus = TypedBus<GameEvents>;
 export function createGameBus(): GameBus {
 	return new TypedBus<GameEvents>();
 }
+
+/** One bus event, named and with its payload: what a rule asks to have announced. */
+export type EmittedEvent = {
+	[K in keyof GameEvents]: { name: K; payload: GameEvents[K] };
+}[keyof GameEvents];
+
+/** Builds an `EmittedEvent` with the payload checked against the event's name. */
+export function event<K extends keyof GameEvents>(
+	name: K,
+	payload: GameEvents[K],
+): EmittedEvent {
+	return { name, payload } as EmittedEvent;
+}

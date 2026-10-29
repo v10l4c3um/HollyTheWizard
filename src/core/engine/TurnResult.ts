@@ -1,6 +1,6 @@
 import { TimeCost } from "./TimeCost";
 import { GameEffect } from "../domain/effects/GameEffects";
-import type { ActionOutcome } from "../domain/events/GameEvents";
+import type { ActionOutcome, EmittedEvent } from "../domain/events/GameEvents";
 
 export interface TurnResult {
 	briefOutput: string;
@@ -15,6 +15,11 @@ export interface TurnResult {
 	 * Step 10).
 	 */
 	effects?: GameEffect[];
+	/**
+	 * Events the rule wants announced on the bus. They are emitted after the
+	 * turn's bookkeeping (clock, event log), so a listener sees the finished turn.
+	 */
+	emits?: EmittedEvent[];
 	/** Set by `TurnResolver.apply` when the turn advanced the clock. */
 	timePassed?: TimePassed;
 }
