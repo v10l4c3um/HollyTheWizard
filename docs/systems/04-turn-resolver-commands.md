@@ -16,7 +16,7 @@ The deterministic rules layer. Given a typed `Command`, the current `GameState` 
 | `TALK` | Refused (no time) unless the NPC exists and is in the player's place; builds a `ConversationContext` (relationship or zeroed stats, topic, NPC profile, history, last 10 events, privacy), calls `evaluateConversation`, applies its effects, emits five conversation events | 15 min |
 | `STUDY` | `ProgressDelta` of `10 * hours` to subject knowledge; checks spell availability; emits `SubjectStudied`/`SpellRevealed` | 60 min per hour |
 | `ATTEND_CLASS` | Only in the class's timetabled period and place, once per slot (flag `attended.<subject>.<day>.<period>`); fetches current lesson, applies lesson rewards as effects, rolls each lesson's spell-reveal opportunity, advances the lesson counter, emits `LessonAttended` | fixed 60 min |
-| `PRACTICE` | Requires a learned spell; runs 10 attempts per hour through `applySpellUse` using `Math.random`; writes the spell state straight into the spellbook | 60 min per hour |
+| `PRACTICE` | Requires a learned spell; runs 10 attempts per hour through `applySpellUse` using the turn's seeded `Random`; writes the spell state with a `SpellStateUpdated` effect | 60 min per hour |
 | `INTERACT` | Finds the item in inventory and returns "Something happened!" | 10 min |
 | `REST` | Returns flavor text | 60 min per hour |
 
