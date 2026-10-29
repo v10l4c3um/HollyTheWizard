@@ -94,3 +94,31 @@ describe("exploration", () => {
 		expect(state.visitedLocationIds).not.toContain("forest");
 	});
 });
+
+describe("refusals say where you can go", () => {
+	it("an unknown place lists the discovered exits and costs nothing", () => {
+		state.currentLocationId = "hallway";
+		applyEffects(state, arrivalEffects(registry, state, "hallway"), bus);
+		const minutes = state.worldClock.getTotalMinutes();
+
+		const result = move("Narnia");
+
+		expect(result.briefOutput).toContain('You don\'t know of a place called "Narnia"');
+		expect(result.briefOutput).toContain("From Main Corridor you can go to:");
+		expect(result.briefOutput).toContain("Library");
+		expect(result.timeCost).toEqual({ type: "none" });
+		expect(state.worldClock.getTotalMinutes()).toBe(minutes);
+	});
+
+	it("a place that is not connected says so and lists the way out", () => {
+		const result = move("library");
+		expect(result.briefOutput).toContain("You can't move to Library from Great Hall.");
+		expect(result.briefOutput).toContain("From Great Hall you can go to: Main Corridor.");
+	});
+
+	it("does not name places you have not found", () => {
+		state.currentLocationId = "hallway";
+		state.discoveredLocationIds = ["hallway", "great_hall"];
+		expect(move("Narnia").briefOutput).toContain("you can go to: Great Hall.");
+	});
+});

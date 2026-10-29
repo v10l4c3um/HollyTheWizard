@@ -166,9 +166,11 @@ class TurnResolver {
 			};
 		}
 
+		const whereToGo = this._whereToGo(current, state, registry);
+
 		if (!registry.getLocation(destinationId)) {
 			return {
-				briefOutput: `There is no "${destinationId}" here.`,
+				briefOutput: `You don't know of a place called "${destinationId}". ${whereToGo}`,
 				events: [],
 				timeCost: { type: "none" },
 			};
@@ -181,7 +183,7 @@ class TurnResolver {
 
 		if (!current.connectedLocationsIds.includes(destinationId)) {
 			return {
-				briefOutput: `You can't move to ${destinationDisplayName} from ${current.displayName}.`,
+				briefOutput: `You can't move to ${destinationDisplayName} from ${current.displayName}. ${whereToGo}`,
 				events: [
 					`Failed to move from ${current.displayName} to ${destinationDisplayName}`,
 				],
@@ -218,6 +220,20 @@ class TurnResolver {
 			timeCost: { type: "minutes", amount: 5 },
 			effects: moveEffects,
 		};
+	}
+
+	/** "From the Hall you can go to: A, B." Only places the player has found. */
+	private _whereToGo(
+		current: { displayName: string; connectedLocationsIds: string[] },
+		state: GameState,
+		registry: Registry,
+	): string {
+		const names = current.connectedLocationsIds
+			.filter((id) => state.discoveredLocationIds.includes(id))
+			.map((id) => registry.getLocation(id)?.displayName ?? id);
+		return names.length > 0
+			? `From ${current.displayName} you can go to: ${names.join(", ")}.`
+			: `There is nowhere to go from ${current.displayName} yet.`;
 	}
 
 	private _talk(
