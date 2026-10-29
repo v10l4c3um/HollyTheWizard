@@ -156,6 +156,15 @@ class GameState {
 	}
 
 	/**
+	 * An independent deep copy, made through the save serialisation so a copy
+	 * and a save can never disagree about what the state contains. Class
+	 * instances come back with their methods.
+	 */
+	clone(): GameState {
+		return GameState.fromPlainObject(JSON.parse(JSON.stringify(this)));
+	}
+
+	/**
 	 * Rebuilds a GameState from a save file's contents. The caller has already
 	 * validated the shape (see `SaveSchema`), so nothing is defaulted here: a
 	 * part that is missing is an invalid save, not an empty one. Class-instance
