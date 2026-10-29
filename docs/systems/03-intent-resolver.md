@@ -60,6 +60,7 @@ Any throw, including Ollama being unreachable, makes `resolve` return `{ type: "
 - ~~**Add a deterministic matcher**~~ Done (`EntityMatcher`, all target kinds). Original idea: between extraction and command creation: normalize, match against ids, display names and aliases, fuzzy-match with a threshold, and return ranked candidates.
 - **Add `UNKNOWN`/`CLARIFY` commands** with a reason, so unparseable or ambiguous input produces "I didn't understand, did you mean X?" at zero in-game time.
 - **Rule-based fast path first.** Handle `save x`, `load x`, `rest [n]`, `go/move <name>`, `talk to <name>`, `attend/study/practice <name>` with patterns, and call the LLM only for what the rules cannot parse. This makes the game playable and testable without Ollama.
+- **A separate entity-resolution step (idea).** Replace the fuzzy lookup (`EntityMatcher`) with one more LLM call that receives the extracted phrase plus **all** candidates of that kind (every place, person, spell, subject, item, each with id, name, aliases and a short description) and answers with an id or `none`. Why it could be better: it understands paraphrases and descriptions the matcher cannot score ("the place with the books", "the tall professor", "that levitation spell"), needs no hand-written aliases for most cases, and one prompt shape serves every target kind. What it costs: another round trip (about a second on the 4B model) unless it is merged into argument extraction; the candidate list grows with the content (so the list may need pre-filtering by location, schedule and learned spells, which is what `preferred` already is); and the answer must still be accepted only if it is one of the offered ids. The matcher would stay as a free pre-filter and as the verifier of the model's answer. Today's pick step (`Resolver._ground`, step 3) is a restricted version of this: it only runs when the matcher is unsure and offers at most a few candidates.
 - **One call, not two.** Request the full command in one schema-constrained reply (discriminated union by `type`), using Ollama structured outputs, and delete most of the repair ladder.
 - **Single source of truth.** Derive the Zod schemas, the intent list, and the `Command` type from one discriminated-union definition, and move `Command` out of `ui/cli`.
 - **Validate semantics** (positive, bounded durations; known topic vocabulary via `TopicRegistry`) before building the command.
@@ -68,6 +69,7 @@ Any throw, including Ollama being unreachable, makes `resolve` return `{ type: "
 
 ## Open questions
 
+- Would a dedicated LLM entity-resolution step over *all* candidates (see Rework ideas) beat the matcher plus aliases? Measure with `npm run eval:resolver` on phrases the matcher misses (paraphrases, descriptions) before building it.
 - Do we want a free-text parser at all for every action, or a hybrid: a command palette and context menus plus natural language for conversation only?
 - Should unknown input cost game time? (Proposal: never.)
 - How strong a local model are we willing to require? That decides how much deterministic scaffolding is needed around the parse.

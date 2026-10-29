@@ -186,6 +186,10 @@ class Resolver {
 		return this._ground(targets.label, input, text, targets.all, targets.preferred);
 	}
 
+	// TODO(resolution-step): this ladder could be replaced by a dedicated LLM
+	// call over all candidates of the kind, with EntityMatcher kept as a free
+	// pre-filter and as the check on the model's answer. See "Rework ideas" in
+	// docs/systems/03-intent-resolver.md.
 	/**
 	 * Turns the text the model extracted ("the library in main building",
 	 * "Rubeus", "wingardium leviosa") into the id of a real thing. The model's
