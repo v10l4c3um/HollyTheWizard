@@ -1,4 +1,4 @@
-import { Command } from "./Command";
+import { Command } from "../domain/commands/CommandDefinitions";
 import { WorldView } from "./WorldView";
 
 /**

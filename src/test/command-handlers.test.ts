@@ -1,7 +1,7 @@
 import GameState from "../core/domain/world/GameState";
 import Registry from "../core/Registry";
 import { GameEngine } from "../core/engine/GameEngine";
-import { Command } from "../core/engine/Command";
+import { Command } from "../core/domain/commands/CommandDefinitions";
 import { INTENT_TYPES } from "../core/engine/ResolverSchemas";
 import { createCommandHandlers } from "../core/engine/handlers";
 import { CommandHandlerMap } from "../core/engine/handlers/types";

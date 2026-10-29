@@ -1,4 +1,4 @@
-import type { Command } from "../../engine/Command";
+import type { Command } from "../commands/CommandDefinitions";
 
 /** How many past turns the game remembers, for "again", "go back" and "ask her". */
 export const MAX_RECENT_TURNS = 5;

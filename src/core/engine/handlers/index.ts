@@ -1,5 +1,5 @@
 import Registry from "../../Registry";
-import { Command } from "../Command";
+import { Command } from "../../domain/commands/CommandDefinitions";
 import TurnResolver from "../TurnResolver";
 import { createMetaHandlers, MetaHandlerDeps } from "./metaHandlers";
 import { createTurnHandler } from "./turnHandler";

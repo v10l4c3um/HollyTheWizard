@@ -1,4 +1,4 @@
-import { Command } from "./Command";
+import { Command } from "../domain/commands/CommandDefinitions";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { TurnResult } from "./TurnResult";

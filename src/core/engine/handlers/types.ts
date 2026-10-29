@@ -1,5 +1,5 @@
 import { GameSession } from "../GameSession";
-import { Command } from "../Command";
+import { Command } from "../../domain/commands/CommandDefinitions";
 import { TimePassed } from "../TurnResult";
 import { TurnError } from "../TurnOutcome";
 

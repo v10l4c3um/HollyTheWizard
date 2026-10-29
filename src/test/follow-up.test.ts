@@ -1,5 +1,5 @@
 import { parseFollowUp } from "../core/engine/FollowUp";
-import { Command } from "../core/engine/Command";
+import { Command } from "../core/domain/commands/CommandDefinitions";
 import { RecentTurnView } from "../core/engine/WorldView";
 
 const turn = (command: Command, fromLocationId = "great_hall"): RecentTurnView => ({

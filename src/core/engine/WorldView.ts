@@ -2,7 +2,7 @@ import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { npcsAt } from "../domain/npc/Presence";
 import { activeClass } from "../domain/quest/Timetable";
-import type { Command } from "./Command";
+import type { Command } from "../domain/commands/CommandDefinitions";
 
 export interface NamedEntity {
 	id: string;

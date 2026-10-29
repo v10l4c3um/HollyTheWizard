@@ -1,4 +1,4 @@
-import { Command } from "./Command";
+import { Command } from "../domain/commands/CommandDefinitions";
 
 export const QUICKSAVE_SLOT = "quicksave";
 export const AUTOSAVE_SLOT = "autosave";

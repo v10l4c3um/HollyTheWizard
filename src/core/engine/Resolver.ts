@@ -1,7 +1,7 @@
 import { parseFollowUp } from "./FollowUp";
 import { AUTOSAVE_SLOT, QUICKSAVE_SLOT, parseFastPath } from "./FastPath";
 import { z } from "zod";
-import { Command } from "./Command";
+import { Command } from "../domain/commands/CommandDefinitions";
 import { SubjectType } from "../domain/quest/Curriculum";
 import { OllamaConfig } from "../../ai/OllamaConfig";
 import {

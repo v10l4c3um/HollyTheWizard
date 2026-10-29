@@ -11,7 +11,7 @@ import { applyEffects } from "../domain/effects/EffectApplier";
 import { turnRecorded } from "../domain/effects/GameEffects";
 import { buildWorldView } from "./WorldView";
 import { buildRenderContext } from "./RenderContext";
-import { Command } from "./Command";
+import { Command, IN_WORLD_TYPES } from "../domain/commands/CommandDefinitions";
 import { GameSession } from "./GameSession";
 import { CommandHandlerMap, runCommand } from "./handlers";
 import { GameBus } from "../domain/events/GameEvents";
@@ -32,17 +32,6 @@ export interface GameEngineDeps {
 	blueprintProgressService: BlueprintProgressService;
 	logger: Logger;
 }
-
-/** Commands about the world, as opposed to the game itself (save, load, undo, …). */
-const IN_WORLD = new Set<Command["type"]>([
-	"MOVE",
-	"TALK",
-	"STUDY",
-	"ATTEND_CLASS",
-	"PRACTICE",
-	"INTERACT",
-	"REST",
-]);
 
 type StartupMilestoneId = "campaign-blueprint" | "year-blueprint";
 type StartupMilestoneStatus = "in_progress" | "done";
@@ -166,7 +155,7 @@ class GameEngine implements IGameEngine {
 			// Remember what the player did, so the next sentence can say "again",
 			// "go back" or "ask her". Only in-world turns, and only on the working
 			// copy, so a rollback forgets it too.
-			if (IN_WORLD.has(command.type) && this.state === working) {
+			if (IN_WORLD_TYPES.has(command.type) && this.state === working) {
 				applyEffects(
 					this.state,
 					[turnRecorded({ input, command, fromLocationId })],
