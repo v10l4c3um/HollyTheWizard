@@ -1,4 +1,6 @@
 import { z } from "zod";
+import Registry from "../../Registry";
+import { getAllArcModuleIds } from "./ArcModuleRegistry";
 
 /**
  * Zod schemas for structural validation of LLM-generated blueprint JSON.
@@ -94,3 +96,32 @@ export const YearBlueprintSchema = z.object({
 });
 
 export type GeneratedYearBlueprint = z.infer<typeof YearBlueprintSchema>;
+
+// ---------------------------------------------------------------------------
+// Schemas that carry the ids the game really has
+// ---------------------------------------------------------------------------
+// The model's reply is constrained to the JSON schema built from these, so it
+// cannot name an NPC, place or arc module that does not exist.
+
+const idEnum = (ids: string[]) =>
+	ids.length > 0 ? z.enum(ids as [string, ...string[]]) : z.string();
+
+export function campaignBaseSchemaFor(registry: Registry) {
+	return CampaignBlueprintBaseSchema.extend({
+		longLivedRoles: z.record(z.string(), idEnum(registry.getAllNpcIds())),
+	});
+}
+
+export function yearBlueprintSchemaFor(registry: Registry) {
+	const npcs = idEnum(registry.getAllNpcIds());
+	const places = idEnum(registry.getAllLocationIds());
+	const modules = idEnum(getAllArcModuleIds());
+
+	return YearBlueprintSchema.extend({
+		arcModules: z.array(modules).min(1).max(2),
+		moduleRoles: z.record(z.string(), npcs),
+		clueSeeds: z
+			.array(ClueSeedSchema.extend({ locationId: places, moduleId: modules }))
+			.max(10),
+	});
+}

@@ -276,6 +276,28 @@ describe("a target the player never gave is asked for, not guessed", () => {
 		}
 	});
 
+	it.each([
+		["study", "STUDY", "charms"],
+		["talk", "TALK", "hagrid"],
+		["go to", "MOVE", "library"],
+		["please study for two hours", "STUDY", "potions"],
+		["I want to practise", "PRACTICE", "levitate"],
+		["use", "INTERACT", "wand"],
+	])("treats %p as naming nothing even if the model invents %p", async (input, intent, invented) => {
+		model({ intent }, { target: invented });
+		const command = await resolve(input, viewAt("hallway"));
+		expect(command).toMatchObject({ type: "UNKNOWN", input });
+		expect((command as any).hint).toBeTruthy();
+	});
+
+	it("keeps a real target when the sentence names something", async () => {
+		model({ intent: "STUDY" }, { target: "potions" });
+		expect(await resolve("please study potions for two hours", viewAt("hallway"))).toMatchObject({
+			type: "STUDY",
+			subjectId: "potions",
+		});
+	});
+
 	it("does not spend a model call grounding a non-answer", async () => {
 		model({ intent: "MOVE" }, { target: "none" });
 		await resolve("go", viewAt("hallway"));

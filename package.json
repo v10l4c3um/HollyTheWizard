@@ -6,7 +6,8 @@
     "start": "TSX_TSCONFIG_PATH=tsconfig.runtime.json node --import tsx src/ui/ink/entry.ts",
     "build": "npx tsc",
     "test": "jest",
-    "eval:resolver": "TSX_TSCONFIG_PATH=tsconfig.runtime.json node --import tsx src/tools/evalResolver.ts"
+    "eval:resolver": "TSX_TSCONFIG_PATH=tsconfig.runtime.json node --import tsx src/tools/evalResolver.ts",
+    "eval:blueprint": "TSX_TSCONFIG_PATH=tsconfig.runtime.json node --import tsx src/tools/evalBlueprint.ts"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

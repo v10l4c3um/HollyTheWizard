@@ -8,7 +8,12 @@ import {
 	OLLAMA_RESOLVER_TIMEOUT_MS,
 } from "../../ai/OllamaClient";
 import Registry from "../Registry";
-import { CLEAR_MATCH_SCORE, RankedMatch, rankCandidates } from "./EntityMatcher";
+import {
+	CLEAR_MATCH_SCORE,
+	RankedMatch,
+	normalizeName,
+	rankCandidates,
+} from "./EntityMatcher";
 import {
 	INTENT_TYPES,
 	IntentType,
@@ -93,9 +98,19 @@ class Resolver {
 			}
 
 			const args = await this._extractArguments(input, intent, world);
+			// A sentence made only of command words ("study", "talk", "use") names
+			// nothing, whatever the model made of it.
+			if (!!NOUN[intent] && !mentionsAnything(input)) args.target = undefined;
+
 			const given = givenTarget(args.target);
 			if (given && world) {
-				args.target = await this._groundTarget(intent, input, given, world);
+				const grounded = await this._groundTarget(intent, input, given, world);
+				// The model repeated the player's whole sentence ("go" -> "go") and
+				// it is not a real thing: that is no target at all.
+				args.target =
+					!grounded.matched && !!NOUN[intent] && sameWords(given, input)
+						? undefined
+						: grounded.value;
 			}
 			const command = this._createCommand(intent, args, input);
 
@@ -182,9 +197,9 @@ class Resolver {
 		input: string,
 		text: string,
 		view: WorldView,
-	): Promise<string> {
+	): Promise<Grounded> {
 		const targets = this._targetsFor(intent, view);
-		if (!targets || targets.all.length === 0) return text;
+		if (!targets || targets.all.length === 0) return { value: text, matched: false };
 		return this._ground(targets.label, input, text, targets.all, targets.preferred);
 	}
 
@@ -210,7 +225,7 @@ class Resolver {
 		text: string,
 		all: NamedEntity[],
 		preferred: NamedEntity[],
-	): Promise<string> {
+	): Promise<Grounded> {
 		const rank = (entities: NamedEntity[]) =>
 			rankCandidates(
 				text,
@@ -222,11 +237,11 @@ class Resolver {
 			);
 
 		const inPreferred = clearWinner(rank(preferred));
-		if (inPreferred) return inPreferred;
+		if (inPreferred) return { value: inPreferred, matched: true };
 
 		const ranked = rank(all);
 		const inAll = clearWinner(ranked);
-		if (inAll) return inAll;
+		if (inAll) return { value: inAll, matched: true };
 
 		const offeredIds =
 			ranked.length > 0
@@ -236,7 +251,7 @@ class Resolver {
 					: all.length <= MAX_OFFER_ALL
 						? all.map((entity) => entity.id)
 						: [];
-		if (offeredIds.length === 0) return text;
+		if (offeredIds.length === 0) return { value: text, matched: false };
 
 		const offered = all.filter((entity) => offeredIds.includes(entity.id));
 		try {
@@ -245,7 +260,7 @@ class Resolver {
 				PickResponseSchema,
 				OLLAMA_RESOLVER_TIMEOUT_MS,
 			);
-			if (offeredIds.includes(pick.id)) return pick.id;
+			if (offeredIds.includes(pick.id)) return { value: pick.id, matched: true };
 		} catch (error) {
 			console.warn(
 				`[Resolver] Could not pick a ${label} for "${text}": ${
@@ -253,7 +268,7 @@ class Resolver {
 				}`,
 			);
 		}
-		return text;
+		return { value: text, matched: false };
 	}
 
 	/**
@@ -477,12 +492,12 @@ Choose the one option the player most likely means. Respond with only valid JSON
 			ADVANCE_YEAR: "{}",
 		};
 
-		return `You are an argument extractor for a fantasy RPG game. The user's input has already been classified as a "${intent}" command (${INTENT_SUMMARIES[intent]}).
+		return `You are an argument extractor for a fantasy RPG game. The user's input has already been classified as a "${intent}" command (${withoutExamples(INTENT_SUMMARIES[intent])}).
 ${view ? `\n${playerNote(view.playerName)}\n` : ""}${world}
 User input: "${input}"
 
 Respond with only valid JSON of this shape: ${help[intent]}
-${world ? 'For "target", give the id from the list when the player clearly means one of the entries, otherwise copy the player\'s own words for it.' : ""}`;
+${NOUN[intent] ? `If the player did not say which ${NOUN[intent]}, use an empty string for "target". Never guess one, and never repeat the command word as the target.\n` : ""}${world ? 'For "target", give the id from the list when the player clearly means one of the entries, otherwise copy the player\'s own words for it.' : ""}`;
 	}
 
 	/**
@@ -571,6 +586,16 @@ ${world ? 'For "target", give the id from the list when the player clearly means
 	}
 }
 
+/** What the target of each intent is called, for "if the player did not say which …". */
+const NOUN: Partial<Record<IntentType, string>> = {
+	MOVE: "place",
+	TALK: "person",
+	STUDY: "subject",
+	ATTEND_CLASS: "class",
+	PRACTICE: "spell",
+	INTERACT: "item",
+};
+
 const MISSING_TARGET_HINT: Record<IntentType, string> = {
 	MOVE: "Where do you want to go?",
 	TALK: "Who do you want to talk to?",
@@ -586,6 +611,48 @@ const MISSING_TARGET_HINT: Record<IntentType, string> = {
 
 /** Words a model writes when there is nothing to put in "target". */
 const NON_ANSWERS = new Set(["none", "unknown", "n/a", "na", "null", "nothing", "undefined", "-"]);
+
+interface Grounded {
+	value: string;
+	/** `value` is the id of a real thing (not the player's own words). */
+	matched: boolean;
+}
+
+/** "Study a subject (e.g., ...)" -> "Study a subject": examples would bias the answer. */
+function withoutExamples(summary: string): string {
+	return summary.replace(/\s*\(e\.g\.,.*\)\s*$/, "");
+}
+
+/**
+ * Words that carry no target: command verbs, articles, prepositions, numbers
+ * and filler. A sentence with nothing else left names no place, person,
+ * subject, spell or item. Deliberately short: an unlisted word counts as
+ * content, which only means the model's answer is kept as before.
+ */
+const NO_TARGET_WORDS = new Set(
+	`a an the to into in on at of for from with about up down over out off
+	 go goes going went walk walks walking move moves moving travel head heads heading visit visits visiting enter enters entering
+	 talk talks talking speak speaks speaking chat chats chatting greet greets greeting say says hello hi ask asks asking
+	 study studies studying learn learns learning revise revises revising read reads reading
+	 attend attends attending practice practise practices practises practicing practising rehearse rehearses rehearsing cast casts casting
+	 use uses using open opens opening take takes taking
+	 i me my we let lets please want would like need try
+	 hour hours minute minutes while some bit little long
+	 one two three four five six seven eight nine ten eleven twelve`
+		.split(/\s+/)
+		.filter(Boolean),
+);
+
+function mentionsAnything(input: string): boolean {
+	return normalizeName(input)
+		.split(" ")
+		.some((word) => word !== "" && !/^\d+$/.test(word) && !NO_TARGET_WORDS.has(word));
+}
+
+/** Same words once case, punctuation and spacing are ignored. */
+function sameWords(a: string, b: string): boolean {
+	return normalizeName(a) === normalizeName(b);
+}
 
 /** The target the player named, or undefined if it is blank or a non-answer. */
 function givenTarget(target: string | undefined): string | undefined {
@@ -625,7 +692,7 @@ function placeNote(view: WorldView): string {
 		.join(", ");
 	const people = view.people.map((p) => p.name).join(", ");
 	const subjects = view.subjects.map((s) => s.name).join(", ");
-	return `Places in the game: ${places}. Going, walking, entering or visiting any of these places is MOVE, even if the name sounds like a class or a person. ATTEND_CLASS is only for attending the lesson itself.
+	return `Places in the game: ${places}. Going, walking, entering or visiting any of these places is MOVE, even if the name sounds like a class or like a person ("Hagrid's hut" is a place, not Hagrid). ATTEND_CLASS is only for attending the lesson itself.
 People in the game: ${people}. Greeting, talking to or asking any of them is TALK, never INTERACT.
 Subjects: ${subjects}. Studying, revising or reading up on a subject is STUDY. PRACTICE is only for casting a spell; INTERACT is only for using an item.`;
 }

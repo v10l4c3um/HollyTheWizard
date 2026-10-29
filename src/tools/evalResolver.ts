@@ -25,6 +25,8 @@ interface Case {
 
 async function main() {
 	const label = process.argv[2] ?? "latest";
+	// Optional: only run phrases matching this regular expression.
+	const only = process.argv[3] ? new RegExp(process.argv[3], "i") : undefined;
 	const fixture = JSON.parse(
 		fs.readFileSync(
 			path.join(__dirname, "..", "test", "fixtures", "resolver-phrases.json"),
@@ -43,7 +45,7 @@ async function main() {
 	const bus = createGameBus();
 
 	const results: { input: string; ok: boolean; got: unknown; expect: unknown; ms: number }[] = [];
-	for (const testCase of fixture.cases) {
+	for (const testCase of fixture.cases.filter((c) => !only || only.test(c.input))) {
 		const state = new GameState();
 		applyEffects(state, arrivalEffects(registry, state, testCase.at), bus);
 		const started = Date.now();
