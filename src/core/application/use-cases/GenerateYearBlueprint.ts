@@ -41,28 +41,20 @@ export class GenerateYearBlueprint {
 		const generated = await this.llmProvider.generateJson(
 			prompt,
 			YearBlueprintSchema,
+			(value) =>
+				validateYearBlueprintSemantics(
+					{ ...value, wasFallback: false },
+					this.registry,
+				).errors,
 		);
 
 		if (generated) {
-			const candidate: YearBlueprint = {
-				...generated,
+			this.bus.emit("BlueprintGenerated", {
+				scope: "year",
+				year,
 				wasFallback: false,
-			};
-			const semantics = validateYearBlueprintSemantics(
-				candidate,
-				this.registry,
-			);
-			if (semantics.ok) {
-				this.bus.emit("BlueprintGenerated", {
-					scope: "year",
-					year,
-					wasFallback: false,
-				});
-				return candidate;
-			}
-			console.debug(
-				`[GenerateYearBlueprint] Semantic validation failed: ${semantics.errors.join("; ")}`,
-			);
+			});
+			return { ...generated, wasFallback: false };
 		}
 
 		if (!this.allowFallback) {

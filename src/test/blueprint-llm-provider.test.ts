@@ -98,4 +98,29 @@ describe("BlueprintLLMProvider", () => {
 		expect(result).toEqual({ ok: true });
 		expect(global.fetch).toHaveBeenCalledTimes(2);
 	});
+
+	it("repairs a reply that parses but fails the semantic check", async () => {
+		(global.fetch as jest.Mock)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ response: '{"id": "NPC-1"}' }),
+			})
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({ response: '{"id": "hagrid"}' }),
+			});
+
+		const result = await new BlueprintLLMProvider(TEST_CONFIG).generateJson(
+			"Generate a blueprint",
+			z.object({ id: z.string() }),
+			(value) => (value.id === "hagrid" ? [] : [`Unknown id "${value.id}"`]),
+		);
+
+		expect(result).toEqual({ id: "hagrid" });
+		expect(global.fetch).toHaveBeenCalledTimes(2);
+		const repairBody = JSON.parse(
+			(global.fetch as jest.Mock).mock.calls[1][1].body,
+		);
+		expect(repairBody.prompt).toContain('Unknown id "NPC-1"');
+	});
 });

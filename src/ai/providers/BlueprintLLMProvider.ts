@@ -29,8 +29,10 @@ export class BlueprintLLMProvider {
 	async generateJson<T>(
 		prompt: string,
 		schema: z.ZodType<T>,
+		/** Extra checks on a structurally valid reply; returns error messages. */
+		validate?: (value: T) => string[],
 	): Promise<T | null> {
-		const first = await this._tryGenerate(prompt, schema);
+		const first = await this._tryGenerate(prompt, schema, validate);
 		if (first.ok) {
 			return first.value;
 		}
@@ -46,7 +48,7 @@ export class BlueprintLLMProvider {
 			first.rawText,
 			first.errors,
 		);
-		const repaired = await this._tryGenerate(repairPrompt, schema);
+		const repaired = await this._tryGenerate(repairPrompt, schema, validate);
 		if (repaired.ok) {
 			return repaired.value;
 		}
@@ -60,6 +62,7 @@ export class BlueprintLLMProvider {
 	private async _tryGenerate<T>(
 		prompt: string,
 		schema: z.ZodType<T>,
+		validate?: (value: T) => string[],
 	): Promise<GenerateAttempt<T>> {
 		try {
 			const responseText = await generateWithOllama(this.config, prompt, {
@@ -81,7 +84,11 @@ export class BlueprintLLMProvider {
 
 			const result = schema.safeParse(parsed);
 			if (result.success) {
-				return { ok: true, value: result.data };
+				const problems = validate?.(result.data) ?? [];
+				if (problems.length === 0) {
+					return { ok: true, value: result.data };
+				}
+				return { ok: false, rawText: responseText, errors: problems };
 			}
 
 			return {

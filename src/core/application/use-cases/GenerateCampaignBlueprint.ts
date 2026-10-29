@@ -22,32 +22,25 @@ export class GenerateCampaignBlueprint {
 	) {}
 
 	async execute(seed: string): Promise<CampaignBlueprintBase> {
-		const prompt = buildCampaignBasePrompt(seed);
+		const prompt = buildCampaignBasePrompt(seed, this.registry);
 		const generated = await this.llmProvider.generateJson(
 			prompt,
 			CampaignBlueprintBaseSchema,
+			(value) =>
+				validateCampaignBaseSemantics(value, this.registry).errors,
 		);
 
 		if (generated) {
-			const semantics = validateCampaignBaseSemantics(
-				generated,
-				this.registry,
-			);
-			if (semantics.ok) {
-				const blueprint: CampaignBlueprintBase = {
-					...generated,
-					yearPlans: {},
-					wasFallback: false,
-				};
-				this.bus.emit("BlueprintGenerated", {
-					scope: "campaign",
-					wasFallback: false,
-				});
-				return blueprint;
-			}
-			console.debug(
-				`[GenerateCampaignBlueprint] Semantic validation failed: ${semantics.errors.join("; ")}`,
-			);
+			const blueprint: CampaignBlueprintBase = {
+				...generated,
+				yearPlans: {},
+				wasFallback: false,
+			};
+			this.bus.emit("BlueprintGenerated", {
+				scope: "campaign",
+				wasFallback: false,
+			});
+			return blueprint;
 		}
 
 		if (!this.allowFallback) {

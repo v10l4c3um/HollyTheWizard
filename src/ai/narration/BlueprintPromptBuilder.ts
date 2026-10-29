@@ -10,7 +10,11 @@ import { getAllArcModuleIds } from "../../core/domain/campaign/ArcModuleRegistry
  * reused by two different use-cases.
  */
 
-export function buildCampaignBasePrompt(seed: string): string {
+export function buildCampaignBasePrompt(
+	seed: string,
+	registry: Registry,
+): string {
+	const npcIds = registry.getAllNpcIds();
 	return `You are designing the long-term narrative premise for a multi-year wizard-school RPG playthrough (seed: ${seed}).
 
 Respond with ONLY a JSON object matching this shape:
@@ -20,10 +24,10 @@ Respond with ONLY a JSON object matching this shape:
   "runThemes": array of 1-3 strings from ["mystery","rivalry","rebellion","discovery","corruption","ambition"],
   "toneProfile": one of ["lighthearted","tense","bittersweet","dark","whimsical"],
   "runTruths": { "hasHiddenMentor": boolean, "worldIsInDecline": boolean, "playerIsSuspectedOfSomething": boolean, "ancientThreatIsStirring": boolean },
-  "longLivedRoles": object mapping role names to NPC ids (use {} if you don't know any NPC ids yet)
+  "longLivedRoles": object mapping role names (e.g. "mentor", "rival") to NPC ids; every id MUST be one of ${JSON.stringify(npcIds)}, or use {}
 }
 
-Do not invent NPC ids - leave longLivedRoles empty ({}) if you are unsure. Output JSON only, no commentary, no markdown code fences.`;
+Do not invent NPC ids. Output JSON only, no commentary, no markdown code fences.`;
 }
 
 export function buildYearBlueprintPrompt(
