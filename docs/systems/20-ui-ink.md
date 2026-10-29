@@ -37,7 +37,6 @@ The whole player-facing experience: a title and menu, a loading screen showing s
 11. **Latency handling is minimal.** During the up-to-three LLM calls per turn, the user sees only a yellow border; there is no "thinking" message, elapsed time, streaming, or cancel (see 18).
 12. **Quit and error paths are abrupt.** Startup errors flash for 1.8 s and exit, and "quit" in game does not offer to save.
 13. **Accessibility and portability.** Colour is the only carrier for several states (spell states, bars), emoji icons assume font support, layouts assume a wide terminal, and nothing handles resize or small windows. There is no plain/no-colour mode.
-14. **Leftover duplicates.** `src/ui/cli/` (a readline app), `src/main.ts` and `main.ts.backup` are older entry points kept alongside (see 22), and `core` imports its `Command` type from `ui/cli/commands`.
 15. **No tests** for any component (Ink offers `ink-testing-library`), including the input parser.
 
 ## Rework ideas

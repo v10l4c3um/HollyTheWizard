@@ -1,6 +1,6 @@
 # Turn Resolver & Commands
 
-Files: `src/core/engine/TurnResolver.ts` (657 lines), `TurnResult.ts`, `TimeCost.ts`, `src/ui/cli/commands/Command.ts`. Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
+Files: `src/core/engine/TurnResolver.ts` (657 lines), `TurnResult.ts`, `TimeCost.ts`, `src/core/domain/commands/CommandDefinitions.ts` (the `Command` type). Collaborators: `CurriculumService`, `SpellRevealService`, `SpellProgressionService`, `evaluateConversation`, `applyEffects`, `GameBus`.
 
 ## What it does
 

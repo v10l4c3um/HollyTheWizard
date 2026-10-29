@@ -193,7 +193,7 @@ Three roles, three configs (all default to `localhost:11434`):
 
 | Role | Model | When called |
 |---|---|---|
-| Resolver | `qwen3-4b-instruct-gguf:Q4_K_M` | Every turn (2 calls: intent + args) |
+| Resolver | `qwen3-4b-instruct-gguf:Q4_K_M` | Every turn (1 call: the whole command) |
 | Renderer | `llama3.1:8b-instruct-q4_K_M` | Every turn (1 call: prose paragraph) |
 | Blueprint | `llama3.1:8b-instruct-q4_K_M` | New game + each year advance |
 
