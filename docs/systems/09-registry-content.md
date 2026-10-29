@@ -8,9 +8,9 @@ Holds all static game definitions (locations, NPCs, NPC profiles, items, spells,
 
 ## How it works
 
-1. `buildRegistry` (in `engineFactory`) creates a `Registry` and **hard-codes** three locations (`startingVillage`, `forest`, `market`) and one NPC (`villager`).
-2. `ContentLoader.loadAllPacks` reads every `*.json` in `src/content/packs/` (sorted by filename). Each pack is a manifest with optional `spells`, `npcs`, `profiles` arrays, registered straight into the registry. A pack that throws is logged and skipped.
-3. `SchoolDataLoader` reads `subjects.json`, every `year*.json` (one `SubjectCurriculum` each), and `timetables.json`, and registers a single `SchoolData` blob.
+1. **Status: locations are now data** (`world.json`, no longer hard-coded); the world is still three non-school places, which is a content task. Original description: `buildRegistry` (in `engineFactory`) creates a `Registry` and **hard-codes** three locations (`startingVillage`, `forest`, `market`) and one NPC (`villager`).
+2. **Fixed:** every file is validated against a strict Zod schema (`ContentSchemas.ts`); unknown keys are errors. Original description: `ContentLoader.loadAllPacks` reads every `*.json` in `src/content/packs/` (sorted by filename). Each pack is a manifest with optional `spells`, `npcs`, `profiles` arrays, registered straight into the registry. A pack that throws is logged and skipped.
+3. **Fixed:** `ContentLinter.ts` checks the map, profiles, lessons, spells and timetables for dangling ids, and `buildRegistry` refuses to start on any finding. Original description: `SchoolDataLoader` reads `subjects.json`, every `year*.json` (one `SubjectCurriculum` each), and `timetables.json`, and registers a single `SchoolData` blob.
 4. `Registry` is four `Map`s plus `npcProfiles` and `schoolData`, with `register*`/`get*`/`getAll*Ids` methods and `getCurriculumForSubject`.
 5. Progress is reported to the loading screen through `onProgress`.
 
@@ -33,10 +33,10 @@ Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year
 3. **No referential integrity.** Nothing checks that a profile's `npcId` exists, a lesson's `spellId` is a real spell, a reveal condition references a real subject, a location's exits point to real locations, or a timetable subject exists. Typos fail silently or surface as "no spell with id" during play.
 4. **"Immutable after startup" is only a convention.** `register*` methods stay public and mutable, duplicates silently overwrite earlier entries (no warning on id collision across packs), and returned objects are shared and mutable.
 5. **Items are an empty system.** The registry has an item map and `getItem`, but no pack format, no loader and no registered items. `Item` conflates definition and instance (it carries `quantity`), and effects create nameless items (see 06).
-6. **Loader duplication and dead code.** `loadSpellPack`, `loadNpcPack`, `loadNpcProfilePack`, `loadAllSpellPacks` and `loadAllNpcPacks` repeat the same logic and appear unused (only `loadAllPacks` is used). The old `loadAll*` loops re-read every file once per content type.
+6. **Fixed:** one `loadAllPacks`; the dead per-kind methods are gone. Original description: **Loader duplication and dead code.** `loadSpellPack`, `loadNpcPack`, `loadNpcProfilePack`, `loadAllSpellPacks` and `loadAllNpcPacks` repeat the same logic and appear unused (only `loadAllPacks` is used). The old `loadAll*` loops re-read every file once per content type.
 7. **Fragile paths.** Content is found via `__dirname`-relative paths. Under `tsx` this works, but `npm run build` (`tsc`) will not copy JSON to the output, so a compiled build has no content, and `loadAllPacks` only warns when the folder is missing, which gives an empty world rather than a failure.
-8. **Errors are swallowed.** A failing pack or a missing `subjects.json` yields `console.error` or an empty object and the game continues in a degraded state. `SchoolDataLoader` returns `{}` for missing subjects and `[]` for missing timetables with no warning.
-9. **Console noise.** Pack loading writes `console.log` lines that print into the Ink terminal UI.
+8. **Fixed:** problems from every file are gathered and thrown together as one `ContentError`; a missing pack directory, `subjects.json` or `timetables.json` is an error too. Original description: **Errors are swallowed.** A failing pack or a missing `subjects.json` yields `console.error` or an empty object and the game continues in a degraded state. `SchoolDataLoader` returns `{}` for missing subjects and `[]` for missing timetables with no warning.
+9. **Fixed:** the per-pack `console.log` is gone. Original description: **Console noise.** Pack loading writes `console.log` lines that print into the Ink terminal UI.
 10. **Thin content.** One year, three subjects, no locations, ~7 NPCs, no items, no rumors, clues, scenes, exams or events. The "extensible content system" currently covers a small fraction of what the game types describe. Many mechanics (exams, scene invitations, clues) have no content format at all.
 11. **Pack format is flat and implicit.** A pack is "spells and/or npcs and/or profiles" in a single manifest, with no declared dependencies, version compatibility, id namespacing, or override/patch semantics. `version` and `description` are read and ignored. There is no way for a pack to extend or replace another pack's entry deliberately.
 12. **Content and IP.** The sample NPC pack uses real names and quotes from existing franchises (Snape, Hagrid, Dumbledore, Harry Potter). This is fine for private prototyping, but the content layer should be built so the setting can be replaced wholesale.
@@ -62,3 +62,10 @@ Current content: 5 pack files (about 14 KB), curriculum for **3 subjects in year
 - Should content be authored as JSON by hand, or in a friendlier format (YAML or Markdown with frontmatter) compiled to validated JSON?
 - Do we want user-installable mods, or is this only for the developer? That decides how much isolation and dependency handling the pack format needs.
 - Is the setting a licensed or an original world?
+
+## Content rules (as enforced today)
+
+- **Packs** (`src/content/packs/*.json`): `{ name, version, description?, locations?, npcs?, profiles?, spells? }`, strict. Ids must be unique across all packs. NPCs default to `aliases: []`, `tag_description: ""`. Two fields are accepted but unused by the game: spells' `requiredConditions` (the game reads `revealCondition`/`castCondition`) and NPCs' `affinity`.
+- **School data** (`src/content/curriculum`): `subjects.json`, `timetables.json` and at least one `year*.json`, all required.
+- **Cross-references** (`lintContent`): the start location (`START_LOCATION_ID`) exists and every location is reachable from it by following connections; connections, profile NPCs, profile topics, lesson spells and subjects, timetable subjects all exist; lesson ids are unique and numbered `1..n`.
+- **Failure mode:** startup throws `ContentError` with one line per problem (`file: path: message`).

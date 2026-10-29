@@ -23,7 +23,7 @@ Nothing yet. The intended job (from the Phase 2 design doc) is to make the world
 
 ## Weaknesses (of the current state)
 
-1. **The core of a living world is missing.** Without presence, every NPC is always available everywhere, so conversations, class scenes, curfew, encounters and mystery beats have no spatial or temporal structure.
+1. **Partly fixed:** presence and schedules exist (see 14), as a pure lookup rather than a simulation: where an NPC is follows from the clock when asked, so there is no world-tick. Original description: **The core of a living world is missing.** Without presence, every NPC is always available everywhere, so conversations, class scenes, curfew, encounters and mystery beats have no spatial or temporal structure.
 2. **No place to run it.** The turn loop has no world-tick stage and the clock has no boundaries to trigger on (period change, midnight, new day).
 3. **The design doc is high level.** It does not define the schedule format, how a block resolves when several apply, who wins between routine and override, how presence interacts with the player's own schedule, or what "off-screen progression" looks like as data.
 4. **The prerequisites are themselves unfinished:** calendar (16), locations in data (09), NPC introduction and presence (14), and structured events (07). The scheduler cannot be built well before these.

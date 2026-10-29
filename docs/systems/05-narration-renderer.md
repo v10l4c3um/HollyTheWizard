@@ -11,7 +11,7 @@ Turns the deterministic result of a turn into the paragraph the player reads. It
 1. `GameEngine._buildRenderContext` assembles a `RenderContext`: the turn's `briefOutput` (a plain-English summary written by `TurnResolver`), player name, location name and description, time of day, "nearby" NPC names, the last 5 recent events, `narrationMode`, and optionally how much time passed.
 2. `Renderer._buildPrompt` formats that into one prompt: write a single 3 to 5 sentence second-person paragraph, "only translate game events", do not invent causes, magic, lore or obstacles, treat failures neutrally.
 3. `generateWithOllama` (free text, no JSON format) returns the text, which is trimmed and stored in `state.output`.
-4. On any error, it logs and returns the fixed string `"Nothing happened. AI narration is unavailable."`.
+4. On any error (including the 30 s render timeout), it logs and returns the turn's `briefOutput`, the plain facts, so the result is never lost.
 
 ## Strengths
 
@@ -24,7 +24,7 @@ Turns the deterministic result of a turn into the paragraph the player reads. It
 
 ## Weaknesses
 
-1. **Fallback destroys the game's information.** When the LLM is down, the player sees "Nothing happened. AI narration is unavailable." even if they just learned a spell, moved rooms or got a revelation. `briefOutput` already holds the true result and is thrown away. This contradicts the invariant that the game stays playable without Ollama, and the game is nearly unplayable in that state.
+1. **~~Fallback destroys the game's information.~~ Fixed:** the fallback now shows `briefOutput`. The original description follows. When the LLM is down, the player sees "Nothing happened. AI narration is unavailable." even if they just learned a spell, moved rooms or got a revelation. `briefOutput` already holds the true result and is thrown away. This contradicts the invariant that the game stays playable without Ollama, and the game is nearly unplayable in that state.
 2. **Conversation tone never reaches the narrator.** `evaluateConversation` computes `narrationTags` (`tense`, `guarded`, `hostile`, `private-setting`, ...) specifically "for tone adjustment", but they travel only on a bus event (`ConversationResolved`). `RenderContext` has no field for them, and nothing else reads them. Likewise, `TurnResult.effects` was meant for an "effects summary" and is unused by the renderer. So the narrator sees only a flat sentence like "Holly deflected your question".
 3. **Thin world and character context.** The prompt has no NPC personality or speech style (`Npc.dialogue`, profiles), no relationship state, no spells or inventory, and no active goals or story state (blueprint). "Nearby" is every NPC the player has ever met, not who is actually here (`knownNPCIds`), so the model can describe people who are not present.
 4. **Dialogue is not modeled.** A conversation produces one sentence of summary ("X opened up about Y. You learned something significant."), and the model must invent what was said. That risks contradicting clues or topics the engine actually revealed, because the content of a reveal is not passed in. The "do not invent" rule conflicts with a task that requires inventing dialogue.

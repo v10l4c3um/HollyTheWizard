@@ -40,7 +40,7 @@ Each outcome emits effects (a trust gain on success, topic unlock on partial/suc
 
 ## Weaknesses
 
-1. **Most of the ladder is unreachable today.** Relationship effects are dropped because no relationship records are ever created (see 06), so every NPC always has trust 0 and affection 0. With trust 0 the tier is `low` (-1 score), so an open topic with no profile modifiers scores -1 and yields `partial` every time. `success` needs a score of at least 1, `reveal` needs 3, `invitation` needs 4 and affection of 30 — impossible without relationship growth. Topics with a `minTrust` (family, gossip, romance, dark arts) always deflect. In practice the player sees `partial`, `deflection` or `refusal`, never the rewarding outcomes, and no trust ever accumulates. (Confirm with a test.)
+1. **~~Most of the ladder is unreachable today.~~ Fixed for the first rung.** Relationship records are now created on the first talk, and every outcome moves trust (table below), so trust no longer stays at 0. The text that follows describes the old behaviour: Relationship effects are dropped because no relationship records are ever created (see 06), so every NPC always has trust 0 and affection 0. With trust 0 the tier is `low` (-1 score), so an open topic with no profile modifiers scores -1 and yields `partial` every time. `success` needs a score of at least 1, `reveal` needs 3, `invitation` needs 4 and affection of 30 — impossible without relationship growth. Topics with a `minTrust` (family, gossip, romance, dark arts) always deflect. In practice the player sees `partial`, `deflection` or `refusal`, never the rewarding outcomes, and no trust ever accumulates. (Confirm with a test.)
 2. **Event-mood phase never fires.** It checks `recentEvents.includes("SpellMastered")`, but `recentEvents` holds free-text strings like `"Studied charms for 1h"` or `"Talked to hagrid about potions [partial]"`, never event names. The phase is dead code.
 3. **Location data does not match the world.** Topics reference `classroom`, `library`, `dungeons`, `restricted_section`, `quidditch_pitch`, `hagrid_hut`; the registry has `startingVillage`, `forest` and `market`. Location bonuses and penalties therefore never match the real location. Also, privacy is guessed by substring from the location id (see 04).
 4. **Topics are free text from the LLM.** The resolver may return `"school gossip"`, `"gossip"` or `"homework"`; only exact ids in `TOPICS` get their rules. Anything else falls back to a permissive default (no requirements), so the careful topic gates are trivially bypassed by wording, and unknown topics get unlock effects and clue ids like `hagrid.my invented topic`.
@@ -75,3 +75,16 @@ Each outcome emits effects (a trust gain on success, topic unlock on partial/suc
 - Should NPC dialogue be fully authored (selected by the engine), fully generated, or hybrid (authored key facts, generated wording)?
 - How should romance and `romanceIntensity` be scoped, and should it exist in the first version?
 - Do we want the player to see the numbers (relationship bars) or only qualitative cues?
+
+## Trust per outcome
+
+Every conversation moves trust (`TRUST_DELTA` in `Conversation.ts`, one place to tune):
+
+| outcome | trust |
+|---|---|
+| partial (neutral) | +0.5 |
+| success, reveal, invitation | +2 |
+| deflection | -1 |
+| refusal (hard boundary, hostility, pushing after a deflection) | -2 |
+
+Pacing: plain chats take about 30 talks to reach the "moderate" tier (15 trust); a topic the NPC likes takes roughly 8. Repeating the same topic quickly scores lower, so it falls back to +0.5.
