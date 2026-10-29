@@ -114,8 +114,6 @@ export interface CommandDefinition {
 	summary: string;
 	/** The model may answer with this command. (`UNDO` is only ever typed.) */
 	modelFacing: boolean;
-	/** Remembered as a turn, so "again" and "go back" can use it. */
-	inWorld: boolean;
 	/** Fields the game fills in itself; the model is never asked for them. */
 	internalFields?: string[];
 	/** A stricter schema for a field than the command's own, for the model's reply. */
@@ -131,14 +129,12 @@ export const COMMANDS: Record<CommandType, CommandDefinition> = {
 		schema: Move,
 		summary: "Go to, enter or visit a place.",
 		modelFacing: true,
-		inWorld: true,
 		target: { field: "destinationId", kind: "place", missingHint: "Where do you want to go?" },
 	},
 	TALK: {
 		schema: Talk,
 		summary: "Talk to, greet or ask a person (optionally about one of the known topics).",
 		modelFacing: true,
-		inWorld: true,
 		replyFields: { conversationTopic: z.enum(TOPIC_IDS) },
 		target: { field: "npcId", kind: "person", missingHint: "Who do you want to talk to?" },
 	},
@@ -146,77 +142,84 @@ export const COMMANDS: Record<CommandType, CommandDefinition> = {
 		schema: Study,
 		summary: "Study, revise or read up on a subject alone (duration in hours, only if said).",
 		modelFacing: true,
-		inWorld: true,
 		target: { field: "subjectId", kind: "subject", missingHint: "Which subject do you want to study?" },
 	},
 	ATTEND_CLASS: {
 		schema: AttendClass,
 		summary: "Attend, sit in on or go to a lesson, class or lecture of a subject (duration in hours, only if said).",
 		modelFacing: true,
-		inWorld: true,
 		target: { field: "subjectId", kind: "subject", missingHint: "Which class do you want to attend?" },
 	},
 	PRACTICE: {
 		schema: Practice,
 		summary: "Practise or cast a spell (duration in hours, only if said).",
 		modelFacing: true,
-		inWorld: true,
 		target: { field: "spellId", kind: "spell", missingHint: "Which spell do you want to practise?" },
 	},
 	INTERACT: {
 		schema: Interact,
 		summary: "Use an item (actionType: what to do with it, only if said).",
 		modelFacing: true,
-		inWorld: true,
 		target: { field: "itemId", kind: "item", missingHint: "Which item do you mean?" },
 	},
 	REST: {
 		schema: Rest,
 		summary: "Rest or wait, passing time (duration in hours, only if said).",
 		modelFacing: true,
-		inWorld: true,
 		internalFields: ["locationId"],
 	},
 	SAVE: {
 		schema: Save,
 		summary: "Save the game (filename, only if said).",
 		modelFacing: true,
-		inWorld: false,
 	},
 	LOAD: {
 		schema: Load,
 		summary: "Load a saved game (filename, only if said).",
 		modelFacing: true,
-		inWorld: false,
 		internalFields: ["fallbackFilename"],
 	},
 	ADVANCE_YEAR: {
 		schema: AdvanceYear,
 		summary: "Only when the player asks to start the next school year.",
 		modelFacing: true,
-		inWorld: false,
 	},
 	UNDO: {
 		schema: Undo,
 		summary: "Take back the last action.",
 		modelFacing: false,
-		inWorld: false,
 	},
 	UNKNOWN: {
 		schema: Unknown,
 		summary: "The sentence is not a command the game understands.",
 		modelFacing: true,
-		inWorld: false,
 		internalFields: ["input", "hint"],
 	},
 };
 
 export const COMMAND_TYPES = Object.keys(COMMANDS) as CommandType[];
 
-/** The commands remembered as in-world turns. */
-export const IN_WORLD_TYPES: ReadonlySet<CommandType> = new Set(
-	COMMAND_TYPES.filter((type) => COMMANDS[type].inWorld),
-);
+/**
+ * The commands about the world rather than the game itself. These go to the
+ * turn rules (`TurnResolver`) and are remembered as turns, so "again" and
+ * "go back" can use them.
+ */
+export const IN_WORLD_COMMAND_TYPES = [
+	"MOVE",
+	"TALK",
+	"STUDY",
+	"ATTEND_CLASS",
+	"PRACTICE",
+	"INTERACT",
+	"REST",
+] as const;
+
+export type InWorldCommand = Extract<
+	Command,
+	{ type: (typeof IN_WORLD_COMMAND_TYPES)[number] }
+>;
+
+export const IN_WORLD_TYPES: ReadonlySet<CommandType> = new Set(IN_WORLD_COMMAND_TYPES);
 
 // ---------------------------------------------------------------------------
 // What the model may reply

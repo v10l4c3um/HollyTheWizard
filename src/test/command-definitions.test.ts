@@ -40,6 +40,14 @@ describe("the command definitions", () => {
 		);
 	});
 
+	it("send only the in-world commands to the turn rules", () => {
+		const { IN_WORLD_COMMAND_TYPES } = jest.requireActual("../core/domain/commands/CommandDefinitions");
+		expect([...IN_WORLD_COMMAND_TYPES].sort()).toEqual([...IN_WORLD_TYPES].sort());
+		for (const meta of ["SAVE", "LOAD", "ADVANCE_YEAR", "UNDO", "UNKNOWN"]) {
+			expect(IN_WORLD_TYPES.has(meta as never)).toBe(false);
+		}
+	});
+
 	it("name the field and kind of every target", () => {
 		const targets = COMMAND_TYPES.filter((t) => COMMANDS[t].target).map(
 			(t) => [t, COMMANDS[t].target!.field, COMMANDS[t].target!.kind],

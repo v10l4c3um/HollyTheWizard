@@ -1,4 +1,4 @@
-import { Command } from "../domain/commands/CommandDefinitions";
+import { InWorldCommand } from "../domain/commands/CommandDefinitions";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { TurnResult } from "./TurnResult";
@@ -45,7 +45,7 @@ class TurnResolver {
 		this.spellRevealService = new SpellRevealService();
 	}
 
-	apply(command: Command, state: GameState, registry: Registry): TurnResult {
+	apply(command: InWorldCommand, state: GameState, registry: Registry): TurnResult {
 		const result = this._dispatch(command, state, registry);
 
 		// Bookkeeping common to every turn: the log, the clock.
@@ -84,7 +84,7 @@ class TurnResolver {
 	}
 
 	private _dispatch(
-		command: Command,
+		command: InWorldCommand,
 		state: GameState,
 		registry: Registry,
 	): TurnResult {
@@ -132,27 +132,6 @@ class TurnResolver {
 					state,
 					registry,
 				);
-			case "SAVE":
-				return this._save(command.filename);
-			case "LOAD":
-				return this._load(command.filename);
-			case "UNKNOWN":
-			case "UNDO":
-				// Handled directly by GameEngine.handleCommand; this branch only
-				// guards against direct misuse, like ADVANCE_YEAR below.
-				return {
-					briefOutput: "",
-					events: [],
-					timeCost: { type: "none" },
-				};
-			case "ADVANCE_YEAR":
-				// Handled directly by GameEngine.handleCommand (requires async LLM
-				// generation); this branch only guards against direct misuse.
-				return {
-					briefOutput: "",
-					events: [],
-					timeCost: { type: "none" },
-				};
 		}
 	}
 
@@ -715,23 +694,6 @@ class TurnResolver {
 		};
 	}
 
-	private _save(filename: string): TurnResult {
-		this.bus.emit("GameSaved", { filename });
-		return {
-			briefOutput: `Game saved as '${filename}'.`,
-			events: [`Game saved as ${filename ? filename : "autosave"}`],
-			timeCost: { type: "none" },
-		};
-	}
-
-	private _load(filename: string): TurnResult {
-		this.bus.emit("GameLoaded", { filename });
-		return {
-			briefOutput: `Loaded game from '${filename}'.`,
-			events: [`Loaded game from ${filename}`],
-			timeCost: { type: "none" },
-		};
-	}
 }
 
 export default TurnResolver;
