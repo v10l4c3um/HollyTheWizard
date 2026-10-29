@@ -1,6 +1,6 @@
 # HollyTheWizard — Current Workflow & Pipeline Overview
 
-*Purpose: context document for a design agent. Describes the living codebase as of mid-2026, Phase 1 complete. Use this to reason about what already exists before proposing features or improvements.*
+*Purpose: context document for a design agent. Describes the living codebase as of mid-2026, see docs/systems/00-synthesis.md for current status. Use this to reason about what already exists before proposing features or improvements.*
 
 ---
 
@@ -209,7 +209,7 @@ Three roles, three configs (all default to `localhost:11434`):
 
 ---
 
-### Persistence (`src/infrastructure/persistance/json/`)
+### Persistence (`src/infrastructure/persistence/json/`)
 
 `JsonPersistenceRepository`:
 - Saves: `JSON.stringify(state, null, 2)` to `./saves/<sanitized>.json`
@@ -229,7 +229,7 @@ React + Ink state machine:
 | `game` | `GameScreen` | OutputPanel + CommandInput + HUD + SpellbookWidget |
 | `startup-error` | inline | Error message |
 
-`GameScreen` calls `engine.handleCommand(input)` on submit and re-renders when `state.output` changes. The UI has no direct imports of game internals — everything is passed via `engineFactory` props.
+`GameScreen` calls `engine.handleCommand(input)` on submit and re-renders when `state.output` changes. The UI gets the engine from `engineFactory`; it still imports a few core types directly (see systems/20).
 
 ---
 
@@ -237,12 +237,9 @@ React + Ink state machine:
 
 | Area | Status |
 |---|---|
-| NPC schedules | `Scheduler.ts` is empty — NPCs don't move |
+| NPC schedules | Presence is derived from NPC schedules (`Presence.ts`); no autonomous NPC simulation |
 | SpellRevealService condition checks | `checkRevealCondition` always returns false |
 | SpellProgressionService → effect model | Still mutates SpellBook directly |
-| `src/bootstrap.ts` | Legacy stub, superseded by `engineFactory.ts` |
-| `src/ui/cli/` | Older CLI approach, superseded by Ink UI |
-| `src/core/domain/player/Spellbook.ts` | Apparent duplicate, not used |
 | Full quest system | Only `questFlags` string lists, no structured quests |
 | Scene invitations / special encounters | Data model exists, no handler |
 | Dueling / combat | Not started |
@@ -254,6 +251,6 @@ React + Ink state machine:
 
 1. **Engine decides outcomes; LLM only renders and parses.** The Resolver and Renderer wrap a deterministic core — Ollama never determines whether a spell works, a relationship improves, or a quest advances.
 2. **`applyEffects` is the only mutation path.** Command handlers build `GameEffect[]` and call `applyEffects(state, effects, bus)`. Direct field mutation on `GameState` should be ported to effects.
-3. **Registry is immutable after startup.** No content is loaded or modified at runtime.
+3. **Registry is treated as read-only after startup.** Nothing enforces it in code.
 4. **Fallbacks everywhere around LLM calls.** Every Ollama call has a deterministic fallback so the game is playable without a running Ollama instance (degraded experience only).
 5. **Events notify; effects mutate.** Observers on the bus react by setting flags or scheduling follow-up effects — they do not directly modify `GameState` fields.

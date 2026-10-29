@@ -4,5 +4,5 @@ module.exports = {
 	roots: ["<rootDir>/src"],
 	testMatch: ["**/*.test.ts"],
 	moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
-	collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts", "!src/main.ts"],
+	collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
 };

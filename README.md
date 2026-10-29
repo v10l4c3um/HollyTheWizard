@@ -2,12 +2,12 @@
 
 A terminal RPG set in a wizard school. Type natural-language commands, attend classes, learn spells, and build relationships with NPCs across a seven-year campaign.
 
-The game engine is fully deterministic. A local LLM ([Ollama](https://ollama.com)) is used only to parse your input, narrate results, and generate the campaign's story blueprint. If Ollama isn't running, the game falls back to deterministic behavior.
+The game engine is deterministic. A local LLM ([Ollama](https://ollama.com)) is required: it parses your input, narrates results, and generates the campaign's story blueprint. The game refuses to start if Ollama is unreachable. (Tests run without it by mocking the client.)
 
 ## Requirements
 
 - Node.js 24.18.x (see `.nvmrc`)
-- Ollama on `localhost:11434` (optional but recommended). Default models:
+- Ollama on `localhost:11434` (required). Default models:
   - Resolver: `hf.co/llmware/qwen3-4b-instruct-gguf:Q4_K_M`
   - Renderer and blueprint: `llama3.1:8b-instruct-q4_K_M`
 
@@ -30,6 +30,7 @@ src/
   ai/          Ollama client, narration and blueprint providers
   content/     JSON packs: spells, NPCs, NPC profiles, curriculum
   bootstrap/   engineFactory (composition root)
+  infrastructure/ persistence (JSON saves)
   ui/ink/      React + Ink terminal UI (entry: entry.ts)
   test/        Jest tests
 docs/          architecture and content-authoring docs

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Command } from "../../ui/cli/commands/Command";
+import { Command } from "./Command";
 import { OllamaConfig } from "../../ai/OllamaConfig";
 import {
 	generateWithOllama,

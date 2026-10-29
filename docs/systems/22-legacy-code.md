@@ -1,6 +1,6 @@
 # Legacy & Dead Code
 
-Scope: files that are unused, duplicated, stubs, or misleading, found while reading the other systems. "Unused" here means nothing in `src/` imports it (checked with grep). I have not deleted or changed any of it.
+Scope: files that are unused, duplicated, stubs, or misleading, found while reading the other systems. "Unused" here means nothing in `src/` imports it (checked with grep). **Update:** the dead files, the empty placeholders, `DEFAULT_OLLAMA_CONFIG`, the unused `ContentLoader` methods and the folder misspellings have since been removed or fixed, and `Command` now lives in `core/engine/Command.ts`. The inventory below is the original audit.
 
 ## Inventory
 
@@ -26,7 +26,7 @@ Scope: files that are unused, duplicated, stubs, or misleading, found while read
 | `GameState.knownNPCIds`, `sceneInvitations`, `settings.romanceIntensity` | fields | Never written (or never read) | See 08, 13, 14 | 08, 14 |
 | `DEFAULT_OLLAMA_CONFIG` | const | Unused duplicate of the resolver config | No importers | 18 |
 | `GameEngine` `[TIME DEBUG]` log and other `console.*` calls | statements | Debug output left in production paths | See 02, 20 | 02, 20 |
-| Folder names `infastructure/persistance/` | paths | Misspelled, and `docs/current-pipeline-overview.md` spells them differently | Renaming touches imports in `GameEngine`, tests and docs | 19 |
+| Folder names `infrastructure/persistence/` | paths | Misspelled, and `docs/current-pipeline-overview.md` spells them differently | Renaming touches imports in `GameEngine`, tests and docs | 19 |
 | `docs/` files | docs | Some reference documents that do not exist (`docs/partial-blueprint-yearly-plan.md`, `docs/event-effect-conversion-plan.md`) | Cited in code comments | 06, 15 |
 | `ui/ink/package.json` (`"type": "module"`) vs root `tsconfig.json` (`commonjs`) | config | Two module systems in one repo | See 21 | 21 |
 | `docs/current-pipeline-overview.md` claims | docs | Several statements no longer match the code: "UI has no direct imports of game internals", "Registry is immutable", "Phase 1 complete" | See 09, 20 | all |

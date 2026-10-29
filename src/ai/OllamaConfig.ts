@@ -25,9 +25,3 @@ export const DEFAULT_BLUEPRINT_OLLAMA_CONFIG: OllamaConfig = {
 	model: "llama3.1:8b-instruct-q4_K_M",
 	disableThinking: true,
 };
-
-export const DEFAULT_OLLAMA_CONFIG: OllamaConfig = {
-	endpoint: "http://localhost:11434/api/generate",
-	model: DEFAULT_RESOLVER_OLLAMA_CONFIG.model,
-	disableThinking: true,
-};

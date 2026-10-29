@@ -1,6 +1,6 @@
 # Persistence
 
-Files: `src/core/application/ports/PersistenceRepository.ts` (the port), `src/infastructure/persistance/json/JsonPersistenceRepository.ts` (adapter; note the misspelled folder names), `GameState.fromPlainObject` (rehydration, see 08), save/load handling in `GameEngine.handleCommand` (see 02), menu loading in `src/ui/ink/InkApp.tsx`. Tests: `src/test/persistence.test.ts` (14 cases). `/saves/` is git-ignored.
+Files: `src/core/application/ports/PersistenceRepository.ts` (the port), `src/infrastructure/persistence/json/JsonPersistenceRepository.ts` (adapter; note the misspelled folder names), `GameState.fromPlainObject` (rehydration, see 08), save/load handling in `GameEngine.handleCommand` (see 02), menu loading in `src/ui/ink/InkApp.tsx`. Tests: `src/test/persistence.test.ts` (14 cases). `/saves/` is git-ignored.
 
 ## What it does
 
@@ -34,7 +34,7 @@ Saves the whole `GameState` to disk and loads it back, so a run can be continued
 8. **Weak sanitisation semantics.** Different names collide (`a b` and `a_b` become the same file), case-insensitive file systems collapse names that differ only by case, and the player is not told which name was actually used (the message echoes the requested name).
 9. **No save management.** No list of saves, no metadata (character, location, year, in-game time, playtime, version), no delete or rename, and no slot UI. The only way to know what exists is to look in the folder.
 10. **Errors are raw.** A missing file produces a Node `ENOENT` message in the narration box, and a malformed file produces a JSON parse error.
-11. **Minor API issues.** `save(filename = "autosave", state)` declares a default on a parameter that comes before a required one, so the default can never apply. The adapter uses `var`. Duplicate save and load handlers exist in `TurnResolver` (dead code, see 04). The folders are named `infastructure/persistance`.
+11. **Minor API issues.** `save(filename = "autosave", state)` declares a default on a parameter that comes before a required one, so the default can never apply. The adapter uses `var`. Duplicate save and load handlers exist in `TurnResolver` (dead code, see 04). The folders are named `infrastructure/persistence`.
 12. **Shared mutable references and no snapshot.** Save happens on the live object; because the engine is async, a save could in principle capture a partially applied turn if it ran concurrently.
 
 ## Rework ideas

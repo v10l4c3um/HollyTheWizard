@@ -24,7 +24,7 @@ import { BlueprintLLMProvider } from "../ai/providers/BlueprintLLMProvider";
 import { GenerateCampaignBlueprint } from "../core/application/use-cases/GenerateCampaignBlueprint";
 import { GenerateYearBlueprint } from "../core/application/use-cases/GenerateYearBlueprint";
 import { AdvanceYear } from "../core/application/use-cases/AdvanceYear";
-import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
+import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 
 function buildRegistry(): Registry {
 	const registry = new Registry();

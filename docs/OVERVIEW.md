@@ -36,7 +36,7 @@ If Ollama is unavailable or returns garbage, every LLM step has a deterministic 
 | Campaign | `src/core/domain/campaign/` | LLM-generated (schema-validated, allowlisted) campaign and per-year blueprints with themes, clue seeds, gates and milestones; safe fallbacks |
 | Content | `src/content/`, `src/core/content/` | Data-driven JSON packs for spells, NPCs, NPC profiles and curriculum, loaded into an immutable `Registry` at startup |
 | AI | `src/ai/` | `OllamaClient` (retry, timeout, structured output), narration prompts, blueprint provider |
-| Persistence | `src/infastructure/persistance/json/` | Saves `GameState` as JSON in `./saves/` |
+| Persistence | `src/infrastructure/persistence/json/` | Saves `GameState` as JSON in `./saves/` |
 | UI | `src/ui/ink/` | React + Ink terminal UI: menu → loading → game (output, input, HUD, spellbook) |
 | Composition | `src/bootstrap/engineFactory.ts` | Wires registry, content, engine, bus listeners, Ollama probe and blueprint generation |
 
@@ -50,7 +50,7 @@ If Ollama is unavailable or returns garbage, every LLM step has a deterministic 
 
 ## Known gaps
 
-NPC scheduling (`Scheduler.ts` is empty), spell reveal condition checks, spell progression still mutating the spellbook directly, no structured quest system, scene invitations lack handlers, no dueling/combat. Legacy files (`src/bootstrap.ts`, `src/ui/cli/`, `src/main.ts.backup`, `core/domain/player/Spellbook.ts`) are superseded.
+spell reveal condition checks, spell progression still mutating the spellbook directly, no structured quest system, scene invitations lack handlers, no dueling/combat.
 
 ## Further reading
 

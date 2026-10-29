@@ -8,7 +8,6 @@ import {
 } from "../ai/OllamaClient";
 import {
 	DEFAULT_BLUEPRINT_OLLAMA_CONFIG,
-	DEFAULT_OLLAMA_CONFIG,
 	DEFAULT_RENDERER_OLLAMA_CONFIG,
 	DEFAULT_RESOLVER_OLLAMA_CONFIG,
 } from "../ai/OllamaConfig";
@@ -19,7 +18,6 @@ describe("default Ollama configuration", () => {
 			DEFAULT_RESOLVER_OLLAMA_CONFIG,
 			DEFAULT_RENDERER_OLLAMA_CONFIG,
 			DEFAULT_BLUEPRINT_OLLAMA_CONFIG,
-			DEFAULT_OLLAMA_CONFIG,
 		]) {
 			expect(config.debugMode).toBeFalsy();
 		}

@@ -8,7 +8,7 @@ import { createGameBus } from "../core/domain/events/GameEvents";
 import { buildRegistry } from "../bootstrap/engineFactory";
 import { SpellRevealService } from "../core/domain/magic/SpellRevealService";
 import { createLearnedSpellState } from "../core/domain/magic/SpellStateFactory";
-import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
+import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 import { RelationshipStats } from "../core/domain/npc/Relationship";
 import { SpellRevealOpportunity } from "../core/domain/quest/Curriculum";
 import { moveToClass, moveToNpc } from "./helpers/placePlayer";

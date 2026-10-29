@@ -7,7 +7,7 @@ import {
 	AttributeStats,
 	ResourceStats,
 } from "../core/domain/player/PlayerStats";
-import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
+import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 
 describe("JsonPersistenceRepository", () => {
 	let SAVES_DIR: string;

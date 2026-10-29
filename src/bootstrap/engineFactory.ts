@@ -22,7 +22,7 @@ import { GenerateYearBlueprint } from "../core/application/use-cases/GenerateYea
 import { AdvanceYear } from "../core/application/use-cases/AdvanceYear";
 import { BlueprintProgressService } from "../core/domain/campaign/BlueprintProgressService";
 import { PersistenceRepository } from "../core/application/ports/PersistenceRepository";
-import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
+import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
 
 export type StartupProgressStatus = "pending" | "in_progress" | "done";

@@ -1,4 +1,4 @@
-import { SubjectType } from "../../../core/domain/quest/Curriculum";
+import { SubjectType } from "../domain/quest/Curriculum";
 
 export type Command =
 	| { type: "MOVE"; destinationId: string }

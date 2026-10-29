@@ -5,7 +5,7 @@ import { GameEngine } from "../../core/engine/GameEngine";
 import { createGameBus } from "../../core/domain/events/GameEvents";
 import Registry from "../../core/Registry";
 import { buildRegistry, createEngine } from "../../bootstrap/engineFactory";
-import { JsonPersistenceRepository } from "../../infastructure/persistance/json/JsonPersistenceRepository";
+import { JsonPersistenceRepository } from "../../infrastructure/persistence/json/JsonPersistenceRepository";
 
 export interface TestGame {
 	engine: GameEngine;
