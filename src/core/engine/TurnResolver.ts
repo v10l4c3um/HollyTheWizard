@@ -10,7 +10,7 @@ import { Random, createRandom } from "../domain/random/Random";
 import { applyEffects } from "../domain/effects/EffectApplier";
 import {
 	GameEffect,
-	eventsRecorded,
+	factsRecorded,
 	randomStateSet,
 	timeAdvanced,
 } from "../domain/effects/GameEffects";
@@ -26,7 +26,7 @@ export interface TurnResolverDeps {
 
 /**
  * Runs one in-world turn: picks the rule for the command, then does the
- * bookkeeping every turn shares (event log, clock, random state), then
+ * bookkeeping every turn shares (fact log, clock, random state), then
  * announces what the rule asked to have announced. The rules themselves live
  * in `./rules`, one per command.
  */
@@ -62,7 +62,8 @@ class TurnResolver {
 		// Bookkeeping common to every turn: the log, the clock, where chance stands
 		// (so a save or an undo replays the same luck).
 		const bookkeeping: GameEffect[] = [];
-		if (result.events.length > 0) bookkeeping.push(eventsRecorded(result.events));
+		const logged = result.facts.filter((fact) => fact.kind !== "refused");
+		if (logged.length > 0) bookkeeping.push(factsRecorded(logged));
 		if (result.timeCost.type === "minutes") {
 			bookkeeping.push(timeAdvanced(result.timeCost.amount));
 		}

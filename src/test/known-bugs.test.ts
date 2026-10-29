@@ -95,7 +95,7 @@ describe("TALK with an unknown NPC (doc 21)", () => {
 	it("is rejected without spending time or recording a conversation", () => {
 		const result = talk("nobody_by_this_name");
 		expect(result.timeCost.type).toBe("none");
-		expect(result.events).toHaveLength(0);
+		expect(result.facts.map((f) => f.kind)).toEqual(["refused"]);
 	});
 });
 

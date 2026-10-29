@@ -72,7 +72,7 @@ The complete save-file and runtime state. One class instance is the single sourc
 | Player | `player` (AttributeStats × 10, ResourceStats × 5), `spellbook` |
 | Academic | `academicState` (per-subject knowledge, lesson progress) |
 | Social | `relationships[npcId]` (9 axes), `unlockedTopicsByNpc`, `knownNPCIds` |
-| Narrative | `questFlags`, `flags`, `clues`, `rumors`, `sceneInvitations`, `recentEvents` |
+| Narrative | `questFlags`, `flags`, `clues`, `rumors`, `sceneInvitations`, `recentFacts` |
 | Blueprint | `campaignBlueprint`, `yearBlueprints`, `yearProgress` |
 | Meta | `currentYear` (1–7), `settings` (narrationMode, romanceIntensity), `output` |
 

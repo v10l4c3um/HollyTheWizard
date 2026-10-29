@@ -54,7 +54,7 @@ describe("every result states how the action turned out", () => {
 	it("a move to a place that is not connected is blocked: it was tried and cost time", () => {
 		const result = apply({ type: "MOVE", destinationId: "library" });
 		expect(result.outcome).toBe("blocked");
-		expect(result.events.length).toBeGreaterThan(0);
+		expect(result.facts.map((f) => f.kind)).toEqual(["move-blocked"]);
 		expect(result.timeCost).toEqual({ type: "minutes", amount: 2 });
 	});
 

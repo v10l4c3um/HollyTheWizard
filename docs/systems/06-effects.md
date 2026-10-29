@@ -23,7 +23,7 @@ Defines the vocabulary of state changes (`GameEffect`) and the single function t
 | `ConversationMemoryRecorded` | Appends to `conversationHistory[npcId]`, capped at 20 |
 | `LocationChanged` | Sets `currentLocationId` and marks the place discovered |
 | `TimeAdvanced` | Advances the `WorldClock` and emits the `TimeAdvanced` bus event |
-| `EventsRecorded` | Appends to `recentEvents` |
+| `FactsRecorded` | Appends to `recentFacts`, keeping the last 20 |
 | `SpellRevealed` | `hidden` → `available` only; never downgrades |
 | `SpellStateUpdated` | Replaces a spell's state with the result of `applySpellUse` |
 | `LessonAdvanced` | Records the lesson as attended/skipped and moves to the next |

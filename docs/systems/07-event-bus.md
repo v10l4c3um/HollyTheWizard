@@ -57,7 +57,7 @@ Those flags are what `BlueprintProgressService` checks to complete story milesto
 - **Derive events from effects** where possible (see 06), and make handlers return facts, so events are not hand-emitted at five call sites.
 - **Harden delivery:** catch and log listener errors, add `once`, and add an `onAny` tap. Dev builds can record the event stream per turn.
 - **Prune the catalog:** delete never-emitted events (or implement the quest system they belong to), merge overlapping conversation events, and use one source for shared union types.
-- **Unify the two records of a turn** (`TurnResult.events` strings and bus events) into a single structured event log that feeds `recentEvents`, narration facts and listeners.
+- **Unify the two records of a turn** (`TurnResult.facts` and bus events) into a single structured event log that feeds `recentFacts`, narration facts and listeners.
 - **Test:** bus ordering and error isolation, and each wired listener.
 
 ## Open questions

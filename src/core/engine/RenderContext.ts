@@ -1,6 +1,7 @@
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import { npcsAt } from "../domain/npc/Presence";
+import { logLine } from "../presentation/facts";
 import { TimePassed } from "./TurnResult";
 
 export interface RenderContext {
@@ -38,7 +39,10 @@ export function buildRenderContext(
 		day: state.worldClock.getDay(),
 		weekday: state.worldClock.getWeekday(),
 		nearbyNPCNames: npcsAt(registry, state).map((npc) => npc.name),
-		recentEvents: state.recentEvents.slice(-5),
+		recentEvents: state.recentFacts
+			.slice(-5)
+			.map(logLine)
+			.filter((line): line is string => line !== undefined),
 		narrationMode: state.settings.narrationMode,
 		timePassed,
 		worldNotes,

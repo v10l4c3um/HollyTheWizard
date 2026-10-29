@@ -13,11 +13,11 @@ export function practice({ spellId, duration: hours }: Practice, ctx: TurnContex
 	const { state, registry } = ctx;
 	const duration = hours ?? 1;
 	const spell = registry.getSpell(spellId);
-	if (!spell) return refusal(`There is no spell with id "${spellId}".`);
+	if (!spell) return refusal({ reason: "unknown-spell", input: spellId });
 
 	const before = state.spellbook.getSpellState(spellId);
 	if (!before || (before.knowledgeState !== "learned" && before.knowledgeState !== "mastered")) {
-		return refusal(`You haven't learned ${spell.definition.name} yet.`);
+		return refusal({ reason: "spell-not-learned", spell: spell.definition.name });
 	}
 
 	const attempts = ATTEMPTS_PER_HOUR * duration;
@@ -42,14 +42,22 @@ export function practice({ spellId, duration: hours }: Practice, ctx: TurnContex
 		}),
 	];
 	// Mastery is announced only on the actual transition.
-	if (after.knowledgeState === "mastered" && before.knowledgeState !== "mastered") {
+	const mastered = after.knowledgeState === "mastered" && before.knowledgeState !== "mastered";
+	if (mastered) {
 		emits.push(event("SpellMastered", { spellId }));
 	}
 
-	const tier = after.masteryTier.charAt(0).toUpperCase() + after.masteryTier.slice(1);
 	return done({
-		briefOutput: `You practiced ${spell.definition.name} ${attempts} times. Success: ${successes}/${attempts}. Proficiency: ${Math.round(after.proficiency)}/100 (${tier}).`,
-		events: [`Practiced ${spellId} for ${duration}h`],
+		fact: {
+			kind: "practiced",
+			spell: { id: spellId, name: spell.definition.name },
+			hours: duration,
+			attempts,
+			successes,
+			proficiency: after.proficiency,
+			tier: after.masteryTier,
+			mastered,
+		},
 		minutes: 60 * duration,
 		effects,
 		emits,

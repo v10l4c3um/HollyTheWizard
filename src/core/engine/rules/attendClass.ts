@@ -13,6 +13,7 @@ import { event } from "../../domain/events/GameEvents";
 import { LessonDefinition, SubjectType } from "../../domain/quest/Curriculum";
 import { activeClass } from "../../domain/quest/Timetable";
 import { TurnContext } from "./context";
+import { spellRef } from "./refs";
 import { done, refusal } from "./results";
 
 type Attend = Extract<InWorldCommand, { type: "ATTEND_CLASS" }>;
@@ -20,7 +21,7 @@ type Attend = Extract<InWorldCommand, { type: "ATTEND_CLASS" }>;
 export function attendClass({ subjectId }: Attend, ctx: TurnContext) {
 	const { state, registry } = ctx;
 	const schoolData = registry.getSchoolData();
-	if (!schoolData) return refusal("No curriculum data available.");
+	if (!schoolData) return refusal({ reason: "no-curriculum" });
 
 	const subject = subjectId as SubjectType;
 	const subjectName = schoolData.subjects[subject]?.name || subject;
@@ -32,19 +33,19 @@ export function attendClass({ subjectId }: Attend, ctx: TurnContext) {
 		state.worldClock.timeOfDay,
 	);
 	if (!slot || slot.subject !== subject) {
-		return refusal(`There is no ${subjectName} class right now.`);
+		return refusal({ reason: "no-class", subject: subjectName });
 	}
 	if (slot.location !== state.currentLocationId) {
 		const room = registry.getLocation(slot.location ?? "")?.displayName ?? slot.location;
-		return refusal(`The ${subjectName} class is held in ${room}.`);
+		return refusal({ reason: "class-elsewhere", subject: subjectName, room: room ?? "" });
 	}
 	const attendedFlag = `attended.${subject}.${state.worldClock.getDay()}.${slot.period}`;
 	if (state.flags[attendedFlag]) {
-		return refusal(`You have already attended ${subjectName} class this ${slot.period}.`);
+		return refusal({ reason: "already-attended", subject: subjectName, period: slot.period });
 	}
 
 	const lesson = ctx.curriculum.getCurrentLesson(subject, state.academicState, schoolData);
-	if (!lesson) return refusal(`No more lessons available for ${subjectName}.`);
+	if (!lesson) return refusal({ reason: "no-more-lessons", subject: subjectName });
 
 	// Rewards first: a spell's reveal requirements may depend on the new knowledge.
 	const effects: GameEffect[] = [
@@ -58,8 +59,17 @@ export function attendClass({ subjectId }: Attend, ctx: TurnContext) {
 	effects.push(...lessonEffects);
 
 	return done({
-		briefOutput: describeLesson(subjectName, lesson, revealed, learned, ctx),
-		events: [`Attended ${subject} class - ${lesson.title}`],
+		fact: {
+			kind: "attended",
+			subject: { id: subject, name: subjectName },
+			lesson: { id: lesson.id, title: lesson.title, topic: lesson.topic },
+			gains: Object.entries(lesson.rewards.subjectKnowledge ?? {}).map(([subj, amount]) => ({
+				subject: subj,
+				amount: amount as number,
+			})),
+			revealed: revealed.map((id) => spellRef(registry, id)),
+			learned: learned.map((id) => spellRef(registry, id)),
+		},
 		minutes: 60,
 		effects,
 		emits: [
@@ -130,28 +140,4 @@ function rollSpells(lesson: LessonDefinition, subject: SubjectType, ctx: TurnCon
 			lessonAdvanced(subject, lesson.id, true),
 		],
 	};
-}
-
-function describeLesson(
-	subjectName: string,
-	lesson: LessonDefinition,
-	revealed: string[],
-	learned: string[],
-	ctx: TurnContext,
-): string {
-	let output = `Attended ${subjectName}: "${lesson.title}". ${lesson.topic}.`;
-
-	if (lesson.rewards.subjectKnowledge) {
-		const gains = Object.entries(lesson.rewards.subjectKnowledge)
-			.map(([subj, amount]) => `+${amount} ${subj}`)
-			.join(", ");
-		output += ` Knowledge: ${gains}.`;
-	}
-
-	const names = (ids: string[]) =>
-		ids.map((id) => ctx.registry.getSpell(id)?.definition.name || id).join(", ");
-	const onlyKnownOf = revealed.filter((id) => !learned.includes(id));
-	if (learned.length > 0) output += ` Learned: ${names(learned)}!`;
-	if (onlyKnownOf.length > 0) output += ` New spells available: ${names(onlyKnownOf)}!`;
-	return output;
 }

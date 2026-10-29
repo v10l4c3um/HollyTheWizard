@@ -156,23 +156,23 @@ describe("golden path: first day at school", () => {
 		it("cannot talk to someone who is elsewhere, and loses no time", async () => {
 			// Hermione is in the classroom this morning.
 			const minutesBefore = state().worldClock.getTotalMinutes();
-			const eventsBefore = state().recentEvents.length;
+			const eventsBefore = state().recentFacts.length;
 
 			await say("talk to Hermione", "TALK", { target: "Hermione" });
 
 			expect(state().worldClock.getTotalMinutes()).toBe(minutesBefore);
-			expect(state().recentEvents).toHaveLength(eventsBefore);
+			expect(state().recentFacts).toHaveLength(eventsBefore);
 			expect(state().conversationHistory["hermione_granger"]).toBeUndefined();
 		});
 
 		it("rejects someone who does not exist, without spending time", async () => {
 			const minutesBefore = state().worldClock.getMinutesOfDay();
-			const eventsBefore = state().recentEvents.length;
+			const eventsBefore = state().recentFacts.length;
 
 			await say("talk to Gandalf", "TALK", { target: "Gandalf" });
 
 			expect(state().worldClock.getMinutesOfDay()).toBe(minutesBefore);
-			expect(state().recentEvents).toHaveLength(eventsBefore);
+			expect(state().recentFacts).toHaveLength(eventsBefore);
 			expect(Object.keys(state().conversationHistory)).toEqual(["hagrid"]);
 		});
 
@@ -298,7 +298,7 @@ describe("golden path: first day at school", () => {
 	describe("input the model cannot make sense of", () => {
 		it("is reported, and costs no time and leaves no trace", async () => {
 			const minutesBefore = state().worldClock.getMinutesOfDay();
-			const eventsBefore = [...state().recentEvents];
+			const eventsBefore = [...state().recentFacts];
 			const locationBefore = state().currentLocationId;
 
 			// Not scripted, so the fake model fails exactly like a real one
@@ -311,7 +311,7 @@ describe("golden path: first day at school", () => {
 			expect(result.narration).toContain("asdf qwer zxcv");
 			expect(result.narration).not.toBe(FAKE_NARRATION);
 			expect(state().worldClock.getMinutesOfDay()).toBe(minutesBefore);
-			expect(state().recentEvents).toEqual(eventsBefore);
+			expect(state().recentFacts).toEqual(eventsBefore);
 			expect(state().currentLocationId).toBe(locationBefore);
 		});
 	});

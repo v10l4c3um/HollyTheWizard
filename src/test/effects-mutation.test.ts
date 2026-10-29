@@ -3,7 +3,7 @@ import Registry from "../core/Registry";
 import TurnResolver from "../core/engine/TurnResolver";
 import { applyEffects } from "../core/domain/effects/EffectApplier";
 import {
-	eventsRecorded,
+	factsRecorded,
 	lessonAdvanced,
 	locationChanged,
 	spellRevealed,
@@ -57,9 +57,14 @@ describe("world and turn effects", () => {
 		expect(seen).toEqual([45]);
 	});
 
-	it("EventsRecorded appends to the recent events", () => {
-		applyEffects(state, [eventsRecorded(["a", "b"])]);
-		expect(state.recentEvents).toEqual(["a", "b"]);
+	it("FactsRecorded appends to the recent facts and keeps the last 20", () => {
+		const fact = (n: number) => ({ kind: "year-advanced" as const, from: n, to: n + 1 });
+		applyEffects(state, [factsRecorded([fact(1), fact(2)])]);
+		expect(state.recentFacts).toEqual([fact(1), fact(2)]);
+
+		applyEffects(state, [factsRecorded(Array.from({ length: 25 }, (_, i) => fact(i + 10)))]);
+		expect(state.recentFacts).toHaveLength(20);
+		expect(state.recentFacts[19]).toEqual(fact(34));
 	});
 
 	it("TurnRecorded keeps the last five turns, oldest first", () => {
@@ -133,10 +138,10 @@ describe("TurnResolver.apply owns every state change of a turn", () => {
 		expect(state.discoveredLocationIds).toContain("hallway");
 		expect(state.visitedLocationIds).toContain("hallway");
 		expect(state.worldClock.getTotalMinutes()).toBe(before + 5);
-		expect(state.recentEvents).toEqual(result.events);
+		expect(state.recentFacts).toEqual(result.facts);
 		expect(result.timePassed).toMatchObject({ minutes: 5 });
 		expect(result.effects?.map((e) => e.type)).toEqual(
-			expect.arrayContaining(["LocationChanged", "TimeAdvanced", "EventsRecorded"]),
+			expect.arrayContaining(["LocationChanged", "TimeAdvanced", "FactsRecorded"]),
 		);
 	});
 
@@ -168,7 +173,7 @@ describe("TurnResolver.apply owns every state change of a turn", () => {
 		);
 
 		expect(state.worldClock.getTotalMinutes()).toBe(before);
-		expect(state.recentEvents).toEqual([]);
+		expect(state.recentFacts).toEqual([]);
 		expect(result.timePassed).toBeUndefined();
 	});
 });

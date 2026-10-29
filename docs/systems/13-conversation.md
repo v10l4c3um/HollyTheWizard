@@ -22,7 +22,7 @@ Otherwise a score is accumulated:
 3. Location fit: -1 or +1 against `topicDef.locationRelevance`.
 4. Relationship: trust tier (high +2, moderate +1, low -1), high affection +1, wary -1, private and not-low trust +1.
 5. History: repeat of a topic in the last 3 entries (-1 or -2), respectful handling after a refusal (+1), any earlier reveal (+1).
-6. Event mood: recent events nudge +1.
+6. Event mood: recent facts nudge +1 (a spell mastered, new places seen on arriving, a lesson attended).
 7. Profile: the NPC's `topicAffinities[topic]` and `locationModifiers[location]`.
 8. Mapping: `<= -2` deflection, `-1..0` partial, `1..2` success, `3` reveal, `4+` invitation (private and affection >= 30) or reveal.
 
@@ -41,18 +41,17 @@ Each outcome emits effects (a trust gain on success, topic unlock on partial/suc
 ## Weaknesses
 
 1. **The upper rungs of the ladder take many conversations.** Relationship records are created on the first talk and every outcome moves trust (table below), but with trust near 0 the tier is `low` (-1 score), so an open topic with no profile modifiers yields `partial`. `success` needs a score of at least 1, `reveal` 3, and `invitation` 4 with affection of 30; topics with a `minTrust` (family, gossip, romance, dark arts) deflect until trust reaches it.
-2. **Event-mood phase never fires.** It checks `recentEvents.includes("SpellMastered")`, but `recentEvents` holds free-text strings like `"Studied charms for 1h"` or `"Talked to hagrid about potions [partial]"`, never event names. The phase is dead code.
-3. **Location data does not match the world.** Topics reference `classroom`, `library`, `dungeons`, `restricted_section`, `quidditch_pitch`, `hagrid_hut`; the registry has `startingVillage`, `forest` and `market`. Location bonuses and penalties therefore never match the real location. Also, privacy is guessed by substring from the location id (see 04).
-4. **Topics are free text from the LLM.** The resolver may return `"school gossip"`, `"gossip"` or `"homework"`; only exact ids in `TOPICS` get their rules. Anything else falls back to a permissive default (no requirements), so the careful topic gates are trivially bypassed by wording, and unknown topics get unlock effects and clue ids like `hagrid.my invented topic`.
-5. **No content behind the outcomes.** A reveal creates a clue id (`<npc>.<topic>`) and a rumor id, but nothing defines what the clue or rumor says, what it unlocks, or how it ties to the campaign blueprint's `clueSeeds`. The player is told "you learned something significant" with no information. Dialogue is invented by the narrator (see 05), so what the NPC says need not match the clue.
-6. **Unused fields.** `sensitivity` and `cooldownTurns` are never read, `traits` is used only for one academic check, `requiresFlags` has no flags producing them, and `romance` + `romantic_adjacent` + `romanceIntensity` exist with no behavior. Relationship axes `attraction`, `loyalty`, `envy` and `comfort` are barely used.
-7. **Conversation is one verb and one roll.** "Talk to X about Y" costs a fixed 15 minutes and resolves in one step. There is no back and forth, no choice of tone (kind, direct, flattering), no way to ask follow-ups, give gifts, share a secret or make a promise, and nothing the player does within the conversation changes the outcome. The only lever is topic choice. Success is largely determined before the player speaks.
-8. **Flat, small numbers and opaque scoring.** Score runs about -4 to +4, thresholds are magic numbers, and tier cutoffs (15/40, 10/30, 20/40) are scattered inline. The player gets no feedback on why a conversation went the way it did (the tags go to the narrator, but the narrator never receives them). Balance cannot be tuned without editing code.
-9. **No NPC state beyond relationship.** No mood, schedule, busyness, knowledge of events, or secrets keyed to world state. The NPC cannot refuse because they are in a hurry, nor react to something the player did that day (apart from the broken event phase). The same NPC is reachable anywhere, any time (see 04).
-10. **Repetitive code.** `buildOutcome` repeats the memory-entry construction six times, the "deflect flag" key is computed twice, and the first-contact fake relationship in `TurnResolver` (with a no-op `applyDelta`) bypasses the real type.
-11. **Narration coupling is one-way.** The evaluator computes rich tags and the renderer receives none (see 05); `TurnResolver` replaces everything with a canned sentence per outcome.
-12. **Authoring burden.** Each NPC needs a hand-written profile with topic ids that must match `TOPICS`, with no validation tooling (see 09).
-13. **No tests,** although this is pure logic that is easy to test and central to the game.
+2. **Location data does not match the world.** Topics reference `classroom`, `library`, `dungeons`, `restricted_section`, `quidditch_pitch`, `hagrid_hut`; the registry has `startingVillage`, `forest` and `market`. Location bonuses and penalties therefore never match the real location. Also, privacy is guessed by substring from the location id (see 04).
+3. **Topics are free text from the LLM.** The resolver may return `"school gossip"`, `"gossip"` or `"homework"`; only exact ids in `TOPICS` get their rules. Anything else falls back to a permissive default (no requirements), so the careful topic gates are trivially bypassed by wording, and unknown topics get unlock effects and clue ids like `hagrid.my invented topic`.
+4. **No content behind the outcomes.** A reveal creates a clue id (`<npc>.<topic>`) and a rumor id, but nothing defines what the clue or rumor says, what it unlocks, or how it ties to the campaign blueprint's `clueSeeds`. The player is told "you learned something significant" with no information. Dialogue is invented by the narrator (see 05), so what the NPC says need not match the clue.
+5. **Unused fields.** `sensitivity` and `cooldownTurns` are never read, `traits` is used only for one academic check, `requiresFlags` has no flags producing them, and `romance` + `romantic_adjacent` + `romanceIntensity` exist with no behavior. Relationship axes `attraction`, `loyalty`, `envy` and `comfort` are barely used.
+6. **Conversation is one verb and one roll.** "Talk to X about Y" costs a fixed 15 minutes and resolves in one step. There is no back and forth, no choice of tone (kind, direct, flattering), no way to ask follow-ups, give gifts, share a secret or make a promise, and nothing the player does within the conversation changes the outcome. The only lever is topic choice. Success is largely determined before the player speaks.
+7. **Flat, small numbers and opaque scoring.** Score runs about -4 to +4, thresholds are magic numbers, and tier cutoffs (15/40, 10/30, 20/40) are scattered inline. The player gets no feedback on why a conversation went the way it did (the tags go to the narrator, but the narrator never receives them). Balance cannot be tuned without editing code.
+8. **No NPC state beyond relationship.** No mood, schedule, busyness, knowledge of events, or secrets keyed to world state. The NPC cannot refuse because they are in a hurry, nor react to something the player did that day (apart from the broken event phase). The same NPC is reachable anywhere, any time (see 04).
+9. **Repetitive code.** `buildOutcome` repeats the memory-entry construction six times, the "deflect flag" key is computed twice, and the first-contact fake relationship in `TurnResolver` (with a no-op `applyDelta`) bypasses the real type.
+10. **Narration coupling is one-way.** The evaluator computes rich tags and the renderer receives none (see 05); `TurnResolver` replaces everything with a canned sentence per outcome.
+11. **Authoring burden.** Each NPC needs a hand-written profile with topic ids that must match `TOPICS`, with no validation tooling (see 09).
+12. **No tests,** although this is pure logic that is easy to test and central to the game.
 
 ## Rework ideas
 
@@ -62,7 +61,6 @@ Each outcome emits effects (a trust gain on success, topic unlock on partial/suc
 - **Introduce player intent/tone** per turn (friendly, probing, persuasive, honest) with its own modifiers, so the player can choose how to approach, not only what to ask.
 - **Make the score explainable.** Return the list of contributing factors (`+1 location fit`, `-1 low trust`), expose it in a debug view, and optionally as a hint to the player ("she seems wary").
 - **Replace magic numbers with data** (thresholds in a config object or in the NPC profile), and compute tiers in one place.
-- **Fix the event phase:** drive it from structured recent events (event type + payload), not strings.
 - **Align world and content:** topic location relevance should use location tags (`classroom`, `public`, `private`) defined on `Location` data, not specific ids.
 - **Add NPC state:** mood, availability and per-NPC knowledge, tied to the scheduler (see 17), so that talking is possible only when the NPC is present and receptive.
 - **Pass the facts to the renderer:** result, tags, topic, score factors and the exact clue text revealed.

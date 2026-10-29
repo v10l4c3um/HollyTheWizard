@@ -34,7 +34,7 @@ describe("talking needs the NPC to be here", () => {
 
 		expect(result.briefOutput).toContain("Rubeus Hagrid is not here right now");
 		expect(result.timeCost).toEqual({ type: "none" });
-		expect(result.events).toEqual([]);
+		expect(result.facts.map((f) => f.kind)).toEqual(["refused"]);
 		expect(state.relationships["hagrid"]).toBeUndefined();
 		expect(state.conversationHistory["hagrid"]).toBeUndefined();
 	});

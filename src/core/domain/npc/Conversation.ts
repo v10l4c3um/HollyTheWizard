@@ -1,3 +1,4 @@
+import { TurnFact } from "../facts/TurnFact";
 import {
 	GameEffect,
 	relationshipDelta,
@@ -47,8 +48,8 @@ export interface ConversationContext {
 	flags: Record<string, boolean | number | string>;
 	/** Last N conversation entries for this NPC (from state.conversationHistory). */
 	recentHistory: ConversationMemoryEntry[];
-	/** Last few global event names from state.recentEvents. */
-	recentEvents: string[];
+	/** The last few facts from state.recentFacts. */
+	recentFacts: TurnFact[];
 	/** World-clock total minutes, used as turnIndex. */
 	turnIndex: number;
 }
@@ -92,7 +93,7 @@ export function evaluateConversation(
 	ctx: ConversationContext,
 ): ConversationOutcome {
 	const { relationship, topic, isPrivate, flags, npcId, npcProfile, topicDef,
-		locationId, recentHistory, recentEvents, turnIndex } = ctx;
+		locationId, recentHistory, recentFacts, turnIndex } = ctx;
 
 	const narrationTags: string[] = [];
 
@@ -289,15 +290,15 @@ export function evaluateConversation(
 
 	// ── Phase 6: Event mood modifiers ────────────────────────────────────────
 	// These are small ±1 nudges; never override hard gates.
-	if (recentEvents.includes("SpellMastered") && npcProfile?.traits.includes("academic")) {
+	if (recentFacts.some((f) => f.kind === "practiced" && f.mastered) && npcProfile?.traits.includes("academic")) {
 		score += 1;
 		narrationTags.push("academic-context");
 	}
-	if (recentEvents.includes("LocationDiscovered")) {
+	if (recentFacts.some((f) => f.kind === "moved" && f.discovered.length > 0)) {
 		score += 1;
 		narrationTags.push("adventurous");
 	}
-	if (recentEvents.includes("LessonAttended") && topicDef.category === "academic") {
+	if (recentFacts.some((f) => f.kind === "attended") && topicDef.category === "academic") {
 		score += 1;
 		narrationTags.push("academic-context");
 	}

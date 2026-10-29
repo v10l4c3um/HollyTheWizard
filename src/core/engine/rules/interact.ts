@@ -6,11 +6,10 @@ type Interact = Extract<InWorldCommand, { type: "INTERACT" }>;
 
 export function interact({ itemId, actionType }: Interact, ctx: TurnContext) {
 	const item = ctx.state.inventory.items.find((i) => i.id === itemId);
-	if (!item) return refusal(`You don't have an item with id "${itemId}".`);
+	if (!item) return refusal({ reason: "no-item", input: itemId });
 
 	return done({
-		briefOutput: `You ${actionType} ${item.name}. Something happened!`,
-		events: [`${actionType} ${itemId}`],
+		fact: { kind: "interacted", item: { id: itemId, name: item.name }, verb: actionType },
 		minutes: 10,
 	});
 }

@@ -52,7 +52,7 @@ function evaluate(
 		relationship: Object.assign(new RelationshipStats(), options.relationship),
 		flags: options.flags ?? {},
 		recentHistory: [],
-		recentEvents: [],
+		recentFacts: [],
 		turnIndex: 0,
 	};
 	return evaluateConversation(ctx);

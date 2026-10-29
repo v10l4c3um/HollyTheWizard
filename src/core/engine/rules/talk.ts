@@ -1,10 +1,6 @@
 import { InWorldCommand } from "../../domain/commands/CommandDefinitions";
 import { event } from "../../domain/events/GameEvents";
-import {
-	ConversationContext,
-	ConversationResult,
-	evaluateConversation,
-} from "../../domain/npc/Conversation";
+import { ConversationContext, evaluateConversation } from "../../domain/npc/Conversation";
 import { resolveTopic } from "../../domain/npc/TopicRegistry";
 import { momentOf, npcLocation } from "../../domain/npc/Presence";
 import { TurnContext } from "./context";
@@ -18,9 +14,9 @@ export function talk(
 ) {
 	const { state, registry } = ctx;
 	const npc = registry.getNPC(npcId);
-	if (!npc) return refusal(`You don't know anyone called "${npcId}".`);
+	if (!npc) return refusal({ reason: "unknown-person", input: npcId });
 	if (npcLocation(npc, momentOf(state, registry)) !== state.currentLocationId) {
-		return refusal(`${npc.name} is not here right now.`);
+		return refusal({ reason: "person-absent", npc: npc.name });
 	}
 
 	// First contact: no relationship record yet, so the evaluator gets zeroed stats.
@@ -50,8 +46,8 @@ export function talk(
 		},
 		flags: state.flags,
 		recentHistory: state.conversationHistory[npcId] ?? [],
-		// The last 10 global event strings feed the mood-modifier phase.
-		recentEvents: state.recentEvents.slice(-10),
+		// The last 10 facts feed the mood-modifier phase.
+		recentFacts: state.recentFacts.slice(-10),
 		turnIndex: state.worldClock.getTotalMinutes(),
 	};
 
@@ -77,33 +73,15 @@ export function talk(
 		emits.push(event("RevealTriggered", { npcId, topicId }));
 	}
 
-	const topicSuffix = topic ? ` about ${topic}` : "";
 	return done({
-		briefOutput: describeConversation(npc.name, topicSuffix, outcome.result),
-		events: [`Talked to ${npcId}${topicSuffix} [${outcome.result}]`],
+		fact: {
+			kind: "conversation",
+			npc: { id: npcId, name: npc.name },
+			topic,
+			result: outcome.result,
+		},
 		minutes: 15,
 		effects: outcome.effects,
 		emits,
 	});
-}
-
-function describeConversation(
-	npcName: string,
-	topicSuffix: string,
-	result: ConversationResult,
-): string {
-	switch (result) {
-		case "success":
-			return `You had a pleasant conversation with ${npcName}${topicSuffix}.`;
-		case "partial":
-			return `${npcName} answered cautiously${topicSuffix}. You learned something, though not everything.`;
-		case "refusal":
-			return `${npcName} refused to engage${topicSuffix}. The conversation ended poorly.`;
-		case "deflection":
-			return `${npcName} deflected your question${topicSuffix} with practiced ease.`;
-		case "reveal":
-			return `${npcName} opened up${topicSuffix}. You learned something significant.`;
-		case "invitation":
-			return `${npcName} suggested meeting again${topicSuffix}. An invitation has been extended.`;
-	}
 }

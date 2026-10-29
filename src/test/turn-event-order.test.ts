@@ -30,13 +30,13 @@ beforeEach(() => {
 
 /** What the world looked like at the moment each event was announced. */
 function watch(...names: (keyof GameEvents)[]) {
-	const seen: { name: string; minutes: number; logged: string[] }[] = [];
+	const seen: { name: string; minutes: number; logged: unknown[] }[] = [];
 	for (const name of names) {
 		bus.on(name, () =>
 			seen.push({
 				name,
 				minutes: state.worldClock.getTotalMinutes(),
-				logged: [...state.recentEvents],
+				logged: [...state.recentFacts],
 			}),
 		);
 	}
@@ -53,7 +53,7 @@ describe("events are announced after the turn is finished", () => {
 		expect(seen.length).toBeGreaterThan(2);
 		for (const entry of seen) {
 			expect(entry.minutes).toBe(start + 5);
-			expect(entry.logged).toContain("Moved from Great Hall to Main Corridor");
+			expect(entry.logged.map((f: any) => f.kind)).toContain("moved");
 		}
 		expect(seen.map((s) => s.name)[0]).toBe("LocationVisited");
 		expect(seen[seen.length - 1].name).toBe("ActionResolved");

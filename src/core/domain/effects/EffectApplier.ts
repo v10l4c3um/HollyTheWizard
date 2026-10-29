@@ -3,6 +3,7 @@ import Item from "../world/Item";
 import { GameEffect } from "./GameEffects";
 import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
+import { MAX_RECENT_FACTS } from "../facts/TurnFact";
 import { MAX_RECENT_TURNS } from "../world/RecentTurn";
 import { RelationshipStats } from "../npc/Relationship";
 import { Logger, silentLogger } from "../../application/ports/Logger";
@@ -148,8 +149,11 @@ function applyEffect(
 				state.recentTurns.splice(0, state.recentTurns.length - MAX_RECENT_TURNS);
 			}
 			break;
-		case "EventsRecorded":
-			state.recentEvents.push(...effect.entries);
+		case "FactsRecorded":
+			state.recentFacts.push(...effect.facts);
+			if (state.recentFacts.length > MAX_RECENT_FACTS) {
+				state.recentFacts.splice(0, state.recentFacts.length - MAX_RECENT_FACTS);
+			}
 			break;
 		case "SpellRevealed":
 			// Only a hidden spell becomes available; a spell the player already

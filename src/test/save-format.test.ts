@@ -37,7 +37,7 @@ describe("the save format is strict", () => {
 
 	it("writes the format version into the save", async () => {
 		await repository.save("s", new GameState());
-		expect((await readSave("s")).metadata.saveVersion).toBe("3");
+		expect((await readSave("s")).metadata.saveVersion).toBe("4");
 	});
 
 	it("round-trips a valid save", async () => {
@@ -74,7 +74,7 @@ describe("the save format is strict", () => {
 		"yearBlueprints",
 		"player",
 		"knownNPCIds",
-		"recentEvents",
+		"recentFacts",
 		"recentTurns",
 		"randomState",
 		"settings",

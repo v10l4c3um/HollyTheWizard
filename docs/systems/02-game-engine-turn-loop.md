@@ -20,7 +20,7 @@ Files: `src/core/engine/GameEngine.ts`, `WorldTick.ts` and `tick/` (rules), `Aut
    - `say { text }`: the engine shows that exact text.
    - `fail { error }`: a typed failure (`invalid-input`, `persistence`).
 3. The handlers (`createCommandHandlers`, built in `createEngine`):
-   - `MOVE TALK STUDY ATTEND_CLASS PRACTICE INTERACT REST` share one turn handler: `turnResolver.apply(command, state, registry)` returns a `TurnResult` (`briefOutput`, `events`, `timeCost`, `effects`, `timePassed` when the clock moved). `apply` itself changes the state: the resolver's own effects, then the turn bookkeeping (`EventsRecorded`, `TimeAdvanced`), all through `applyEffects`.
+   - `MOVE TALK STUDY ATTEND_CLASS PRACTICE INTERACT REST` share one turn handler: `turnResolver.apply(command, state, registry)` returns a `TurnResult` (`briefOutput`, `facts`, `timeCost`, `effects`, `timePassed` when the clock moved). `apply` itself changes the state: the resolver's own effects, then the turn bookkeeping (`FactsRecorded`, `TimeAdvanced`), all through `applyEffects`.
    - `ADVANCE_YEAR` runs the `AdvanceYear` use case and narrates the result (the use case records its own event).
    - `SAVE` persists the state and emits `GameSaved`. `LOAD` loads the save on the side, checks it (strict format, then places, spells, characters and story blueprints against the registry) and only then calls `GameSession.replace`, so a refused load changes nothing; it then emits `GameLoaded`. Persistence and invalid-save errors are `fail` results with a precise message.
    - `UNDO` calls `session.undo()` (up to 20 turns back, cleared by `LOAD`): the whole earlier state is restored. Nothing to undo is an `invalid-input` failure. Events already emitted on the bus are not taken back.

@@ -1,3 +1,4 @@
+import { TurnFactSchema } from "../../../core/domain/facts/TurnFact";
 import { z } from "zod";
 import { ATTRIBUTE_IDS } from "../../../core/domain/player/PlayerStats";
 import {
@@ -139,7 +140,7 @@ export const SaveFileSchema = z.object({
 	),
 	conversationHistory: z.record(z.string(), z.array(conversationEntry)),
 	knownNPCIds: z.array(z.string()),
-	recentEvents: z.array(z.string()),
+	recentFacts: z.array(TurnFactSchema),
 	randomState: z.number(),
 	recentTurns: z.array(
 		z.object({

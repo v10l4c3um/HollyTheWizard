@@ -4,9 +4,11 @@ import { createEmptyYearProgress } from "../../domain/campaign/YearBlueprint";
 import { buildSafeCampaignBase } from "../../domain/campaign/DeterministicFallback";
 import { SchoolYear } from "../../domain/quest/Curriculum";
 import { GameBus } from "../../domain/events/GameEvents";
+import { TurnFact, refused } from "../../domain/facts/TurnFact";
+import { describeFacts } from "../../presentation/facts";
 import { TurnResult } from "../../engine/TurnResult";
 import { applyEffects } from "../../domain/effects/EffectApplier";
-import { eventsRecorded } from "../../domain/effects/GameEffects";
+import { factsRecorded } from "../../domain/effects/GameEffects";
 
 const FINAL_YEAR: SchoolYear = 7;
 
@@ -27,10 +29,10 @@ export class AdvanceYear {
 		const fromYear = state.currentYear;
 
 		if (fromYear >= FINAL_YEAR) {
+			const facts = [refused({ reason: "final-year" })];
 			return {
-				briefOutput:
-					"You have already completed your final year at school.",
-				events: [],
+				briefOutput: describeFacts(facts),
+				facts,
 				timeCost: { type: "none" },
 				outcome: "failure",
 			};
@@ -64,13 +66,13 @@ export class AdvanceYear {
 		state.yearBlueprints[toYear] = newBlueprint;
 		state.yearProgress = createEmptyYearProgress(toYear);
 
-		const events = [`Advanced from Year ${fromYear} to Year ${toYear}`];
-		applyEffects(state, [eventsRecorded(events)], this.bus);
+		const facts: TurnFact[] = [{ kind: "year-advanced", from: fromYear, to: toYear }];
+		applyEffects(state, [factsRecorded(facts)], this.bus);
 		this.bus.emit("YearAdvanced", { fromYear, toYear });
 
 		return {
-			briefOutput: `You have advanced to Year ${toYear}. A new chapter begins.`,
-			events,
+			briefOutput: describeFacts(facts),
+			facts,
 			timeCost: { type: "none" },
 			outcome: "success",
 		};

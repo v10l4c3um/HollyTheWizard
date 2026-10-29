@@ -1,3 +1,4 @@
+import { TurnFact } from "../facts/TurnFact";
 import { RelationshipDelta } from "../npc/Relationship";
 import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
@@ -85,7 +86,7 @@ export type GameEffect =
 	/** Places the player has now found out about, without going there. */
 	| { type: "LocationsDiscovered"; locationIds: string[] }
 	| { type: "TimeAdvanced"; minutes: number }
-	| { type: "EventsRecorded"; entries: string[] }
+	| { type: "FactsRecorded"; facts: TurnFact[] }
 	/** Remembers a turn so the next sentence can say "again" or "her". */
 	| { type: "TurnRecorded"; turn: RecentTurn }
 	/** Where the random source stands after this turn's rolls. */
@@ -229,8 +230,8 @@ export function timeAdvanced(minutes: number): GameEffect {
 	return { type: "TimeAdvanced", minutes };
 }
 
-export function eventsRecorded(entries: string[]): GameEffect {
-	return { type: "EventsRecorded", entries };
+export function factsRecorded(facts: TurnFact[]): GameEffect {
+	return { type: "FactsRecorded", facts };
 }
 
 export function spellRevealed(spellId: string, atMinutes?: number): GameEffect {

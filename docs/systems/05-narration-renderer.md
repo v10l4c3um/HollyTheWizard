@@ -8,7 +8,7 @@ Turns the deterministic result of a turn into the paragraph the player reads. It
 
 ## How it works
 
-1. `GameEngine._buildRenderContext` assembles a `RenderContext`: the turn's `briefOutput` (a plain-English summary written by `TurnResolver`), player name, location name and description, time of day, "nearby" NPC names, the last 5 recent events, `narrationMode`, and optionally how much time passed.
+1. `GameEngine._buildRenderContext` assembles a `RenderContext`: the turn's `briefOutput` (the sentence `presentation/facts` makes from the turn's facts), player name, location name and description, time of day, "nearby" NPC names, the last 5 recent facts (as short log lines), `narrationMode`, and optionally how much time passed.
 2. `Renderer._buildPrompt` formats that into one prompt: write a single 3 to 5 sentence second-person paragraph, "only translate game events", do not invent causes, magic, lore or obstacles, treat failures neutrally.
 3. `generateWithOllama` (free text, no JSON format) returns the text, which is trimmed and stored in `state.output`.
 4. On any error (including the 30 s render timeout), it logs and returns the turn's `briefOutput`, the plain facts, so the result is never lost.

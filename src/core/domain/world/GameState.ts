@@ -1,3 +1,4 @@
+import { TurnFact } from "../facts/TurnFact";
 import SpellBook from "../magic/SpellBook";
 import NPC from "../npc/Npc";
 import Player from "../player/Player";
@@ -22,7 +23,7 @@ import { RelationshipStats } from "../npc/Relationship";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
 /** The save file format. A save with any other value is refused. */
-export const SAVE_FORMAT_VERSION = "3";
+export const SAVE_FORMAT_VERSION = "4";
 
 /** Where a new game starts. Content is checked to contain this location. */
 export const START_LOCATION_ID = "great_hall";
@@ -70,7 +71,8 @@ class GameState {
 	/** npcId → last-20 conversation entries, mutated via `ConversationMemoryRecorded` effects. */
 	conversationHistory: Record<string, ConversationMemoryEntry[]>;
 	knownNPCIds: string[];
-	recentEvents: string[];
+	/** What happened in the last few turns, newest last; capped (see `MAX_RECENT_FACTS`). */
+	recentFacts: TurnFact[];
 	/** The last few in-world turns, newest last (see `RecentTurn`). */
 	recentTurns: RecentTurn[];
 	/** Where the game's random source stands; saved, so luck replays exactly. */
@@ -115,7 +117,7 @@ class GameState {
 		this.sceneInvitations = [];
 		this.conversationHistory = {};
 		this.knownNPCIds = [];
-		this.recentEvents = [];
+		this.recentFacts = [];
 		this.recentTurns = [];
 		this.randomState = freshRandomState();
 		this.output = "";
@@ -204,7 +206,7 @@ class GameState {
 		state.sceneInvitations = data.sceneInvitations;
 		state.conversationHistory = data.conversationHistory;
 		state.knownNPCIds = data.knownNPCIds;
-		state.recentEvents = data.recentEvents;
+		state.recentFacts = data.recentFacts;
 		state.recentTurns = data.recentTurns;
 		state.randomState = data.randomState;
 		state.output = data.output;

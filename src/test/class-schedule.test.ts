@@ -29,7 +29,7 @@ describe("attending classes", () => {
 	function expectRefused(result: ReturnType<typeof attend>, text: string, subject = "charms") {
 		expect(result.briefOutput).toContain(text);
 		expect(result.timeCost).toEqual({ type: "none" });
-		expect(result.events).toEqual([]);
+		expect(result.facts.map((f) => f.kind)).toEqual(["refused"]);
 		expect(nextLesson(subject)).toBe(1);
 		expect(state.flags).toEqual({});
 	}

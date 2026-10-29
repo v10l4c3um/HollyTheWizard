@@ -1,10 +1,13 @@
 import { TimeCost } from "./TimeCost";
 import { GameEffect } from "../domain/effects/GameEffects";
+import type { TurnFact } from "../domain/facts/TurnFact";
 import type { ActionOutcome, EmittedEvent } from "../domain/events/GameEvents";
 
 export interface TurnResult {
+	/** The facts, worded by `presentation/facts`: what the player and the narrator are told. */
 	briefOutput: string;
-	events: string[];
+	/** What happened. Anything but a refusal is recorded in `GameState.recentFacts`. */
+	facts: TurnFact[];
 	timeCost: TimeCost;
 	/** Stated by the rule that produced the result, never inferred from the other fields. */
 	outcome: ActionOutcome;

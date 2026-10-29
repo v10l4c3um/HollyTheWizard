@@ -9,8 +9,7 @@ export function rest({ duration, locationId }: Rest, ctx: TurnContext) {
 	const name = ctx.registry.getLocation(where)?.displayName ?? where;
 
 	return done({
-		briefOutput: `You rested for ${duration} hour(s) at ${name}. You feel refreshed!`,
-		events: [`Rested for ${duration} hour(s) at ${where}`],
+		fact: { kind: "rested", hours: duration, place: { id: where, name } },
 		minutes: 60 * duration,
 	});
 }

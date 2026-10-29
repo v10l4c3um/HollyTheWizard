@@ -8,6 +8,7 @@ import {
 import { event } from "../../domain/events/GameEvents";
 import { SubjectType } from "../../domain/quest/Curriculum";
 import { TurnContext } from "./context";
+import { spellRef } from "./refs";
 import { done, refusal } from "./results";
 
 type Study = Extract<InWorldCommand, { type: "STUDY" }>;
@@ -15,7 +16,7 @@ type Study = Extract<InWorldCommand, { type: "STUDY" }>;
 export function study(command: Study, ctx: TurnContext) {
 	const { state, registry } = ctx;
 	const schoolData = registry.getSchoolData();
-	if (!schoolData) return refusal("No curriculum data available.");
+	if (!schoolData) return refusal({ reason: "no-curriculum" });
 
 	const duration = command.duration ?? 1;
 	const subject = command.subjectId as SubjectType;
@@ -37,17 +38,14 @@ export function study(command: Study, ctx: TurnContext) {
 	ctx.apply(revealEffects);
 	effects.push(...revealEffects);
 
-	let briefOutput = `You studied ${schoolData.subjects[subject]?.name || subject}. Gained +${knowledgeGain} knowledge.`;
-	if (revealed.length > 0) {
-		const names = revealed
-			.map((id) => registry.getSpell(id)?.definition.name || id)
-			.join(", ");
-		briefOutput += ` New spells available: ${names}!`;
-	}
-
 	return done({
-		briefOutput,
-		events: [`Studied ${subject} for ${duration}h`],
+		fact: {
+			kind: "studied",
+			subject: { id: subject, name: schoolData.subjects[subject]?.name || subject },
+			hours: duration,
+			gain: knowledgeGain,
+			revealed: revealed.map((id) => spellRef(registry, id)),
+		},
 		minutes: 60 * duration,
 		effects,
 		emits: [

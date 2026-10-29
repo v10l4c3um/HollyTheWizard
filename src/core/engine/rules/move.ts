@@ -11,28 +11,35 @@ type Move = Extract<InWorldCommand, { type: "MOVE" }>;
 export function move({ destinationId }: Move, ctx: TurnContext) {
 	const { state, registry } = ctx;
 	const current = registry.getLocation(state.currentLocationId);
-	if (!current) return refusal("You seem to be nowhere. Something is wrong.");
+	if (!current) return refusal({ reason: "nowhere" });
 
-	const whereToGo = describeExits(current, state, registry);
+	const exits = knownExits(current, state, registry);
 
 	const destination = registry.getLocation(destinationId);
 	if (!destination) {
-		return refusal(
-			`You don't know of a place called "${destinationId}". ${whereToGo}`,
-		);
+		return refusal({
+			reason: "unknown-place",
+			input: destinationId,
+			from: current.displayName,
+			exits,
+		});
 	}
 
 	const name = destination.displayName;
 	if (!current.connectedLocationsIds.includes(destinationId)) {
 		return blocked(
-			`You can't move to ${name} from ${current.displayName}. ${whereToGo}`,
-			[`Failed to move from ${current.displayName} to ${name}`],
+			{
+				kind: "move-blocked",
+				from: { id: current.id, name: current.displayName },
+				to: { id: destinationId, name },
+				exits,
+			},
 			2,
 		);
 	}
 
 	if (!state.discoveredLocationIds.includes(destinationId)) {
-		return refusal(`You haven't found a way to ${name} yet.`);
+		return refusal({ reason: "not-discovered", place: name });
 	}
 
 	const isFirstVisit = !state.visitedLocationIds.includes(destinationId);
@@ -42,8 +49,16 @@ export function move({ destinationId }: Move, ctx: TurnContext) {
 	ctx.apply(effects);
 
 	return done({
-		briefOutput: `You traveled to ${name}.`,
-		events: [`Moved from ${current.displayName} to ${name}`],
+		fact: {
+			kind: "moved",
+			from: { id: current.id, name: current.displayName },
+			to: { id: destinationId, name },
+			firstVisit: isFirstVisit,
+			discovered: seen.map((id) => ({
+				id,
+				name: registry.getLocation(id)?.displayName ?? id,
+			})),
+		},
 		minutes: 5,
 		effects,
 		emits: [
@@ -53,16 +68,13 @@ export function move({ destinationId }: Move, ctx: TurnContext) {
 	});
 }
 
-/** "From the Hall you can go to: A, B." Only places the player has found. */
-function describeExits(
-	current: { displayName: string; connectedLocationsIds: string[] },
+/** Names of the places the player has found a way to from here. */
+function knownExits(
+	current: { connectedLocationsIds: string[] },
 	state: GameState,
 	registry: Registry,
-): string {
-	const names = current.connectedLocationsIds
+): string[] {
+	return current.connectedLocationsIds
 		.filter((id) => state.discoveredLocationIds.includes(id))
 		.map((id) => registry.getLocation(id)?.displayName ?? id);
-	return names.length > 0
-		? `From ${current.displayName} you can go to: ${names.join(", ")}.`
-		: `There is nowhere to go from ${current.displayName} yet.`;
 }
