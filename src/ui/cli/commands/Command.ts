@@ -18,4 +18,6 @@ export type Command =
 	| { type: "SAVE"; filename: string }
 	| { type: "LOAD"; filename: string }
 	| { type: "PRACTICE"; spellId: string; duration?: number }
-	| { type: "ADVANCE_YEAR" };
+	| { type: "ADVANCE_YEAR" }
+	/** The input could not be turned into any command (model down, slow or unparseable). */
+	| { type: "UNKNOWN"; input: string };

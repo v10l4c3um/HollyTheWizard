@@ -3,16 +3,21 @@ import * as path from "path";
 import GameState from "../../../core/domain/world/GameState";
 import { PersistenceRepository } from "../../../core/application/ports/PersistenceRepository";
 
-const SAVES_DIR = path.join(process.cwd(), "saves");
+const DEFAULT_SAVES_DIR = path.join(process.cwd(), "saves");
 
 /**
  * Real fs-based save/load implementation. `GameState` round-trips through
  * plain JSON via `JSON.stringify`/`JSON.parse`; class-instance fields
  * (`worldClock`, `spellbook`) are rehydrated via `GameState.fromPlainObject`.
+ *
+ * The saves directory is injectable so tests can write to a temp directory
+ * instead of the real `saves/` folder.
  */
 export class JsonPersistenceRepository implements PersistenceRepository {
+	constructor(private readonly savesDir: string = DEFAULT_SAVES_DIR) {}
+
 	async save(filename: string = "autosave", state: GameState): Promise<void> {
-		await fs.mkdir(SAVES_DIR, { recursive: true });
+		await fs.mkdir(this.savesDir, { recursive: true });
 		const filePath = this._resolveFilePath(filename);
 		const json = JSON.stringify(state, null, 2);
 		await fs.writeFile(filePath, json, "utf-8");
@@ -33,6 +38,6 @@ export class JsonPersistenceRepository implements PersistenceRepository {
 			safeName = "autosave"; // Default to autosave if the name is empty after sanitization
 			//throw new Error("Invalid save filename.");
 		}
-		return path.join(SAVES_DIR, `${safeName}.json`);
+		return path.join(this.savesDir, `${safeName}.json`);
 	}
 }

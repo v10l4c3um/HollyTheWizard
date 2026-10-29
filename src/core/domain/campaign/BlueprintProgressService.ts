@@ -3,7 +3,7 @@ import { GameBus } from "../events/GameEvents";
 
 /**
  * Checks the current year's blueprint milestones against live game state
- * (active quest flags) and marks any newly-satisfied milestones as
+ * (quest flags, active or completed) and marks any newly-satisfied milestones as
  * completed, emitting BlueprintMilestoneReached. Called once per turn
  * from GameEngine.handleCommand - see
  * docs/partial-blueprint-yearly-plan.md section 7.
@@ -25,7 +25,10 @@ export class BlueprintProgressService {
 			const satisfied =
 				milestone.trigger.type === "yearStart" ||
 				(milestone.trigger.type === "questFlag" &&
-					state.questFlags.active.includes(milestone.trigger.flag));
+					(state.questFlags.active.includes(milestone.trigger.flag) ||
+						state.questFlags.completed.includes(
+							milestone.trigger.flag,
+						)));
 
 			if (satisfied) {
 				state.yearProgress.completedMilestoneIds.push(milestone.id);

@@ -1,3 +1,6 @@
+import * as fs from "fs/promises";
+import * as os from "os";
+import * as path from "path";
 import Registry from "../core/Registry";
 import GameState from "../core/domain/world/GameState";
 import Location from "../core/domain/world/Location";
@@ -299,9 +302,18 @@ describe("AdvanceYear use-case", () => {
 
 describe("JsonPersistenceRepository round-trip", () => {
 	const testFilename = `test-save-${Date.now()}`;
+	let tmpRoot: string;
+
+	beforeEach(async () => {
+		tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "holly-saves-"));
+	});
+
+	afterEach(async () => {
+		await fs.rm(tmpRoot, { recursive: true, force: true });
+	});
 
 	it("saves and loads a GameState with equivalent data", async () => {
-		const repository = new JsonPersistenceRepository();
+		const repository = new JsonPersistenceRepository(tmpRoot);
 		const state = new GameState();
 		state.currentLocationId = "forest";
 		state.worldClock.advanceTime(125);

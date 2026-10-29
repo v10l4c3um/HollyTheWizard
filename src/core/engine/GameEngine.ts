@@ -12,6 +12,7 @@ import {
 } from "../../ai/OllamaConfig";
 import { probeOllamaConnection } from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
+import { npcsAt } from "../domain/npc/Presence";
 import { createGameBus, GameBus } from "../domain/events/GameEvents";
 import { BlueprintLLMProvider } from "../../ai/providers/BlueprintLLMProvider";
 import { GenerateCampaignBlueprint } from "../application/use-cases/GenerateCampaignBlueprint";
@@ -63,7 +64,7 @@ class GameEngine implements IGameEngine {
 		this.state = new GameState();
 		this.registry = registry;
 		this.bus = bus ?? createGameBus();
-		this.resolver = new Resolver(resolverConfig);
+		this.resolver = new Resolver(resolverConfig, this.registry);
 		this.turnResolver = new TurnResolver(this.bus);
 		this.renderer = new Renderer(rendererConfig);
 		this.state.output =
@@ -122,6 +123,13 @@ class GameEngine implements IGameEngine {
 	async handleCommand(input: string): Promise<GameState> {
 		try {
 			const command = await this.resolver.resolve(input);
+
+			if (command.type === "UNKNOWN") {
+				// Nothing happened, so there is nothing to narrate (and the
+				// model may be the reason we are here): say so plainly.
+				this.state.output = `I didn't understand "${command.input}". Try saying it another way.`;
+				return this.state;
+			}
 
 			if (command.type === "ADVANCE_YEAR") {
 				const result = await this.advanceYear.execute(this.state);
@@ -199,6 +207,7 @@ class GameEngine implements IGameEngine {
 				this.bus.emit("TimeAdvanced", {
 					minutesDelta: result.timeCost.amount,
 					newMinutesOfDay: this.state.worldClock.getMinutesOfDay(),
+					totalMinutes: this.state.worldClock.getTotalMinutes(),
 				});
 				console.log(
 					`[TIME DEBUG] ${result.timeCost.amount} minutes passed | ${beforeTimeOfDay} → ${afterTimeOfDay} | Current time: ${this.state.worldClock.getCurrentTime()}`,
@@ -228,8 +237,8 @@ class GameEngine implements IGameEngine {
 		const location = this.registry.getLocation(
 			this.state.currentLocationId,
 		);
-		const nearbyNPCNames = this.state.knownNPCIds.map(
-			(id) => this.registry.getNPC(id)?.name ?? id,
+		const nearbyNPCNames = npcsAt(this.registry, this.state).map(
+			(npc) => npc.name,
 		);
 
 		return {
@@ -238,6 +247,8 @@ class GameEngine implements IGameEngine {
 			locationName: location?.displayName ?? this.state.currentLocationId,
 			locationDescription: location?.description ?? "",
 			timeOfDay: this.state.worldClock.timeOfDay,
+			day: this.state.worldClock.getDay(),
+			weekday: this.state.worldClock.getWeekday(),
 			nearbyNPCNames,
 			recentEvents: this.state.recentEvents.slice(-5),
 			narrationMode: this.state.settings.narrationMode,

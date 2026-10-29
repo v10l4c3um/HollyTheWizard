@@ -8,6 +8,7 @@ import {
 	SubjectType,
 	SubjectProgress,
 	SchoolYear,
+	SUBJECT_TYPES,
 } from "../quest/Curriculum";
 import { CampaignBlueprintBase } from "../campaign/CampaignBlueprint";
 import {
@@ -17,6 +18,9 @@ import {
 } from "../campaign/YearBlueprint";
 import { RelationshipStats } from "../npc/Relationship";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
+
+/** Where a new game starts. Content is checked to contain this location. */
+export const START_LOCATION_ID = "great_hall";
 
 class GameState {
 	metadata: {
@@ -77,7 +81,7 @@ class GameState {
 			createdTimestamp: Date.now(),
 		};
 		this.worldClock = new WorldClock();
-		this.currentLocationId = "startingVillage";
+		this.currentLocationId = START_LOCATION_ID;
 		this.player = new Player();
 		this.spellbook = new SpellBook();
 		this.academicState = this.initializeAcademicState();
@@ -116,37 +120,7 @@ class GameState {
 			SubjectProgress
 		>;
 
-		const allSubjects: SubjectType[] = [
-			"alchemy",
-			"ancient-magic",
-			"ancient-runes",
-			"apparition",
-			"arithmancy",
-			"astronomy",
-			"care-of-magical-creatures",
-			"charms",
-			"curse-breaking",
-			"defense-against-the-dark-arts",
-			"divination",
-			"enchanting",
-			"flying",
-			"healing",
-			"herbology",
-			"history-of-magic",
-			"legilimency",
-			"magical-architecture",
-			"magical-law",
-			"magical-theory",
-			"magizoology",
-			"muggle-studies",
-			"occlumency",
-			"potions",
-			"spell-creation",
-			"transfiguration",
-			"wandlore",
-		];
-
-		for (const subject of allSubjects) {
+		for (const subject of SUBJECT_TYPES) {
 			subjects[subject] = {
 				subject,
 				year: 1,
@@ -186,14 +160,19 @@ class GameState {
 
 		state.metadata = data.metadata;
 		state.currentLocationId = data.currentLocationId;
-		state.player = data.player;
+		state.player = Player.fromJSON(data.player);
 		state.academicState = data.academicState;
 		state.inventory = data.inventory;
 		state.discoveredLocationIds = data.discoveredLocationIds;
 		state.questFlags = data.questFlags;
 		state.flags = data.flags ?? {};
 		state.resources = data.resources ?? {};
-		state.relationships = data.relationships ?? {};
+		state.relationships = Object.fromEntries(
+			Object.entries(data.relationships ?? {}).map(([npcId, stats]) => [
+				npcId,
+				RelationshipStats.fromJSON(stats as Partial<RelationshipStats>),
+			]),
+		);
 		state.unlockedTopicsByNpc = data.unlockedTopicsByNpc ?? {};
 		state.clues = data.clues ?? {};
 		state.rumors = data.rumors ?? {};

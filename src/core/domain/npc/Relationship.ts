@@ -20,6 +20,11 @@ export class RelationshipStats {
 			this[key] = Math.max(-100, Math.min(100, this[key]));
 		}
 	}
+
+	/** Rebuilds from `JSON.parse(JSON.stringify(stats))`; missing axes keep defaults. */
+	static fromJSON(data?: Partial<RelationshipStats>): RelationshipStats {
+		return Object.assign(new RelationshipStats(), data);
+	}
 }
 
 type RelationshipStatId =

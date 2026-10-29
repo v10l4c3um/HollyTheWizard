@@ -1,6 +1,13 @@
 import { OllamaConfig } from "../../ai/OllamaConfig";
-import { generateWithOllama } from "../../ai/OllamaClient";
+import {
+	generateWithOllama,
+	OLLAMA_RENDER_TIMEOUT_MS,
+} from "../../ai/OllamaClient";
 import { RenderContext } from "./RenderContext";
+
+function capitalize(text: string): string {
+	return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 class Renderer {
 	private config: OllamaConfig;
@@ -15,6 +22,7 @@ class Renderer {
 		try {
 			const responseText = await generateWithOllama(this.config, prompt, {
 				context: "renderer",
+				timeoutMs: OLLAMA_RENDER_TIMEOUT_MS,
 			});
 			return responseText.trim();
 		} catch (error) {
@@ -23,7 +31,8 @@ class Renderer {
 					error instanceof Error ? error.message : "Unknown error"
 				}`,
 			);
-			return "Nothing happened. AI narration is unavailable.";
+			// Narration is polish; the turn's outcome is not. Show the facts.
+			return ctx.briefOutput;
 		}
 	}
 
@@ -55,7 +64,7 @@ IMPORTANT STYLE RULES:
 
 Character: ${ctx.playerName}
 Location: ${ctx.locationName} — ${ctx.locationDescription}
-Time of day: ${ctx.timeOfDay}
+When: ${capitalize(ctx.weekday)} (day ${ctx.day}), ${ctx.timeOfDay}
 ${npcs}
 ${recentEvents}
 ${timeInfo}

@@ -1,5 +1,8 @@
 import Resolver from "../core/engine/Resolver";
+import Registry from "../core/Registry";
+import NPC from "../core/domain/npc/Npc";
 import { OllamaConfig } from "../ai/OllamaConfig";
+import { OLLAMA_RESOLVER_TIMEOUT_MS } from "../ai/OllamaClient";
 
 const TEST_CONFIG: OllamaConfig = {
 	endpoint: "http://localhost:11434/api/generate",
@@ -33,6 +36,7 @@ describe("Resolver", () => {
 		global.fetch = originalFetch;
 		errorSpy.mockRestore();
 		warnSpy.mockRestore();
+		jest.useRealTimers();
 		jest.clearAllMocks();
 	});
 
@@ -63,7 +67,7 @@ describe("Resolver", () => {
 		});
 	});
 
-	it("returns a REST fallback when Ollama is unavailable", async () => {
+	it("returns an unknown command, not a rest, when Ollama is unavailable", async () => {
 		(global.fetch as jest.Mock).mockRejectedValue(
 			new TypeError("connect ECONNREFUSED"),
 		);
@@ -71,17 +75,50 @@ describe("Resolver", () => {
 		const resolver = new Resolver(TEST_CONFIG);
 		const result = await resolver.resolve("go somewhere");
 
-		expect(result).toEqual({ type: "REST", duration: 1 });
+		expect(result).toEqual({ type: "UNKNOWN", input: "go somewhere" });
 		expect(errorSpy).toHaveBeenCalled();
 	});
 
-	it("returns a REST fallback when Ollama returns non-JSON", async () => {
+	it("gives up on a hung model at the resolver timeout and reports it as not understood", async () => {
+		jest.useFakeTimers();
+		(global.fetch as jest.Mock).mockImplementation(
+			(_url: string, init?: RequestInit) =>
+				new Promise((_resolve, reject) => {
+					(init?.signal as AbortSignal | undefined)?.addEventListener(
+						"abort",
+						() =>
+							reject(
+								Object.assign(new Error("Aborted"), {
+									name: "AbortError",
+								}),
+							),
+					);
+				}),
+		);
+
+		let settled = false;
+		const promise = new Resolver(TEST_CONFIG)
+			.resolve("go to the forest")
+			.finally(() => (settled = true));
+
+		await jest.advanceTimersByTimeAsync(OLLAMA_RESOLVER_TIMEOUT_MS - 1);
+		expect(settled).toBe(false);
+		await jest.advanceTimersByTimeAsync(1);
+
+		await expect(promise).resolves.toEqual({
+			type: "UNKNOWN",
+			input: "go to the forest",
+		});
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+	});
+
+	it("returns an unknown command when Ollama returns non-JSON", async () => {
 		mockOllamaResponses("not-json-at-all");
 
 		const resolver = new Resolver(TEST_CONFIG);
 		const result = await resolver.resolve("study charms");
 
-		expect(result).toEqual({ type: "REST", duration: 1 });
+		expect(result).toEqual({ type: "UNKNOWN", input: "study charms" });
 		expect(errorSpy).toHaveBeenCalled();
 	});
 
@@ -131,7 +168,7 @@ describe("Resolver", () => {
 			expect(result).toEqual({ type: "MOVE", destinationId: "library" });
 		});
 
-		it("returns REST fallback when Zod validation cannot be repaired", async () => {
+		it("returns an unknown command when Zod validation cannot be repaired", async () => {
 			// Both calls return completely useless JSON with no valid enum value
 			mockOllamaResponses(
 				JSON.stringify({ foo: "bar", baz: 42 }),
@@ -141,8 +178,166 @@ describe("Resolver", () => {
 			const resolver = new Resolver(TEST_CONFIG);
 			const result = await resolver.resolve("do something");
 
-			expect(result).toEqual({ type: "REST", duration: 1 });
+			expect(result).toEqual({ type: "UNKNOWN", input: "do something" });
 			expect(errorSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe("grounding the NPC target in the registry", () => {
+		let registry: Registry;
+
+		beforeEach(() => {
+			registry = new Registry();
+			registry.registerNPC(
+				new NPC("hagrid", "Rubeus Hagrid", [], "Large, friendly gamekeeper"),
+			);
+			registry.registerNPC(
+				new NPC("ron_weasley", "Ron Weasley", [], "Loyal and funny"),
+			);
+			registry.registerNPC(
+				new NPC("percy_weasley", "Percy Weasley", [], "Prefect, by the book"),
+			);
+		});
+
+		const talk = (target: string) => [
+			JSON.stringify({ intent: "TALK" }),
+			JSON.stringify({ target }),
+		];
+		const fetchCalls = () => (global.fetch as jest.Mock).mock.calls;
+		const promptOfCall = (index: number): string =>
+			JSON.parse(fetchCalls()[index][1].body).prompt;
+
+		it("resolves a clear name to its id without another model call", async () => {
+			mockOllamaResponses(...talk("Hagrid"));
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to Hagrid",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "hagrid" });
+			expect(fetchCalls()).toHaveLength(2);
+		});
+
+		it("resolves part of a full name the same way", async () => {
+			mockOllamaResponses(...talk("Rubeus"));
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to Rubeus",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "hagrid" });
+			expect(fetchCalls()).toHaveLength(2);
+		});
+
+		it("asks the model to choose among the matching candidates only", async () => {
+			mockOllamaResponses(
+				...talk("Weasley"),
+				JSON.stringify({ npcId: "percy_weasley" }),
+			);
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to the prefect Weasley",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "percy_weasley" });
+			expect(fetchCalls()).toHaveLength(3);
+			const pickPrompt = promptOfCall(2);
+			expect(pickPrompt).toContain("ron_weasley");
+			expect(pickPrompt).toContain("percy_weasley");
+			expect(pickPrompt).not.toContain("hagrid");
+		});
+
+		it("offers everyone when nothing matches by name, so a description can work", async () => {
+			mockOllamaResponses(
+				...talk("the gamekeeper"),
+				JSON.stringify({ npcId: "hagrid" }),
+			);
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to the gamekeeper",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "hagrid" });
+			const pickPrompt = promptOfCall(2);
+			expect(pickPrompt).toContain("Large, friendly gamekeeper");
+			expect(pickPrompt).toContain("percy_weasley");
+		});
+
+		it("keeps the player's text when the model answers none", async () => {
+			mockOllamaResponses(...talk("Gandalf"), JSON.stringify({ npcId: "none" }));
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to Gandalf",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "Gandalf" });
+		});
+
+		it("keeps the player's text when the model picks someone it was not offered", async () => {
+			mockOllamaResponses(
+				...talk("Weasley"),
+				JSON.stringify({ npcId: "hagrid" }),
+			);
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to Weasley",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "Weasley" });
+		});
+
+		it("keeps the player's text, and does not fall back to REST, when the pick call fails", async () => {
+			mockOllamaResponses(...talk("Weasley"), "not-json-at-all");
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to Weasley",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "Weasley" });
+		});
+
+		it("resolves an epithet to its NPC without another model call", async () => {
+			registry.registerNPC(
+				new NPC("harry_potter", "Harry Potter", [], "Brave", [
+					"the boy who lived",
+				]),
+			);
+			mockOllamaResponses(...talk("the boy who lived"));
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"talk to the boy who lived",
+			);
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "harry_potter" });
+			expect(fetchCalls()).toHaveLength(2);
+		});
+
+		it("shows epithets to the model when it has to choose", async () => {
+			registry.registerNPC(
+				new NPC("percy_weasley", "Percy Weasley", [], "Prefect", [
+					"the head boy",
+				]),
+			);
+			mockOllamaResponses(
+				...talk("Weasley"),
+				JSON.stringify({ npcId: "percy_weasley" }),
+			);
+			await new Resolver(TEST_CONFIG, registry).resolve("talk to Weasley");
+
+			expect(promptOfCall(2)).toContain("the head boy");
+		});
+
+		it("does nothing extra without a registry", async () => {
+			mockOllamaResponses(...talk("Hagrid"));
+			const command = await new Resolver(TEST_CONFIG).resolve("talk to Hagrid");
+
+			expect(command).toMatchObject({ type: "TALK", npcId: "Hagrid" });
+			expect(fetchCalls()).toHaveLength(2);
+		});
+
+		it("leaves other targets alone", async () => {
+			mockOllamaResponses(
+				JSON.stringify({ intent: "MOVE" }),
+				JSON.stringify({ target: "Hagrid" }),
+			);
+			const command = await new Resolver(TEST_CONFIG, registry).resolve(
+				"go to Hagrid",
+			);
+
+			expect(command).toEqual({ type: "MOVE", destinationId: "Hagrid" });
+			expect(fetchCalls()).toHaveLength(2);
 		});
 	});
 });

@@ -3,6 +3,7 @@ import Item from "../world/Item";
 import { GameEffect } from "./GameEffects";
 import { GameBus } from "../events/GameEvents";
 import { SubjectType } from "../quest/Curriculum";
+import { RelationshipStats } from "../npc/Relationship";
 
 /**
  * Central state-mutation path for `GameEffect`s.
@@ -34,6 +35,21 @@ function applyEffect(
 		case "ProgressDelta":
 			applyProgressDelta(state, effect.track, effect.delta);
 			break;
+		case "SpellLearned":
+			// Only an `available` spell can be taught: learning never skips
+			// the "known of" step and never downgrades a learned/mastered spell.
+			if (
+				state.spellbook.getSpellState(effect.spellId)?.knowledgeState ===
+				"available"
+			) {
+				state.spellbook.updateSpellState(effect.spellId, {
+					knowledgeState: "learned",
+					discoveredFrom: effect.source,
+					proficiency: 0,
+					practicePoints: 0,
+				});
+			}
+			break;
 		case "AttributeDelta":
 			state.player.attributes.applyDelta(effect.delta);
 			break;
@@ -41,7 +57,10 @@ function applyEffect(
 			state.player.resources.applyDelta(effect.delta);
 			break;
 		case "RelationshipDelta":
-			state.relationships[effect.npcId]?.applyDelta(effect.delta);
+			// First contact creates the record, so no delta is ever dropped.
+			(state.relationships[effect.npcId] ??= new RelationshipStats()).applyDelta(
+				effect.delta,
+			);
 			break;
 		case "FlagSet":
 			state.flags[effect.flagId] = effect.value;

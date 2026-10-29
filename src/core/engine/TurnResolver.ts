@@ -13,6 +13,8 @@ import {
 	GameEffect,
 	progressDelta,
 	attributeDelta,
+	flagSet,
+	spellLearned,
 	subjectKnowledgeTrack,
 } from "../domain/effects/GameEffects";
 import {
@@ -21,6 +23,8 @@ import {
 	ConversationResult,
 } from "../domain/npc/Conversation";
 import { resolveTopic } from "../domain/npc/TopicRegistry";
+import { momentOf, npcLocation } from "../domain/npc/Presence";
+import { activeClass } from "../domain/quest/Timetable";
 
 class TurnResolver {
 	private curriculumService: CurriculumService;
@@ -103,6 +107,15 @@ class TurnResolver {
 				return this._save(command.filename);
 			case "LOAD":
 				return this._load(command.filename);
+			case "UNKNOWN":
+				// Handled directly by GameEngine.handleCommand; this branch only
+				// guards against direct misuse, like ADVANCE_YEAR below.
+				return {
+					briefOutput: "",
+					events: [],
+					timeCost: { type: "none" },
+					stateChanges: {},
+				};
 			case "ADVANCE_YEAR":
 				// Handled directly by GameEngine.handleCommand (requires async LLM
 				// generation); this branch only guards against direct misuse.
@@ -183,7 +196,23 @@ class TurnResolver {
 		registry: Registry,
 	): TurnResult {
 		const npc = registry.getNPC(npcId);
-		const npcName = npc?.name ?? npcId;
+		if (!npc) {
+			return {
+				briefOutput: `You don't know anyone called "${npcId}".`,
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+		if (npcLocation(npc, momentOf(state, registry)) !== state.currentLocationId) {
+			return {
+				briefOutput: `${npc.name} is not here right now.`,
+				events: [],
+				timeCost: { type: "none" },
+				stateChanges: {},
+			};
+		}
+		const npcName = npc.name;
 
 		const relationship = state.relationships[npcId];
 		// First contact: no relationship record yet — evaluator treats as zeroed stats.
@@ -194,7 +223,7 @@ class TurnResolver {
 		const recentHistory = state.conversationHistory[npcId] ?? [];
 		// Take the last 10 global event strings for mood-modifier phase
 		const recentEvents = state.recentEvents.slice(-10);
-		const turnIndex = state.worldClock.getMinutesOfDay();
+		const turnIndex = state.worldClock.getTotalMinutes();
 
 		const ctx: ConversationContext = {
 			npcId,
@@ -291,7 +320,7 @@ class TurnResolver {
 			registry,
 			state.spellbook,
 			state.academicState,
-			state.worldClock.getMinutesOfDay(),
+			state.worldClock.getTotalMinutes(),
 		);
 
 		const subjectName = schoolData.subjects[subject]?.name || subject;
@@ -347,6 +376,32 @@ class TurnResolver {
 		}
 
 		const subject: SubjectType = subjectId as SubjectType;
+		const subjectLabel = schoolData.subjects[subject]?.name || subject;
+
+		// A class happens at its timetabled time and place, once per slot.
+		const slot = activeClass(
+			registry.getTimetable(state.currentYear),
+			state.worldClock.getWeekday(),
+			state.worldClock.timeOfDay,
+		);
+		const refuse = (briefOutput: string): TurnResult => ({
+			briefOutput,
+			events: [],
+			timeCost: { type: "none" },
+			stateChanges: {},
+		});
+		if (!slot || slot.subject !== subject) {
+			return refuse(`There is no ${subjectLabel} class right now.`);
+		}
+		if (slot.location !== state.currentLocationId) {
+			const room = registry.getLocation(slot.location ?? "")?.displayName ?? slot.location;
+			return refuse(`The ${subjectLabel} class is held in ${room}.`);
+		}
+		const attendedFlag = `attended.${subject}.${state.worldClock.getDay()}.${slot.period}`;
+		if (state.flags[attendedFlag]) {
+			return refuse(`You have already attended ${subjectLabel} class this ${slot.period}.`);
+		}
+
 		const lesson = this.curriculumService.getCurrentLesson(
 			subject,
 			state.academicState,
@@ -367,7 +422,9 @@ class TurnResolver {
 		// re-announced as `AttributeGained` events (Steps 2 & 4B of the
 		// conversion plan). Applied before spell-reveal checks below, since
 		// reveal requirements may depend on the updated attributes/knowledge.
-		const effects: GameEffect[] = [];
+		const effects: GameEffect[] = [
+			flagSet(attendedFlag, true, `attended ${subject} class`),
+		];
 		if (lesson.rewards.attributes) {
 			for (const attrId of lesson.rewards.attributes) {
 				effects.push(
@@ -393,19 +450,43 @@ class TurnResolver {
 		const spellOpportunities =
 			this.curriculumService.getLessonSpellOpportunities(lesson);
 		const revealedSpells: string[] = [];
+		const learnedSpells: string[] = [];
+		const learnEffects: GameEffect[] = [];
 
 		for (const opportunity of spellOpportunities) {
+			const before = state.spellbook.getSpellState(
+				opportunity.spellId,
+			)?.knowledgeState;
 			const result = this.spellRevealService.attemptSpellReveal(
 				opportunity,
 				state.academicState,
 				state.spellbook,
-				state.worldClock.getMinutesOfDay(),
+				state.worldClock.getTotalMinutes(),
 			);
 
-			if (result.success) {
+			if (!result.success) continue;
+
+			if (before === "hidden") {
 				revealedSpells.push(opportunity.spellId);
 			}
+			// A lesson that teaches the spell does so even if the player
+			// already knew of it; it never re-teaches a learned/mastered one.
+			if (
+				opportunity.grants === "learned" &&
+				(before === "hidden" || before === "available")
+			) {
+				learnedSpells.push(opportunity.spellId);
+				learnEffects.push(
+					spellLearned(
+						opportunity.spellId,
+						"class",
+						`lesson:${lesson.id}`,
+					),
+				);
+			}
 		}
+		applyEffects(state, learnEffects, this.bus);
+		effects.push(...learnEffects);
 
 		this.curriculumService.advanceLesson(
 			subject,
@@ -423,8 +504,11 @@ class TurnResolver {
 		for (const spellId of revealedSpells) {
 			this.bus.emit("SpellRevealed", { spellId, source: "class" });
 		}
+		for (const spellId of learnedSpells) {
+			this.bus.emit("SpellLearned", { spellId, source: "class" });
+		}
 
-		const subjectName = schoolData.subjects[subject]?.name || subject;
+		const subjectName = subjectLabel;
 		let output = `Attended ${subjectName}: "${lesson.title}". ${lesson.topic}.`;
 
 		if (lesson.rewards.subjectKnowledge) {
@@ -436,14 +520,18 @@ class TurnResolver {
 			output += ` Knowledge: ${knowledgeGains}.`;
 		}
 
-		if (revealedSpells.length > 0) {
-			const spellNames = revealedSpells
-				.map((id) => {
-					const spell = registry.getSpell(id);
-					return spell?.definition.name || id;
-				})
+		const spellNameList = (ids: string[]) =>
+			ids
+				.map((id) => registry.getSpell(id)?.definition.name || id)
 				.join(", ");
-			output += ` New spells available: ${spellNames}!`;
+		const onlyKnownOf = revealedSpells.filter(
+			(id) => !learnedSpells.includes(id),
+		);
+		if (learnedSpells.length > 0) {
+			output += ` Learned: ${spellNameList(learnedSpells)}!`;
+		}
+		if (onlyKnownOf.length > 0) {
+			output += ` New spells available: ${spellNameList(onlyKnownOf)}!`;
 		}
 
 		return {
@@ -455,6 +543,7 @@ class TurnResolver {
 				subjectKnowledgeGains: lesson.rewards
 					.subjectKnowledge as Partial<Record<SubjectType, number>>,
 				spellsRevealed: revealedSpells,
+				spellsLearned: learnedSpells,
 				lessonCompleted: {
 					subject: subjectId as SubjectType,
 					lessonId: lesson.id,

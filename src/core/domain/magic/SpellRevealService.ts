@@ -1,8 +1,6 @@
 import SpellBook from "./SpellBook";
 import Registry from "../../Registry";
 import { PlayerAcademicState, Requirement, SpellRevealOpportunity, SchoolData } from "../quest/Curriculum";
-import { SpellDefinition } from "./Spell";
-import { createLearnedSpellState } from "./SpellStateFactory";
 
 export class SpellRevealService {
 	updateSpellAvailability(
@@ -96,44 +94,17 @@ export class SpellRevealService {
 
 		const roll = Math.random();
 		if (roll <= opportunity.chance) {
-			spellbook.updateSpellState(opportunity.spellId, {
-				knowledgeState: "available",
-				becameAvailableAt: currentTime
-			});
+			// Only a hidden spell becomes available; a spell the player already
+			// knows of, has learned or has mastered must never be moved back.
+			if (spellbook.getSpellState(opportunity.spellId)?.knowledgeState === "hidden") {
+				spellbook.updateSpellState(opportunity.spellId, {
+					knowledgeState: "available",
+					becameAvailableAt: currentTime
+				});
+			}
 			return { success: true };
 		}
 
 		return { success: false, reason: "Failed chance roll" };
-	}
-
-	learnSpell(
-		spellId: string,
-		spellbook: SpellBook,
-		registry: Registry,
-		source: string,
-		currentTime?: number
-	): { success: boolean; reason?: string } {
-		const currentState = spellbook.getSpellState(spellId);
-		if (!currentState) {
-			return { success: false, reason: "Spell not in spellbook" };
-		}
-
-		if (currentState.knowledgeState !== "available") {
-			return { success: false, reason: `Spell is ${currentState.knowledgeState}, not available` };
-		}
-
-		const spell = registry.getSpell(spellId);
-		if (!spell) {
-			return { success: false, reason: "Spell not found in registry" };
-		}
-
-		spellbook.updateSpellState(spellId, {
-			knowledgeState: "learned",
-			discoveredFrom: source,
-			proficiency: 0,
-			practicePoints: 0
-		});
-
-		return { success: true };
 	}
 }

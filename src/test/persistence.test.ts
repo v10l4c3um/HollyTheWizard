@@ -1,28 +1,29 @@
 import * as fs from "fs/promises";
+import * as os from "os";
 import * as path from "path";
 import GameState from "../core/domain/world/GameState";
+import { RelationshipStats } from "../core/domain/npc/Relationship";
+import {
+	AttributeStats,
+	ResourceStats,
+} from "../core/domain/player/PlayerStats";
 import { JsonPersistenceRepository } from "../infastructure/persistance/json/JsonPersistenceRepository";
 
 describe("JsonPersistenceRepository", () => {
-	const SAVES_DIR = path.join(process.cwd(), "saves");
+	let SAVES_DIR: string;
 	let repository: JsonPersistenceRepository;
 
 	beforeEach(async () => {
-		repository = new JsonPersistenceRepository();
+		// Each test gets its own directory; the real saves/ folder is never touched.
+		// The repository creates the directory on first save, so use a
+		// not-yet-existing subfolder to keep the "creates saves directory" test honest.
+		const root = await fs.mkdtemp(path.join(os.tmpdir(), "holly-saves-"));
+		SAVES_DIR = path.join(root, "saves");
+		repository = new JsonPersistenceRepository(SAVES_DIR);
 	});
 
 	afterEach(async () => {
-		// Clean up test save files
-		try {
-			const files = await fs.readdir(SAVES_DIR);
-			for (const file of files) {
-				if (file.startsWith("test-save-")) {
-					await fs.unlink(path.join(SAVES_DIR, file));
-				}
-			}
-		} catch (error) {
-			// Directory may not exist
-		}
+		await fs.rm(path.dirname(SAVES_DIR), { recursive: true, force: true });
 	});
 
 	describe("save()", () => {
@@ -169,6 +170,87 @@ describe("JsonPersistenceRepository", () => {
 			expect(
 				loaded.spellbook.getSpellState("test_spell")?.knowledgeState,
 			).toBe("learned");
+		});
+
+		it("rehydrates the player's stats as working instances", async () => {
+			const state = new GameState();
+			state.player.name = "Holly";
+			state.player.attributes.applyDelta({ INT: 3, WIL: 1 });
+			state.player.resources.applyDelta({ energy: -30, injured: true });
+
+			await repository.save("player-stats", state);
+			const loaded = await repository.load("player-stats");
+
+			expect(loaded.player.name).toBe("Holly");
+			expect(loaded.player.attributes).toBeInstanceOf(AttributeStats);
+			expect(loaded.player.attributes.get("INT")).toBe(3);
+			expect(loaded.player.resources).toBeInstanceOf(ResourceStats);
+			expect(loaded.player.resources.energy).toBe(70);
+			expect(loaded.player.resources.injured).toBe(true);
+
+			loaded.player.attributes.applyDelta({ INT: 1 });
+			loaded.player.resources.applyDelta({ energy: 5 });
+			expect(loaded.player.attributes.get("INT")).toBe(4);
+			expect(loaded.player.resources.energy).toBe(75);
+		});
+
+		it("rehydrates relationships as working instances", async () => {
+			const state = new GameState();
+			state.relationships["hagrid"] = new RelationshipStats();
+			state.relationships["hagrid"].applyDelta({ trust: 4, comfort: 2 });
+
+			await repository.save("relationships", state);
+			const loaded = await repository.load("relationships");
+
+			const hagrid = loaded.relationships["hagrid"];
+			expect(hagrid).toBeInstanceOf(RelationshipStats);
+			expect(hagrid.trust).toBe(4);
+			hagrid.applyDelta({ trust: 1 });
+			expect(hagrid.trust).toBe(5);
+		});
+
+		it("fills in attributes and resources missing from a save", async () => {
+			const state = new GameState();
+			await repository.save("sparse", state);
+			const file = path.join(SAVES_DIR, "sparse.json");
+			const data = JSON.parse(await fs.readFile(file, "utf-8"));
+			data.player.attributes = { values: { INT: 7 } };
+			delete data.player.resources;
+			await fs.writeFile(file, JSON.stringify(data), "utf-8");
+
+			const loaded = await repository.load("sparse");
+
+			expect(loaded.player.attributes.get("INT")).toBe(7);
+			expect(loaded.player.attributes.get("WIL")).toBe(0);
+			expect(loaded.player.resources.energy).toBe(100);
+		});
+
+		it("keeps the calendar day through a save", async () => {
+			const state = new GameState();
+			state.worldClock.advanceTime(2 * 1440 + 90); // day 3
+
+			await repository.save("calendar", state);
+			const loaded = await repository.load("calendar");
+
+			expect(loaded.worldClock.getDay()).toBe(3);
+			expect(loaded.worldClock.getWeekday()).toBe("wednesday");
+			expect(loaded.worldClock.getTotalMinutes()).toBe(
+				state.worldClock.getTotalMinutes(),
+			);
+		});
+
+		it("loads a save from before the calendar existed", async () => {
+			const state = new GameState();
+			await repository.save("legacy", state);
+			const file = path.join(SAVES_DIR, "legacy.json");
+			const data = JSON.parse(await fs.readFile(file, "utf-8"));
+			data.worldClock = { minutesOfDay: 600 };
+			await fs.writeFile(file, JSON.stringify(data), "utf-8");
+
+			const loaded = await repository.load("legacy");
+
+			expect(loaded.worldClock.getDay()).toBe(1);
+			expect(loaded.worldClock.getMinutesOfDay()).toBe(600);
 		});
 
 		it("throws when loading non-existent file", async () => {

@@ -24,6 +24,14 @@ class Player {
 		this.inventory = [];
 		this.health = 100;
 	}
+
+	/** Rebuilds from `JSON.parse(JSON.stringify(player))`, including the stat objects. */
+	static fromJSON(data: any): Player {
+		const player = Object.assign(new Player(), data);
+		player.attributes = AttributeStats.fromJSON(data?.attributes);
+		player.resources = ResourceStats.fromJSON(data?.resources);
+		return player;
+	}
 }
 
 export default Player;

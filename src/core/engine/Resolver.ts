@@ -5,10 +5,14 @@ import {
 	generateWithOllama,
 	OLLAMA_RESOLVER_TIMEOUT_MS,
 } from "../../ai/OllamaClient";
+import Registry from "../Registry";
+import NPC from "../domain/npc/Npc";
+import { CLEAR_MATCH_SCORE, rankCandidates } from "./EntityMatcher";
 import {
 	INTENT_TYPES,
 	IntentType,
 	IntentResponseSchema,
+	NpcPickResponseSchema,
 	ARGUMENT_SCHEMAS,
 	ParsedArguments,
 } from "./ResolverSchemas";
@@ -30,10 +34,23 @@ const INTENT_SUMMARIES: Record<IntentType, string> = {
 		'Advance to the next school year (e.g., "advance to next year", "end the school year")',
 };
 
+/** How many candidates the model is shown when a name is ambiguous. */
+const MAX_PICK_CANDIDATES = 5;
+/** With no name match, offer everyone only while the cast is this small. */
+const MAX_OFFER_ALL = 12;
+
 class Resolver {
 	private config: OllamaConfig;
 
-	constructor(config: OllamaConfig) {
+	/**
+	 * With a `registry`, names the player types are grounded in the world:
+	 * a `TALK` target is matched against the known NPCs instead of being
+	 * trusted as an id. Without one, targets are passed through unchanged.
+	 */
+	constructor(
+		config: OllamaConfig,
+		private registry?: Registry,
+	) {
 		this.config = config;
 	}
 
@@ -59,6 +76,9 @@ class Resolver {
 			}
 
 			const args = await this._extractArguments(input, intent);
+			if (intent === "TALK" && args.target) {
+				args.target = await this._groundNpc(input, args.target);
+			}
 			const command = this._createCommand(intent, args);
 
 			console.debug(
@@ -71,7 +91,7 @@ class Resolver {
 					error instanceof Error ? error.message : "Unknown error"
 				}`,
 			);
-			return { type: "REST", duration: 1 };
+			return { type: "UNKNOWN", input };
 		}
 	}
 
@@ -101,6 +121,65 @@ class Resolver {
 	}
 
 	/**
+	 * Turns the text the model extracted ("Hagrid", "Rubeus", "the
+	 * gamekeeper") into a registered NPC id. A single clear name match is
+	 * accepted as is; otherwise the model chooses from a short list of real
+	 * NPCs. If nothing can be chosen the player's text is returned unchanged,
+	 * so the turn rules can say who was not found.
+	 */
+	private async _groundNpc(input: string, text: string): Promise<string> {
+		const registry = this.registry;
+		if (!registry) return text;
+
+		const npcs = registry.getAllNpcIds().flatMap((id) => {
+			const npc = registry.getNPC(id);
+			return npc ? [npc] : [];
+		});
+		const ranked = rankCandidates(
+			text,
+			npcs.map((npc) => ({
+				id: npc.id,
+				names: [npc.id, npc.name],
+				aliases: npc.aliases ?? [],
+			})),
+		);
+
+		const [best, second] = ranked;
+		if (
+			best &&
+			best.score >= CLEAR_MATCH_SCORE &&
+			(!second || (best.score === 1 && second.score < 1))
+		) {
+			return best.id;
+		}
+
+		const offeredIds =
+			ranked.length > 0
+				? ranked.slice(0, MAX_PICK_CANDIDATES).map((m) => m.id)
+				: npcs.length <= MAX_OFFER_ALL
+					? npcs.map((npc) => npc.id)
+					: [];
+		if (offeredIds.length === 0) return text;
+
+		const offered = npcs.filter((npc) => offeredIds.includes(npc.id));
+		try {
+			const pick = await this._generate(
+				this._buildNpcPickPrompt(input, text, offered),
+				NpcPickResponseSchema,
+				OLLAMA_RESOLVER_TIMEOUT_MS,
+			);
+			if (offeredIds.includes(pick.npcId)) return pick.npcId;
+		} catch (error) {
+			console.warn(
+				`[Resolver] Could not pick an NPC for "${text}": ${
+					error instanceof Error ? error.message : "Unknown error"
+				}`,
+			);
+		}
+		return text;
+	}
+
+	/**
 	 * Requests JSON from Ollama and validates the response with the given Zod
 	 * schema. On validation failure, attempts a repair pass before giving up:
 	 *
@@ -109,7 +188,8 @@ class Resolver {
 	 *     Handles responses like `{ data: { intent: "MOVE" } }`.
 	 *  3. Enum-scan repair for `invalid_value` issues: finds the first string
 	 *     value anywhere in the response that matches an allowed enum value.
-	 *  4. Throw — outer `resolve()` returns `{ type: "REST" }`.
+	 *  4. Throw — outer `resolve()` returns `{ type: "UNKNOWN" }`, which the
+	 *     engine reports to the player without spending any time.
 	 */
 	private async _generate<T>(
 		prompt: string,
@@ -268,6 +348,33 @@ ${intentList}
 User input: "${input}"
 
 Respond with only valid JSON containing the single best-matching intent.`;
+	}
+
+	private _buildNpcPickPrompt(
+		input: string,
+		text: string,
+		offered: NPC[],
+	): string {
+		const list = offered
+			.map((npc) => {
+				const description = npc.tag_description
+					? ` (${npc.tag_description})`
+					: "";
+				const aliases = npc.aliases?.length
+					? `, also called ${npc.aliases.map((a) => `"${a}"`).join(" or ")}`
+					: "";
+				return `- ${npc.id}: ${npc.name}${description}${aliases}`;
+			})
+			.join("\n");
+
+		return `You are matching a character name for a fantasy RPG. The player wants to talk to someone, and the name extracted from their input was "${text}".
+
+Characters the player could mean:
+${list}
+
+User input: "${input}"
+
+Choose the one character the player most likely means. Respond with only valid JSON like {"npcId": "<id from the list>"}, or {"npcId": "none"} if none of them fits.`;
 	}
 
 	private _buildArgumentPrompt(input: string, intent: IntentType): string {

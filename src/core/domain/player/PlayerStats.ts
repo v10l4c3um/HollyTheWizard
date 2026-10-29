@@ -1,14 +1,17 @@
-export type AttributeId =
-	| "INT"
-	| "WIL"
-	| "DEX"
-	| "CHA"
-	| "STR"
-	| "CON"
-	| "PER"
-	| "AGI"
-	| "LUC"
-	| "WIS";
+export const ATTRIBUTE_IDS = [
+	"INT",
+	"WIL",
+	"DEX",
+	"CHA",
+	"STR",
+	"CON",
+	"PER",
+	"AGI",
+	"LUC",
+	"WIS",
+] as const;
+
+export type AttributeId = (typeof ATTRIBUTE_IDS)[number];
 
 export type AttributeStatsDelta = Partial<Record<AttributeId, number>>;
 
@@ -50,6 +53,17 @@ export class AttributeStats {
 
 	getAll(): Record<AttributeId, number> {
 		return { ...this.values };
+	}
+
+	/**
+	 * Rebuilds from `JSON.parse(JSON.stringify(stats))`. The private `values`
+	 * field is what gets serialized, so the saved shape is `{ values: {...} }`.
+	 * Attributes missing from the data keep their defaults.
+	 */
+	static fromJSON(data?: { values?: Partial<Record<AttributeId, number>> }) {
+		const stats = new AttributeStats();
+		Object.assign(stats.values, data?.values);
+		return stats;
 	}
 }
 
@@ -93,5 +107,10 @@ export class ResourceStats {
 
 	clone(): ResourceStats {
 		return Object.assign(new ResourceStats(), this);
+	}
+
+	/** Rebuilds from `JSON.parse(JSON.stringify(stats))`; missing fields keep defaults. */
+	static fromJSON(data?: Partial<ResourceStats>): ResourceStats {
+		return Object.assign(new ResourceStats(), data);
 	}
 }

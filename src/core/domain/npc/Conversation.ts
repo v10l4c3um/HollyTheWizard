@@ -53,6 +53,20 @@ export interface ConversationContext {
 	turnIndex: number;
 }
 
+/**
+ * How much trust each conversation outcome moves, so tuning is one edit.
+ * Every outcome moves it: neutral chats build a little, good ones more, and
+ * deflections and refusals cost trust.
+ */
+export const TRUST_DELTA = {
+	partial: 0.5,
+	success: 2,
+	reveal: 2,
+	invitation: 2,
+	deflection: -1,
+	refusal: -2,
+} as const;
+
 // ---------------------------------------------------------------------------
 // Evaluator — deterministic 8-phase pipeline
 // ---------------------------------------------------------------------------
@@ -100,7 +114,7 @@ export function evaluateConversation(
 			result: "refusal",
 			score: -10,
 			effects: [
-				relationshipDelta(npcId, { resentment: 1 }, "raised a topic the NPC will never discuss"),
+				relationshipDelta(npcId, { resentment: 1, trust: TRUST_DELTA.refusal }, "raised a topic the NPC will never discuss"),
 				conversationMemoryRecorded(npcId, entry),
 			],
 			narrationTags,
@@ -134,6 +148,7 @@ export function evaluateConversation(
 			result: "deflection",
 			score: -3,
 			effects: [
+				relationshipDelta(npcId, { trust: TRUST_DELTA.deflection }, "asked for more than the relationship allows"),
 				flagSet(deflectFlagKey, true, "topic unavailable due to missing requirements"),
 				conversationMemoryRecorded(npcId, entry),
 			],
@@ -156,7 +171,7 @@ export function evaluateConversation(
 			result: "refusal",
 			score: -10,
 			effects: [
-				relationshipDelta(npcId, { resentment: 1 }, "pushed despite hostility"),
+				relationshipDelta(npcId, { resentment: 1, trust: TRUST_DELTA.refusal }, "pushed despite hostility"),
 				conversationMemoryRecorded(npcId, entry),
 			],
 			narrationTags,
@@ -180,7 +195,7 @@ export function evaluateConversation(
 			effects: [
 				relationshipDelta(
 					npcId,
-					{ resentment: 3, trust: -2 },
+					{ resentment: 3, trust: TRUST_DELTA.refusal },
 					"pressed a topic after being deflected",
 				),
 				flagSet(deflectFlagKey, false, "deflect flag consumed after penalty"),
@@ -339,6 +354,7 @@ function buildOutcome(
 			result: "deflection",
 			score,
 			effects: [
+				relationshipDelta(npcId, { trust: TRUST_DELTA.deflection }, "topic did not suit the moment"),
 				flagSet(deflectFlagKey, true, "topic was deflected"),
 				conversationMemoryRecorded(npcId, entry),
 			],
@@ -349,7 +365,9 @@ function buildOutcome(
 	if (score <= 0) {
 		// Partial
 		narrationTags.push("cautious", "measured");
-		const effects: GameEffect[] = [];
+		const effects: GameEffect[] = [
+			relationshipDelta(npcId, { trust: TRUST_DELTA.partial }, "neutral conversation"),
+		];
 		if (topic) {
 			effects.push(topicUnlocked(npcId, topic, "unlocked through partial conversation"));
 		}
@@ -368,7 +386,7 @@ function buildOutcome(
 		// Success
 		narrationTags.push("friendly", "relaxed");
 		const effects: GameEffect[] = [
-			relationshipDelta(npcId, { trust: 1 }, "good conversation"),
+			relationshipDelta(npcId, { trust: TRUST_DELTA.success }, "good conversation"),
 		];
 		if (topic) {
 			effects.push(topicUnlocked(npcId, topic, "earned through successful conversation"));
@@ -397,7 +415,7 @@ function buildOutcome(
 		// Reveal
 		narrationTags.push("candid", "trusting");
 		const effects: GameEffect[] = [
-			relationshipDelta(npcId, { trust: 1, comfort: 2 }, "candid conversation"),
+			relationshipDelta(npcId, { trust: TRUST_DELTA.reveal, comfort: 2 }, "candid conversation"),
 		];
 		if (topic) {
 			effects.push(
@@ -427,7 +445,7 @@ function buildOutcome(
 		const effects: GameEffect[] = [
 			relationshipDelta(
 				npcId,
-				{ trust: 1, comfort: 2 },
+				{ trust: TRUST_DELTA.invitation, comfort: 2 },
 				"intimate private conversation",
 			),
 			sceneInvitationCreated(
@@ -456,7 +474,7 @@ function buildOutcome(
 	// score >= 4 but not private enough for an invitation → treat as reveal
 	narrationTags.push("candid", "trusting", "open");
 	const effects: GameEffect[] = [
-		relationshipDelta(npcId, { trust: 1, comfort: 1 }, "very good conversation"),
+		relationshipDelta(npcId, { trust: TRUST_DELTA.reveal, comfort: 1 }, "very good conversation"),
 	];
 	if (topic) {
 		effects.push(topicUnlocked(npcId, topic, "deep trust unlocked topic"));

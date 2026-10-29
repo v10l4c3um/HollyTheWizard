@@ -77,7 +77,12 @@ export type GameEvents = {
 	QuestFlagSet: { flagId: string; active: boolean };
 	QuestActivated: { questId: string };
 	QuestCompleted: { questId: string };
-	TimeAdvanced: { minutesDelta: number; newMinutesOfDay: number };
+	TimeAdvanced: {
+		minutesDelta: number;
+		newMinutesOfDay: number;
+		/** Minutes since the start of the game. */
+		totalMinutes: number;
+	};
 	GameSaved: { filename: string };
 	GameLoaded: { filename: string };
 	YearAdvanced: { fromYear: SchoolYear; toYear: SchoolYear };

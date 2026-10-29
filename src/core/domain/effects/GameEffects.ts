@@ -2,8 +2,17 @@ import { RelationshipDelta } from "../npc/Relationship";
 import { AttributeStatsDelta, ResourceStatsDelta } from "../player/PlayerStats";
 import { ConversationMemoryEntry } from "../npc/ConversationTypes";
 
+/** What taught the spell. The player never triggers learning directly. */
+export type SpellLearnSource = "class" | "item" | "trainer";
+
 export type GameEffect =
 	| { type: "ProgressDelta"; track: string; delta: number; reason: string }
+	| {
+			type: "SpellLearned";
+			spellId: string;
+			source: SpellLearnSource;
+			reason: string;
+	  }
 	| {
 			type: "AttributeDelta";
 			delta: AttributeStatsDelta;
@@ -118,6 +127,14 @@ export function inventoryDelta(
 	reason: string,
 ): GameEffect {
 	return { type: "InventoryDelta", itemId, delta, reason };
+}
+
+export function spellLearned(
+	spellId: string,
+	source: SpellLearnSource,
+	reason: string,
+): GameEffect {
+	return { type: "SpellLearned", spellId, source, reason };
 }
 
 /** Track helper: "subject.<id>.knowledge" */

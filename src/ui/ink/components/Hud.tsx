@@ -36,6 +36,8 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
 
     const timeStr = worldClock.getCurrentTime();
     const timeOfDay = worldClock.timeOfDay;
+    const weekdayName = worldClock.getWeekday();
+    const weekday = weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1);
 
     return (
         <Box
@@ -49,6 +51,10 @@ export const Hud: React.FC<HudProps> = ({ state, locationName }) => {
                 <Text color="cyan" bold>
                     {timeIcon(timeOfDay)} {timeStr}{" "}
                     <Text color="gray" dimColor>({timeOfDay})</Text>
+                </Text>
+                <Text color="cyan">
+                    📅 <Text bold>{weekday}</Text>
+                    <Text color="gray" dimColor> · day {worldClock.getDay()}</Text>
                 </Text>
                 <Text color="yellow">
                     📍 <Text bold>{locationName}</Text>
