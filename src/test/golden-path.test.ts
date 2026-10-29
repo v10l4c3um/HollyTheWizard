@@ -9,6 +9,7 @@ import {
 } from "./helpers/fakeOllama";
 import { buildTestGame, TestGame } from "./helpers/buildTestGame";
 import GameState from "../core/domain/world/GameState";
+import { TurnOutcome } from "../core/engine/TurnOutcome";
 import { activeClass } from "../core/domain/quest/Timetable";
 
 // Only the model is faked. Resolver, TurnResolver, Renderer, effects,
@@ -45,7 +46,7 @@ describe("golden path: first day at school", () => {
 		input: string,
 		intent: string,
 		args?: Record<string, unknown>,
-	): Promise<GameState> {
+	): Promise<TurnOutcome> {
 		scriptPlayer(input, { intent, args });
 		return game.engine.handleCommand(input);
 	}
@@ -69,7 +70,7 @@ describe("golden path: first day at school", () => {
 
 	beforeAll(async () => {
 		resetFakeOllama();
-		// Content loader and the engine's time debug line are noisy.
+		// The content loader is noisy.
 		for (const method of ["log", "debug"] as const) {
 			logSpies.push(jest.spyOn(console, method).mockImplementation());
 		}
@@ -91,7 +92,7 @@ describe("golden path: first day at school", () => {
 		expect(state().currentLocationId).toBe("great_hall");
 		expect(state().worldClock.getWeekday()).toBe("monday");
 		const result = await say("look around", "REST", { duration: 0 });
-		expect(result.output).toBe(FAKE_NARRATION);
+		expect(result.narration).toBe(FAKE_NARRATION);
 		expect(lastRendererPrompt()).toContain("Monday (day 1), morning");
 		expect(lastRendererPrompt()).toContain("No one else is nearby");
 	});
@@ -309,9 +310,9 @@ describe("golden path: first day at school", () => {
 			expect(unscriptedInputs).toEqual(["asdf qwer zxcv"]);
 			unscriptedInputs.length = 0;
 
-			expect(result.output).toContain("didn't understand");
-			expect(result.output).toContain("asdf qwer zxcv");
-			expect(result.output).not.toBe(FAKE_NARRATION);
+			expect(result.narration).toContain("didn't understand");
+			expect(result.narration).toContain("asdf qwer zxcv");
+			expect(result.narration).not.toBe(FAKE_NARRATION);
 			expect(state().worldClock.getMinutesOfDay()).toBe(minutesBefore);
 			expect(state().recentEvents).toEqual(eventsBefore);
 			expect(state().currentLocationId).toBe(locationBefore);
@@ -335,7 +336,7 @@ describe("golden path: first day at school", () => {
 			const result = await say("save the game as day one", "SAVE", {
 				target: "dayone",
 			});
-			expect(result.output).toContain("saved");
+			expect(result.narration).toContain("saved");
 			await expect(
 				fs.stat(path.join(game.savesDir, "dayone.json")),
 			).resolves.toBeDefined();
@@ -352,7 +353,7 @@ describe("golden path: first day at school", () => {
 			const result = await say("load day one", "LOAD", {
 				target: "dayone",
 			});
-			expect(result.output).toContain("Loaded");
+			expect(result.narration).toContain("Loaded");
 			expect(state()).not.toBe(before);
 			expect(state().player.attributes.getAll()).toEqual(attributesBefore);
 			expect(state().worldClock.getTotalMinutes()).toBe(totalMinutesBefore);
@@ -373,7 +374,7 @@ describe("golden path: first day at school", () => {
 				duration: 1,
 			});
 
-			expect(result.output).toBe(FAKE_NARRATION);
+			expect(result.narration).toBe(FAKE_NARRATION);
 			expect(state().academicState.subjects["charms"].currentLessonOrder).toBe(4);
 			expect(state().player.attributes.getAll()).not.toEqual(attributesBefore);
 		});

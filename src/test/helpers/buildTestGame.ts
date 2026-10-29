@@ -12,6 +12,8 @@ export interface TestGame {
 	registry: Registry;
 	bus: ReturnType<typeof createGameBus>;
 	savesDir: string;
+	/** Errors the engine logged. */
+	logged: { message: string; cause?: unknown }[];
 	/** Removes the temp saves directory. */
 	dispose(): Promise<void>;
 }
@@ -29,9 +31,16 @@ export async function buildTestGame(): Promise<TestGame> {
 	const bus = createGameBus();
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "holly-game-"));
 	const savesDir = path.join(root, "saves");
+	const logged: TestGame["logged"] = [];
+	const logger = {
+		error: (message: string, cause?: unknown) => {
+			logged.push({ message, cause });
+		},
+	};
 	const engine = createEngine(registry, bus, {
 		persistenceRepository: new JsonPersistenceRepository(savesDir),
 		allowBlueprintFallback: true,
+		logger,
 	});
 	await engine.initializeCampaignBlueprint("test-seed");
 
@@ -40,6 +49,7 @@ export async function buildTestGame(): Promise<TestGame> {
 		registry,
 		bus,
 		savesDir,
+		logged,
 		dispose: () => fs.rm(root, { recursive: true, force: true }),
 	};
 }

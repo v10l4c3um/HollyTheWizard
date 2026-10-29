@@ -1,4 +1,6 @@
 import { IGameEngine } from "../../types";
+import { TurnError, TurnOutcome } from "./TurnOutcome";
+import { Logger } from "../application/ports/Logger";
 import GameState from "../domain/world/GameState";
 import Registry from "../Registry";
 import Resolver from "./Resolver";
@@ -24,6 +26,7 @@ export interface GameEngineDeps {
 	advanceYear: AdvanceYear;
 	blueprintProgressService: BlueprintProgressService;
 	persistenceRepository: PersistenceRepository;
+	logger: Logger;
 }
 
 type StartupMilestoneId = "campaign-blueprint" | "year-blueprint";
@@ -41,6 +44,7 @@ class GameEngine implements IGameEngine {
 	private advanceYear: AdvanceYear;
 	private blueprintProgressService: BlueprintProgressService;
 	private persistenceRepository: PersistenceRepository;
+	private logger: Logger;
 
 	constructor(deps: GameEngineDeps) {
 		this.state = new GameState();
@@ -54,6 +58,7 @@ class GameEngine implements IGameEngine {
 		this.advanceYear = deps.advanceYear;
 		this.blueprintProgressService = deps.blueprintProgressService;
 		this.persistenceRepository = deps.persistenceRepository;
+		this.logger = deps.logger;
 		this.state.output =
 			"Welcome to Holly the Wizard! Type a command to begin.";
 	}
@@ -83,15 +88,17 @@ class GameEngine implements IGameEngine {
 		onProgress?.("year-blueprint", "done");
 	}
 
-	async handleCommand(input: string): Promise<GameState> {
+	async handleCommand(input: string): Promise<TurnOutcome> {
 		try {
 			const command = await this.resolver.resolve(input);
 
 			if (command.type === "UNKNOWN") {
 				// Nothing happened, so there is nothing to narrate (and the
 				// model may be the reason we are here): say so plainly.
-				this.state.output = `I didn't understand "${command.input}". Try saying it another way.`;
-				return this.state;
+				return this._fail(
+					"invalid-input",
+					`I didn't understand "${command.input}". Try saying it another way.`,
+				);
 			}
 
 			if (command.type === "ADVANCE_YEAR") {
@@ -104,34 +111,50 @@ class GameEngine implements IGameEngine {
 					this.state,
 					this.bus,
 				);
-				return this.state;
+				return this._ok();
 			}
 
 			if (command.type === "SAVE") {
-				await this.persistenceRepository.save(
-					command.filename,
-					this.state,
-				);
+				try {
+					await this.persistenceRepository.save(
+						command.filename,
+						this.state,
+					);
+				} catch (error) {
+					return this._fail(
+						"persistence",
+						`Couldn't save '${command.filename}'.`,
+						error,
+					);
+				}
 				this.bus.emit("GameSaved", { filename: command.filename });
 				this.state.output = `Game saved as '${command.filename}'.`;
 				this.blueprintProgressService.checkMilestones(
 					this.state,
 					this.bus,
 				);
-				return this.state;
+				return this._ok();
 			}
 
 			if (command.type === "LOAD") {
-				this.state = await this.persistenceRepository.load(
-					command.filename,
-				);
+				try {
+					this.state = await this.persistenceRepository.load(
+						command.filename,
+					);
+				} catch (error) {
+					return this._fail(
+						"persistence",
+						`Couldn't load '${command.filename}'.`,
+						error,
+					);
+				}
 				this.bus.emit("GameLoaded", { filename: command.filename });
 				this.state.output = `Loaded game from '${command.filename}'.`;
 				this.blueprintProgressService.checkMilestones(
 					this.state,
 					this.bus,
 				);
-				return this.state;
+				return this._ok();
 			}
 
 			const result = this.turnResolver.apply(
@@ -172,9 +195,6 @@ class GameEngine implements IGameEngine {
 					newMinutesOfDay: this.state.worldClock.getMinutesOfDay(),
 					totalMinutes: this.state.worldClock.getTotalMinutes(),
 				});
-				console.log(
-					`[TIME DEBUG] ${result.timeCost.amount} minutes passed | ${beforeTimeOfDay} → ${afterTimeOfDay} | Current time: ${this.state.worldClock.getCurrentTime()}`,
-				);
 			}
 
 			this.state.output = await this.renderer.render(
@@ -183,10 +203,30 @@ class GameEngine implements IGameEngine {
 
 			this.blueprintProgressService.checkMilestones(this.state, this.bus);
 		} catch (error) {
-			this.state.output = `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+			return this._fail("internal", "Something went wrong.", error);
 		}
 
-		return this.state;
+		return this._ok();
+	}
+
+	private _ok(): TurnOutcome {
+		return { state: this.state, narration: this.state.output };
+	}
+
+	private _fail(
+		kind: TurnError["kind"],
+		message: string,
+		cause?: unknown,
+	): TurnOutcome {
+		if (kind !== "invalid-input") {
+			this.logger.error(`${kind}: ${message}`, cause);
+		}
+		this.state.output = message;
+		return {
+			state: this.state,
+			narration: message,
+			error: { kind, message, cause },
+		};
 	}
 
 	private _buildRenderContext(

@@ -229,7 +229,7 @@ React + Ink state machine:
 | `game` | `GameScreen` | OutputPanel + CommandInput + HUD + SpellbookWidget |
 | `startup-error` | inline | Error message |
 
-`GameScreen` calls `engine.handleCommand(input)` on submit and re-renders when `state.output` changes. The UI gets the engine from `engineFactory`; it still imports a few core types directly (see systems/20).
+`GameScreen` calls `engine.handleCommand(input)` on submit and shows the returned `TurnOutcome.narration`, marking errors with `✗`. The UI gets the engine from `engineFactory`; it still imports a few core types directly (see systems/20).
 
 ---
 

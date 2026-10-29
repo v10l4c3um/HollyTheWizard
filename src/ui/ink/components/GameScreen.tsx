@@ -42,9 +42,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
 
             setBusy(true);
             try {
-                const next = await engine.handleCommand(cmd);
-                setState(next);
-                const lines = next.output.split("\n").filter(Boolean);
+                const outcome = await engine.handleCommand(cmd);
+                setState(outcome.state);
+                const mark = outcome.error ? "✗ " : "";
+                const lines = outcome.narration
+                    .split("\n")
+                    .filter(Boolean)
+                    .map((line, i) => (i === 0 ? mark + line : line));
                 setOutputLines((prev) => [...prev, `▶ ${cmd}`, ...lines]);
             } catch (e: unknown) {
                 const msg = e instanceof Error ? e.message : String(e);

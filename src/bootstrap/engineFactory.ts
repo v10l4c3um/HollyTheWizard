@@ -22,6 +22,8 @@ import { GenerateYearBlueprint } from "../core/application/use-cases/GenerateYea
 import { AdvanceYear } from "../core/application/use-cases/AdvanceYear";
 import { BlueprintProgressService } from "../core/domain/campaign/BlueprintProgressService";
 import { PersistenceRepository } from "../core/application/ports/PersistenceRepository";
+import { Logger } from "../core/application/ports/Logger";
+import { FileLogger } from "../infrastructure/logging/FileLogger";
 import { JsonPersistenceRepository } from "../infrastructure/persistence/json/JsonPersistenceRepository";
 import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
 
@@ -150,6 +152,7 @@ export interface EngineOptions {
 	rendererConfig?: OllamaConfig;
 	blueprintConfig?: OllamaConfig;
 	persistenceRepository?: PersistenceRepository;
+	logger?: Logger;
 	/** Dev/test only: use the deterministic blueprint when the LLM output is invalid. */
 	allowBlueprintFallback?: boolean;
 }
@@ -195,6 +198,7 @@ export function createEngine(
 		blueprintProgressService: new BlueprintProgressService(),
 		persistenceRepository:
 			options.persistenceRepository ?? new JsonPersistenceRepository(),
+		logger: options.logger ?? new FileLogger(),
 	});
 	wireEngine(engine, registry, bus);
 	return engine;
