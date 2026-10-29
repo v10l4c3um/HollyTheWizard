@@ -1,6 +1,7 @@
-import { parseFastPath } from "./FastPath";
+import { AUTOSAVE_SLOT, QUICKSAVE_SLOT, parseFastPath } from "./FastPath";
 import { z } from "zod";
 import { Command } from "./Command";
+import { SubjectType } from "../domain/quest/Curriculum";
 import { OllamaConfig } from "../../ai/OllamaConfig";
 import {
 	generateWithOllama,
@@ -24,7 +25,7 @@ import {
 
 /** One-line summaries used to help the model pick the right intent. */
 const INTENT_SUMMARIES: Record<IntentType, string> = {
-	MOVE: 'Navigate to a location (e.g., "go to village", "travel north")',
+	MOVE: 'Go to, enter or visit a place (e.g., "go to village", "travel north", "visit the hut", "go outside")',
 	TALK: 'Talk to a person (e.g., "talk to goblin", "greet the professor", "ask Hagrid about the forest")',
 	STUDY:
 		'Study a subject on your own (e.g., "study charms", "revise potions", "read up on herbology")',
@@ -37,7 +38,7 @@ const INTENT_SUMMARIES: Record<IntentType, string> = {
 	SAVE: 'Save the game (e.g., "save game1")',
 	LOAD: 'Load a saved game (e.g., "load game1")',
 	ADVANCE_YEAR:
-		'Advance to the next school year (e.g., "advance to next year", "end the school year")',
+		'Only when the player asks to start the next school year (e.g., "advance to next year", "end the school year")',
 };
 
 /** How many candidates the model is shown when a name is ambiguous. */
@@ -92,10 +93,11 @@ class Resolver {
 			}
 
 			const args = await this._extractArguments(input, intent, world);
-			if (args.target && world) {
-				args.target = await this._groundTarget(intent, input, args.target, world);
+			const given = givenTarget(args.target);
+			if (given && world) {
+				args.target = await this._groundTarget(intent, input, given, world);
 			}
-			const command = this._createCommand(intent, args);
+			const command = this._createCommand(intent, args, input);
 
 			console.debug(
 				`[Resolver] "${input}" → intent=${intent} → ${JSON.stringify(command)}`,
@@ -275,6 +277,8 @@ class Resolver {
 			context: "resolver",
 			// Constrain the reply to the schema so the model cannot invent keys.
 			format: jsonSchemaFor(schema),
+			// Reading a command is not creative: the same input should give the same parse.
+			temperature: 0,
 			timeoutMs,
 		});
 
@@ -481,64 +485,113 @@ Respond with only valid JSON of this shape: ${help[intent]}
 ${world ? 'For "target", give the id from the list when the player clearly means one of the entries, otherwise copy the player\'s own words for it.' : ""}`;
 	}
 
-	private _createCommand(intent: IntentType, rawArgs: ParsedArguments): Command {
+	/**
+	 * Builds the command. A target the player never gave is not replaced by a
+	 * guess: the result is an `UNKNOWN` that asks for it. (Defaults that remain
+	 * are real ones: one hour, the verb "use", and the quick-save slot.)
+	 */
+	private _createCommand(
+		intent: IntentType,
+		rawArgs: ParsedArguments,
+		input: string,
+	): Command {
 		const args = { ...rawArgs, duration: sanitiseDuration(rawArgs.duration) };
+		const target = givenTarget(args.target);
+		const missing = (): Command => ({
+			type: "UNKNOWN",
+			input,
+			hint: MISSING_TARGET_HINT[intent],
+		});
+
 		switch (intent) {
 			case "MOVE":
-				return {
-					type: "MOVE",
-					destinationId: args.target ?? "unknown",
-				};
+				return target
+					? { type: "MOVE", destinationId: target }
+					: missing();
 			case "TALK":
-				return {
-					type: "TALK",
-					npcId: args.target ?? "unknown",
-					conversationTopic: args.conversationTopic,
-				};
+				return target
+					? {
+							type: "TALK",
+							npcId: target,
+							conversationTopic: args.conversationTopic,
+						}
+					: missing();
 			case "STUDY":
-				return {
-					type: "STUDY",
-					subjectId: (args.target ?? "charms") as any,
-					duration: args.duration ?? 1,
-				};
+				return target
+					? {
+							type: "STUDY",
+							subjectId: target as SubjectType,
+							duration: args.duration ?? 1,
+						}
+					: missing();
 			case "ATTEND_CLASS":
-				return {
-					type: "ATTEND_CLASS",
-					subjectId: args.target ?? "unknown",
-					duration: args.duration ?? 1,
-				};
+				return target
+					? {
+							type: "ATTEND_CLASS",
+							subjectId: target,
+							duration: args.duration ?? 1,
+						}
+					: missing();
 			case "PRACTICE":
-				return {
-					type: "PRACTICE",
-					spellId: args.target ?? "unknown",
-					duration: args.duration ?? 1,
-				};
+				return target
+					? {
+							type: "PRACTICE",
+							spellId: target,
+							duration: args.duration ?? 1,
+						}
+					: missing();
 			case "INTERACT":
-				return {
-					type: "INTERACT",
-					itemId: args.target ?? "unknown",
-					actionType: args.actionType ?? "use",
-				};
+				return target
+					? {
+							type: "INTERACT",
+							itemId: target,
+							actionType: args.actionType?.trim() || "use",
+						}
+					: missing();
 			case "REST":
 				return {
 					type: "REST",
 					duration: args.duration ?? 1,
-					locationId: args.target,
+					locationId: target,
 				};
+			// Same slots as the fast path's bare "save" / "load".
 			case "SAVE":
-				return {
-					type: "SAVE",
-					filename: args.target ?? "autosave",
-				};
+				return { type: "SAVE", filename: target ?? QUICKSAVE_SLOT };
 			case "LOAD":
-				return {
-					type: "LOAD",
-					filename: args.target ?? "autosave",
-				};
+				return target
+					? { type: "LOAD", filename: target }
+					: {
+							type: "LOAD",
+							filename: QUICKSAVE_SLOT,
+							fallbackFilename: AUTOSAVE_SLOT,
+						};
 			case "ADVANCE_YEAR":
 				return { type: "ADVANCE_YEAR" };
 		}
 	}
+}
+
+const MISSING_TARGET_HINT: Record<IntentType, string> = {
+	MOVE: "Where do you want to go?",
+	TALK: "Who do you want to talk to?",
+	STUDY: "Which subject do you want to study?",
+	ATTEND_CLASS: "Which class do you want to attend?",
+	PRACTICE: "Which spell do you want to practise?",
+	INTERACT: "Which item do you mean?",
+	REST: "",
+	SAVE: "",
+	LOAD: "",
+	ADVANCE_YEAR: "",
+};
+
+/** Words a model writes when there is nothing to put in "target". */
+const NON_ANSWERS = new Set(["none", "unknown", "n/a", "na", "null", "nothing", "undefined", "-"]);
+
+/** The target the player named, or undefined if it is blank or a non-answer. */
+function givenTarget(target: string | undefined): string | undefined {
+	const trimmed = target?.trim();
+	if (!trimmed || NON_ANSWERS.has(trimmed.toLowerCase())) return undefined;
+	return trimmed;
 }
 
 /** One candidate beats the rest: a name, not a guess. */

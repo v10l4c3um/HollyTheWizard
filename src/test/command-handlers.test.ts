@@ -293,3 +293,31 @@ describe("the engine's common pipeline", () => {
 		expect(outcome.state).toBe(replacement);
 	});
 });
+
+describe("UNKNOWN with a hint", () => {
+	it("says what is missing", async () => {
+		const { handlers } = buildHandlers();
+		const result = await handlers.UNKNOWN(
+			{ type: "UNKNOWN", input: "go", hint: "Where do you want to go?" },
+			new GameSession(new GameState()),
+		);
+		expect(result).toMatchObject({
+			kind: "fail",
+			error: {
+				kind: "invalid-input",
+				message: 'I didn\'t understand "go". Where do you want to go?',
+			},
+		});
+	});
+
+	it("falls back to the general sentence without one", async () => {
+		const { handlers } = buildHandlers();
+		const result = await handlers.UNKNOWN(
+			{ type: "UNKNOWN", input: "asdf" },
+			new GameSession(new GameState()),
+		);
+		expect((result as any).error.message).toBe(
+			'I didn\'t understand "asdf". Try saying it another way.',
+		);
+	});
+});

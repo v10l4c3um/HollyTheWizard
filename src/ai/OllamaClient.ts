@@ -34,6 +34,8 @@ export class OllamaRequestError extends Error {
 interface OllamaGenerateOptions {
 	context?: string;
 	format?: object | "json";
+	/** Sampling temperature. 0 makes the answer repeatable (parsing); unset keeps the model's default. */
+	temperature?: number;
 	maxRetries?: number;
 	retryBaseDelayMs?: number;
 	timeoutMs?: number;
@@ -97,6 +99,7 @@ function buildGenerateBody(
 	config: OllamaConfig,
 	prompt: string,
 	format?: object | "json",
+	temperature?: number,
 ): string {
 	const disableThinking = config.disableThinking ?? true;
 	return JSON.stringify({
@@ -105,6 +108,7 @@ function buildGenerateBody(
 		stream: false,
 		think: disableThinking ? false : undefined,
 		...(format ? { format } : {}),
+		...(temperature !== undefined ? { options: { temperature } } : {}),
 	});
 }
 
@@ -128,6 +132,7 @@ export async function generateWithOllama(
 	const {
 		context = "request",
 		format,
+		temperature,
 		maxRetries = OLLAMA_MAX_RETRIES,
 		retryBaseDelayMs = OLLAMA_RETRY_BASE_DELAY_MS,
 		timeoutMs = OLLAMA_REQUEST_TIMEOUT_MS,
@@ -137,7 +142,7 @@ export async function generateWithOllama(
 
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
-			const body = buildGenerateBody(config, prompt, format);
+			const body = buildGenerateBody(config, prompt, format, temperature);
 			if (context === "resolver" && config.debugMode) {
 				console.debug(`[Ollama] ${context} request body:`, body);
 				if (format) {

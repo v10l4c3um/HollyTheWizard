@@ -374,6 +374,34 @@
     "type": "MOVE",
     "destinationId": "hallway"
    }
+  },
+  {
+   "input": "go",
+   "at": "hallway",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "study",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "talk",
+   "at": "grounds",
+   "expect": {
+    "type": "UNKNOWN"
+   }
+  },
+  {
+   "input": "use",
+   "at": "great_hall",
+   "expect": {
+    "type": "UNKNOWN"
+   }
   }
  ]
 }

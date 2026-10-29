@@ -1,6 +1,7 @@
 import Resolver from "../core/engine/Resolver";
 import Registry from "../core/Registry";
 import GameState from "../core/domain/world/GameState";
+import Item from "../core/domain/world/Item";
 import { applyEffects } from "../core/domain/effects/EffectApplier";
 import { arrivalEffects } from "../core/domain/world/Exploration";
 import { createGameBus } from "../core/domain/events/GameEvents";
@@ -191,6 +192,13 @@ describe("what the model is told", () => {
 		expect(bodyOf(1).format.properties.target).toBeDefined();
 	});
 
+	it("asks for a repeatable answer: temperature 0 on every call", async () => {
+		model({ intent: "MOVE" }, { target: "library" });
+		await resolve("go to the library", viewAt("hallway"));
+		expect(bodyOf(0).options).toEqual({ temperature: 0 });
+		expect(bodyOf(1).options).toEqual({ temperature: 0 });
+	});
+
 	it("names the player so third-person sentences are read as the player acting", async () => {
 		model({ intent: "MOVE" }, { target: "library" });
 		const view = { ...viewAt("hallway"), playerName: "Harry" };
@@ -243,6 +251,74 @@ describe("hours", () => {
 		model({ intent: "REST" }, { duration: 3 });
 		expect(await resolve("rest three hours", viewAt("great_hall"))).toMatchObject({
 			duration: 3,
+		});
+	});
+});
+
+describe("a target the player never gave is asked for, not guessed", () => {
+	const hints: [string, string, string][] = [
+		["MOVE", "go", "Where do you want to go?"],
+		["TALK", "talk", "Who do you want to talk to?"],
+		["STUDY", "study", "Which subject do you want to study?"],
+		["ATTEND_CLASS", "attend a class", "Which class do you want to attend?"],
+		["PRACTICE", "practise", "Which spell do you want to practise?"],
+		["INTERACT", "use", "Which item do you mean?"],
+	];
+
+	it.each(hints)("%s with no target asks '%s'", async (intent, input, hint) => {
+		for (const target of [undefined, "", "   ", "none", "Unknown", "N/A", "null"]) {
+			model({ intent }, target === undefined ? {} : { target });
+			expect(await resolve(input, viewAt("great_hall"))).toEqual({
+				type: "UNKNOWN",
+				input,
+				hint,
+			});
+		}
+	});
+
+	it("does not spend a model call grounding a non-answer", async () => {
+		model({ intent: "MOVE" }, { target: "none" });
+		await resolve("go", viewAt("hallway"));
+		expect(calls()).toHaveLength(2);
+	});
+
+	it("never turns a missing study subject into charms", async () => {
+		model({ intent: "STUDY" }, { duration: 2 });
+		const command = await resolve("study for two hours", viewAt("great_hall"));
+		expect(command).toMatchObject({ type: "UNKNOWN" });
+		expect(JSON.stringify(command)).not.toContain("charms");
+	});
+
+	it("still builds the command when the target is there", async () => {
+		model({ intent: "STUDY" }, { target: "charms" });
+		expect(await resolve("study charms", viewAt("great_hall"))).toMatchObject({
+			type: "STUDY",
+			subjectId: "charms",
+		});
+	});
+
+	it("gives a nameless save or load the same slots as the fast path", async () => {
+		model({ intent: "SAVE" }, {});
+		expect(await resolve("save my progress", viewAt("great_hall"))).toEqual({
+			type: "SAVE",
+			filename: "quicksave",
+		});
+		model({ intent: "LOAD" }, { target: "" });
+		expect(await resolve("load my progress", viewAt("great_hall"))).toEqual({
+			type: "LOAD",
+			filename: "quicksave",
+			fallbackFilename: "autosave",
+		});
+	});
+
+	it("keeps 'use' as the verb for an item when none is given", async () => {
+		model({ intent: "INTERACT" }, { target: "wand" });
+		const view = viewAt("great_hall", (s) =>
+			s.inventory.items.push(new Item("wand", "Wand")),
+		);
+		expect(await resolve("wand", view)).toMatchObject({
+			itemId: "wand",
+			actionType: "use",
 		});
 	});
 });

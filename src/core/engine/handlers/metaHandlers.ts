@@ -30,7 +30,9 @@ export function createMetaHandlers({
 				kind: "invalid-input",
 				// Nothing happened, so there is nothing to narrate (and the
 				// model may be the reason we are here): say so plainly.
-				message: `I didn't understand "${command.input}". Try saying it another way.`,
+				message: command.hint
+					? `I didn't understand "${command.input}". ${command.hint}`
+					: `I didn't understand "${command.input}". Try saying it another way.`,
 			},
 		}),
 

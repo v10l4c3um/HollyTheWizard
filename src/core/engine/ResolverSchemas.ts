@@ -31,26 +31,26 @@ export const PickResponseSchema = z.object({
  *  `null` means no arguments are needed (no second LLM call). */
 export const ARGUMENT_SCHEMAS = {
 	MOVE: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 	}),
 	TALK: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 		conversationTopic: z.string().optional(),
 	}),
 	STUDY: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 		duration: z.coerce.number().optional(),
 	}),
 	ATTEND_CLASS: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 		duration: z.coerce.number().optional(),
 	}),
 	PRACTICE: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 		duration: z.coerce.number().optional(),
 	}),
 	INTERACT: z.object({
-		target: z.string(),
+		target: z.string().optional(),
 		actionType: z.string().optional(),
 	}),
 	REST: z.object({

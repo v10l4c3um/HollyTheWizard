@@ -64,6 +64,22 @@ describe("OllamaClient", () => {
 		);
 	});
 
+	it("sends a temperature only when one is asked for", async () => {
+		(global.fetch as jest.Mock).mockResolvedValue({
+			ok: true,
+			json: async () => ({ response: "ok" }),
+		});
+
+		await generateWithOllama(TEST_CONFIG, "hello", { temperature: 0 });
+		await generateWithOllama(TEST_CONFIG, "hello");
+
+		const bodies = (global.fetch as jest.Mock).mock.calls.map(
+			([, init]) => JSON.parse((init as RequestInit).body as string),
+		);
+		expect(bodies[0].options).toEqual({ temperature: 0 });
+		expect(bodies[1].options).toBeUndefined();
+	});
+
 	it("allows thinking to be re-enabled per config", async () => {
 		(global.fetch as jest.Mock).mockResolvedValue({
 			ok: true,

@@ -27,4 +27,9 @@ export type Command =
 	/** Takes back the last turn. Only the fast path produces it. */
 	| { type: "UNDO" }
 	/** The input could not be turned into any command (model down, slow or unparseable). */
-	| { type: "UNKNOWN"; input: string };
+	| {
+			type: "UNKNOWN";
+			input: string;
+			/** Tells the player what was missing ("Where do you want to go?"). */
+			hint?: string;
+	  };
