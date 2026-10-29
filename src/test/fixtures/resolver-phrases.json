@@ -1,0 +1,347 @@
+{
+ "description": "Free-text phrases the resolver should turn into the expected command. Used by `npm run eval:resolver` against a real local Ollama; not part of jest.",
+ "cases": [
+  {
+   "input": "go to the library",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "library"
+   }
+  },
+  {
+   "input": "Harry goes to the library in main building",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "library"
+   }
+  },
+  {
+   "input": "head into the dungeons",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "dungeons"
+   }
+  },
+  {
+   "input": "walk to the headmaster's office",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "headmaster_office"
+   }
+  },
+  {
+   "input": "let's go outside to the school grounds",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "grounds"
+   }
+  },
+  {
+   "input": "I want to visit the common room",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "common_room"
+   }
+  },
+  {
+   "input": "go to the libary",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "library"
+   }
+  },
+  {
+   "input": "enter the classroom",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "classroom"
+   }
+  },
+  {
+   "input": "take me to the dungeon classroom",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "dungeons"
+   }
+  },
+  {
+   "input": "The player walks into the library of the main building",
+   "at": "hallway",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "library"
+   }
+  },
+  {
+   "input": "leave the hall through the main corridor",
+   "at": "great_hall",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   }
+  },
+  {
+   "input": "go to the corridor",
+   "at": "great_hall",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   }
+  },
+  {
+   "input": "walk out into the main corridor",
+   "at": "great_hall",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   }
+  },
+  {
+   "input": "visit Hagrid's hut",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hagrid_hut"
+   }
+  },
+  {
+   "input": "go to the gamekeeper's hut",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hagrid_hut"
+   }
+  },
+  {
+   "input": "walk to the greenhouse",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "greenhouse"
+   }
+  },
+  {
+   "input": "go into the forest",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "forest"
+   }
+  },
+  {
+   "input": "walk down to the village",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "startingVillage"
+   }
+  },
+  {
+   "input": "go back inside to the main corridor",
+   "at": "grounds",
+   "expect": {
+    "type": "MOVE",
+    "destinationId": "hallway"
+   }
+  },
+  {
+   "input": "talk to Hagrid",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   }
+  },
+  {
+   "input": "chat with the gamekeeper about everyday things",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   }
+  },
+  {
+   "input": "have a word with Rubeus",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   }
+  },
+  {
+   "input": "say hello to hagrid",
+   "at": "grounds",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hagrid"
+   }
+  },
+  {
+   "input": "talk to Hermione",
+   "at": "classroom",
+   "expect": {
+    "type": "TALK",
+    "npcId": "hermione_granger"
+   }
+  },
+  {
+   "input": "ask Harry Potter about his scar",
+   "at": "classroom",
+   "expect": {
+    "type": "TALK",
+    "npcId": "harry_potter"
+   }
+  },
+  {
+   "input": "greet professor snape",
+   "at": "classroom",
+   "expect": {
+    "type": "TALK",
+    "npcId": "professor_snape"
+   }
+  },
+  {
+   "input": "attend charms class",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "charms"
+   }
+  },
+  {
+   "input": "go to the potions lecture",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "potions"
+   }
+  },
+  {
+   "input": "sit in on the defence against the dark arts lesson",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "defense-against-the-dark-arts"
+   }
+  },
+  {
+   "input": "attend the herbology lesson",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "herbology"
+   }
+  },
+  {
+   "input": "go to transfiguration class",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "transfiguration"
+   }
+  },
+  {
+   "input": "Harry attends the charms lesson",
+   "at": "classroom",
+   "expect": {
+    "type": "ATTEND_CLASS",
+    "subjectId": "charms"
+   }
+  },
+  {
+   "input": "study charms",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "charms"
+   }
+  },
+  {
+   "input": "study potions for two hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "potions"
+   }
+  },
+  {
+   "input": "revise defence against the dark arts",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "defense-against-the-dark-arts"
+   }
+  },
+  {
+   "input": "read up on herbology",
+   "at": "great_hall",
+   "expect": {
+    "type": "STUDY",
+    "subjectId": "herbology"
+   }
+  },
+  {
+   "input": "practice the levitation charm",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "levitate"
+   }
+  },
+  {
+   "input": "practise wingardium leviosa",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "levitate"
+   }
+  },
+  {
+   "input": "rehearse alohomora",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "unlock"
+   }
+  },
+  {
+   "input": "practice expelliarmus for 2 hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "disarm"
+   }
+  },
+  {
+   "input": "Harry practises the levitation charm",
+   "at": "great_hall",
+   "expect": {
+    "type": "PRACTICE",
+    "spellId": "levitate"
+   }
+  },
+  {
+   "input": "rest for two hours",
+   "at": "great_hall",
+   "expect": {
+    "type": "REST"
+   }
+  },
+  {
+   "input": "Harry sits down and rests for a while",
+   "at": "great_hall",
+   "expect": {
+    "type": "REST"
+   }
+  }
+ ]
+}

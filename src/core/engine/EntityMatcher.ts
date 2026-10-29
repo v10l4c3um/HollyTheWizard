@@ -26,6 +26,8 @@ export interface RankedMatch {
 export const MATCH_THRESHOLD = 0.7;
 /** At or above this a match is a name, not a guess. Typos never reach it. */
 export const CLEAR_MATCH_SCORE = 0.85;
+/** A whole name appears inside a longer sentence ("the library in main building"). */
+export const CONTAINED_MATCH_SCORE = 0.9;
 
 const ARTICLES = new Set(["the", "a", "an"]);
 const HONORIFICS = new Set(["mr", "mrs", "ms", "miss", "sir", "madam", "lord", "lady", "dr"]);
@@ -42,6 +44,8 @@ export function normalizeName(text: string): string {
 /**
  * Scores per candidate (best of its names and aliases):
  *   1.00  the whole text is the id, a full name or a whole alias
+ *   0.90  a full name or alias appears inside the text as whole words
+ *         ("the library in main building" contains "Library")
  *   0.85  every word of the text is a word of a name ("Rubeus", "Weasley");
  *         never for aliases
  *   <0.85 typo-tolerant similarity, kept at or above MATCH_THRESHOLD
@@ -79,10 +83,19 @@ function queryWords(query: string): string[] {
 	return words;
 }
 
+/** `phrase` occurs in `text` as whole, consecutive words (never inside a word). */
+function containsPhrase(text: string, phrase: string): boolean {
+	return phrase !== "" && ` ${text} `.includes(` ${phrase} `);
+}
+
 function scoreName(text: string, words: string[], rawName: string): number {
 	const name = normalizeName(rawName);
 	if (name === "") return 0;
 	if (text === name) return 1;
+
+	if (containsPhrase(text, queryWords(rawName).join(" "))) {
+		return CONTAINED_MATCH_SCORE;
+	}
 
 	const nameWords = name.split(" ");
 	if (words.every((word) => nameWords.includes(word))) return CLEAR_MATCH_SCORE;
@@ -99,6 +112,7 @@ function scoreAlias(text: string, rawAlias: string): number {
 	const alias = queryWords(rawAlias).join(" ");
 	if (alias === "") return 0;
 	if (text === alias) return 1;
+	if (containsPhrase(text, alias)) return CONTAINED_MATCH_SCORE;
 	return Math.min(similarityOf(text, alias), CLEAR_MATCH_SCORE - 0.01);
 }
 

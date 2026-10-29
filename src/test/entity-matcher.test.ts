@@ -131,3 +131,50 @@ describe("aliases", () => {
 		expect(matches.filter((match) => match.score === 1)).toHaveLength(1);
 	});
 });
+
+describe("a name inside a longer sentence", () => {
+	const PLACES: MatchCandidate[] = [
+		{ id: "library", names: ["library", "Library"] },
+		{ id: "hallway", names: ["hallway", "Main Corridor"] },
+		{ id: "classroom", names: ["classroom", "Classroom"] },
+		{ id: "dungeons", names: ["dungeons", "Dungeon Classroom"] },
+		{ id: "grounds", names: ["grounds", "School Grounds"] },
+	];
+
+	it("finds the place whose full name is in the text", () => {
+		const [best, second] = rankCandidates(
+			"library in main building",
+			PLACES,
+		);
+		expect(best).toEqual({ id: "library", score: 0.9 });
+		expect(second).toBeUndefined();
+	});
+
+	it("ignores articles and surrounding words", () => {
+		expect(ids("the library of the main building", PLACES)[0]).toBe("library");
+		expect(ids("walk into the school grounds please", PLACES)[0]).toBe("grounds");
+	});
+
+	it("still prefers an exact name over a shorter name it contains", () => {
+		const matches = rankCandidates("dungeon classroom", PLACES);
+		expect(matches[0]).toEqual({ id: "dungeons", score: 1 });
+		expect(matches[1]).toEqual({ id: "classroom", score: 0.9 });
+	});
+
+	it("only matches whole words, never a piece of a longer word", () => {
+		expect(ids("a libraryish place", PLACES)).not.toContain("library");
+		// "classrooms" is a typo-level suggestion at best, never a clear match.
+		expect(rankCandidates("classrooms", PLACES)[0].score).toBeLessThan(0.85);
+	});
+
+	it("matches a whole alias inside the text, but not a single word of it", () => {
+		const people: MatchCandidate[] = [
+			{ id: "hagrid", names: ["Rubeus Hagrid"], aliases: ["the gamekeeper"] },
+		];
+		expect(rankCandidates("chat with the gamekeeper about work", people)[0]).toEqual({
+			id: "hagrid",
+			score: 0.9,
+		});
+		expect(rankCandidates("keeper", people)).toEqual([]);
+	});
+});
