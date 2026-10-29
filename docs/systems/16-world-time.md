@@ -9,7 +9,7 @@ Provides the "where" and "when" of the game: a graph of locations the player mov
 ## How it works
 
 - **Locations:** a `Location` has `id`, `displayName`, `description` and `connectedLocationsIds`. There are exactly three, created in `engineFactory`: `startingVillage` (to `forest`, `market`), `forest` and `market` (both back to the village). `GameState.currentLocationId` defaults to `startingVillage`.
-- **Movement:** `MOVE` checks the destination exists and is connected, costs 5 minutes (2 on a failed attempt), and the engine then sets `currentLocationId` and records new discoveries.
+- **Movement:** `MOVE` checks the destination exists and is connected, costs 5 minutes (2 on a failed attempt), and the `LocationChanged` / `LocationsDiscovered` effects then set `currentLocationId`, mark the place visited and discover its exits.
 - **Clock:** `WorldClock` stores `totalMinutes` since the start of day 1 (a Monday), starting at 8:00 AM, and never wraps. From it: `getDay()` (from 1), `getWeekday()` (a `DayOfWeek`, cycling every 7 days), `getMinutesOfDay()`, `getTotalMinutes()` and `timeOfDay` (`morning` 5-12, `afternoon` 12-17, `evening` 17-21, `night`; the first three are the timetable's `Period`s). `getCurrentTime` formats a 12-hour string. It saves as `{ totalMinutes }`, and `fromJSON` still reads the old `{ minutesOfDay }` shape as day 1.
 - **Time costs:** each command returns a `TimeCost` (`none` or `minutes`); the engine advances the clock and emits `TimeAdvanced`. `REST` takes `60 * hours`.
 - **Display:** the HUD shows the time, an icon, the weekday and day number, and the location; the renderer gets location, description, weekday, day number and time of day.
