@@ -18,6 +18,7 @@ npm install
 npm start      # launches the Ink terminal UI
 npm test       # runs the Jest suite
 npm run build  # type-check / compile with tsc
+npm run eval:resolver  # how well your local model understands free-text commands (needs Ollama)
 ```
 
 Saves are written as JSON to `./saves/`.
