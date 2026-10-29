@@ -16,7 +16,12 @@ export type Command =
 			locationId?: string;
 	  }
 	| { type: "SAVE"; filename: string }
-	| { type: "LOAD"; filename: string }
+	| {
+			type: "LOAD";
+			filename: string;
+			/** Used when `filename` does not exist (e.g. a bare "load"). */
+			fallbackFilename?: string;
+	  }
 	| { type: "PRACTICE"; spellId: string; duration?: number }
 	| { type: "ADVANCE_YEAR" }
 	/** The input could not be turned into any command (model down, slow or unparseable). */

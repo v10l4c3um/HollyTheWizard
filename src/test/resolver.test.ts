@@ -40,6 +40,32 @@ describe("Resolver", () => {
 		jest.clearAllMocks();
 	});
 
+	it("resolves save and load without calling the model", async () => {
+		const resolver = new Resolver(TEST_CONFIG);
+
+		await expect(resolver.resolve("save game1")).resolves.toEqual({
+			type: "SAVE",
+			filename: "game1",
+		});
+		await expect(resolver.resolve("load")).resolves.toEqual({
+			type: "LOAD",
+			filename: "quicksave",
+			fallbackFilename: "autosave",
+		});
+		expect(global.fetch).not.toHaveBeenCalled();
+	});
+
+	it("still sends a sentence that merely starts with save to the model", async () => {
+		mockOllamaResponses(
+			JSON.stringify({ intent: "REST" }),
+			JSON.stringify({ duration: 1 }),
+		);
+
+		await new Resolver(TEST_CONFIG).resolve("save the day by resting");
+
+		expect(global.fetch).toHaveBeenCalled();
+	});
+
 	it("resolves a MOVE command from two-stage Ollama responses", async () => {
 		mockOllamaResponses(
 			JSON.stringify({ intent: "MOVE" }),

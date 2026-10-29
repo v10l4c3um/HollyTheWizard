@@ -1,3 +1,4 @@
+import { parseFastPath } from "./FastPath";
 import { z } from "zod";
 import { Command } from "./Command";
 import { OllamaConfig } from "../../ai/OllamaConfig";
@@ -67,6 +68,12 @@ class Resolver {
 	 * a repair pass handles nested or loosely-structured output.
 	 */
 	async resolve(input: string): Promise<Command> {
+		const fast = parseFastPath(input);
+		if (fast) {
+			console.debug(`[Resolver] "${input}" → fast path → ${JSON.stringify(fast)}`);
+			return fast;
+		}
+
 		try {
 			const intent = await this._classifyIntent(input);
 
