@@ -223,10 +223,20 @@ export const TimetablesFileSchema: z.ZodType<Record<string, WeeklyTimetable>> = 
 // Reporting
 // ---------------------------------------------------------------------------
 
-/** One readable line per issue: which file, where in it, and what is wrong. */
-export function formatIssues(file: string, error: z.ZodError): string[] {
+/**
+ * One readable line per issue: which file, where in it (line:column when the
+ * position is known), the path to the value, and what is wrong.
+ */
+export function formatIssues(
+	file: string,
+	error: z.ZodError,
+	locate?: (path: (string | number)[], keys?: string[]) => { line: number; col: number } | undefined,
+): string[] {
 	return error.issues.map((issue) => {
 		const where = issue.path.length > 0 ? issue.path.map(String).join(".") : "(root)";
-		return `${file}: ${where}: ${issue.message}`;
+		const keys = issue.code === "unrecognized_keys" ? issue.keys : undefined;
+		const position = locate?.(issue.path as (string | number)[], keys);
+		const at = position ? `${file}:${position.line}:${position.col}` : file;
+		return `${at}: ${where}: ${issue.message}`;
 	});
 }

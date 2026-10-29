@@ -1,19 +1,76 @@
 import * as fs from "fs";
 import * as path from "path";
 import { z } from "zod";
+import {
+	Node,
+	ParseError,
+	findNodeAtLocation,
+	parseTree,
+	printParseErrorCode,
+} from "jsonc-parser";
 import { formatIssues } from "./ContentSchemas";
+
+export interface Position {
+	line: number;
+	col: number;
+}
+
+/** Where in a content file a path leads (1-based), or the nearest place above it. */
+export type Locate = (path: (string | number)[], keys?: string[]) => Position | undefined;
+
+export interface ContentFile<T> {
+	data: T;
+	/** Label used in messages: the path relative to the content root. */
+	label: string;
+	locate: Locate;
+}
+
+function positionAt(text: string, offset: number): Position {
+	let line = 1;
+	let lastBreak = -1;
+	for (let i = 0; i < offset && i < text.length; i++) {
+		if (text[i] === "\n") {
+			line++;
+			lastBreak = i;
+		}
+	}
+	return { line, col: offset - lastBreak };
+}
+
+function locator(tree: Node, text: string): Locate {
+	return (segments, keys) => {
+		// Walk up until a node exists: a missing key is reported where its object starts.
+		for (let length = segments.length; length >= 0; length--) {
+			const node = findNodeAtLocation(tree, segments.slice(0, length));
+			if (!node) continue;
+			if (length === segments.length && keys?.length && node.type === "object") {
+				const property = node.children?.find(
+					(child) => child.children?.[0]?.value === keys[0],
+				);
+				if (property?.children?.[0]) {
+					return positionAt(text, property.children[0].offset);
+				}
+			}
+			return positionAt(text, node.offset);
+		}
+		return undefined;
+	};
+}
 
 /**
  * Reads, parses and validates one content file. Adds a line to `problems`
- * for each thing wrong with it and returns `undefined`; never throws, so a
- * loader can gather the problems of every file before reporting.
+ * for each thing wrong with it (`file:line:col ...`) and returns `undefined`;
+ * never throws, so a loader can gather the problems of every file before
+ * reporting. `root` makes the file name in messages relative to the content
+ * directory.
  */
-export function readContentFile<T>(
+export function readContentFileLocated<T>(
 	filePath: string,
 	schema: z.ZodType<T>,
 	problems: string[],
-): T | undefined {
-	const label = path.basename(filePath);
+	root?: string,
+): ContentFile<T> | undefined {
+	const label = root ? path.relative(root, filePath).split(path.sep).join("/") : path.basename(filePath);
 
 	let text: string;
 	try {
@@ -23,20 +80,34 @@ export function readContentFile<T>(
 		return undefined;
 	}
 
-	let json: unknown;
-	try {
-		json = JSON.parse(text);
-	} catch (error) {
-		problems.push(
-			`${label}: not valid JSON (${error instanceof Error ? error.message : "parse error"})`,
-		);
+	const syntaxErrors: ParseError[] = [];
+	const tree = parseTree(text, syntaxErrors, {
+		disallowComments: true,
+		allowTrailingComma: false,
+	});
+	if (syntaxErrors.length > 0 || !tree) {
+		if (syntaxErrors.length === 0) problems.push(`${label}: not valid JSON (empty file)`);
+		for (const error of syntaxErrors) {
+			const { line, col } = positionAt(text, error.offset);
+			problems.push(`${label}:${line}:${col}: not valid JSON (${printParseErrorCode(error.error)})`);
+		}
 		return undefined;
 	}
 
-	const result = schema.safeParse(json);
+	const locate = locator(tree, text);
+	const result = schema.safeParse(JSON.parse(text));
 	if (!result.success) {
-		problems.push(...formatIssues(label, result.error));
+		problems.push(...formatIssues(label, result.error, locate));
 		return undefined;
 	}
-	return result.data;
+	return { data: result.data, label, locate };
+}
+
+/** `readContentFileLocated` for callers that only want the data. */
+export function readContentFile<T>(
+	filePath: string,
+	schema: z.ZodType<T>,
+	problems: string[],
+): T | undefined {
+	return readContentFileLocated(filePath, schema, problems)?.data;
 }
