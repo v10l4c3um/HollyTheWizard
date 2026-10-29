@@ -16,7 +16,7 @@ You begin in the **Great Hall** on **Monday morning** (day 1). Charms is taught 
 1. **Go to the classroom.** `go to the corridor`, then `go to the classroom`. Each move costs a few minutes.
 2. **Attend the first lesson.** `attend charms class`. You gain Charms knowledge, and the lesson is marked done. Attending the same class twice in one slot is refused and costs no time.
 3. **(Optional) Meet someone.** Hagrid is on the **grounds**. `go to the grounds`, then `chat with Hagrid about everyday things`. Talking raises trust over repeated chats. NPCs are only available where their schedule puts them: asking for someone who is elsewhere fails without spending time.
-4. **Wait for Thursday.** `rest` in one-hour steps (for example `wait an hour`) until it is Thursday morning, and be in the classroom. `rest` / `wait` advances time.
+4. **Wait for Thursday.** `rest` in one-hour steps (for example `wait an hour`) until it is Thursday morning, and be in the classroom. `rest` / `wait` advances time. Letting a class period pass without attending it shows a "You missed … class" note (no penalty yet), and the game autosaves each time a new day begins, which is what the menu's Continue loads.
 5. **Attend the second lesson.** `attend charms class`. This teaches the **levitation charm**, and your spellbook shows it as learned.
 6. **Practise.** `practice levitate`. Longer sessions (`practice levitate for 3 hours`) build proficiency faster. Keep going until the spell is **mastered**; that sets the `mastered:levitate` flag the story blueprint can react to.
 7. **Save.** `save firstweek`. Later: `load firstweek`. Saves live in `./saves/`.

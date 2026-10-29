@@ -24,7 +24,7 @@ Listeners exist in exactly one place: `engineFactory` registers four.
 | `SpellRevealed` | Pushes `spell_revealed:<spell>` to `questFlags.active` |
 | `SpellMastered` | Pushes `mastered:<spell>` to `questFlags.completed` |
 
-Those flags are what `BlueprintProgressService` checks to complete story milestones, so **the bus is the only link between player actions and campaign progress.** Every other event (conversation, topic, boundary, reveal, practice, study, time, `ActionResolved`, ...) has no subscriber. Six declared events are never emitted at all: `SpellLearned`, `LessonSkipped`, `AttributeGained` (deprecated), `QuestFlagSet`, `QuestActivated`, `QuestCompleted`.
+Those flags are what `BlueprintProgressService` checks to complete story milestones, so **the bus is the only link between player actions and campaign progress.** The world tick also emits `PeriodChanged` and `DayStarted` at each boundary, and `LessonSkipped` for a missed class (none has a subscriber yet). Every other event (conversation, topic, boundary, reveal, practice, study, time, `ActionResolved`, ...) has no subscriber. Six declared events are never emitted at all: `SpellLearned`, `LessonSkipped`, `AttributeGained` (deprecated), `QuestFlagSet`, `QuestActivated`, `QuestCompleted`.
 
 ## Strengths
 
