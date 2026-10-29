@@ -8,6 +8,7 @@ import Renderer from "./Renderer";
 import { WorldTick, TickReport } from "./WorldTick";
 import { Autosave } from "./Autosave";
 import { buildRenderContext } from "./RenderContext";
+import { Command } from "./Command";
 import { GameSession } from "./GameSession";
 import { CommandHandlerMap, runCommand } from "./handlers";
 import { GameBus } from "../domain/events/GameEvents";
@@ -94,21 +95,31 @@ class GameEngine implements IGameEngine {
 	}
 
 	async handleCommand(input: string): Promise<TurnOutcome> {
+		let command: Command;
+		try {
+			command = await this.resolver.resolve(input);
+		} catch (error) {
+			return this._fail("internal", "Something went wrong.", error);
+		}
+
+		// The turn works on a copy of the state. It is kept only if the turn
+		// succeeds; any failure puts the untouched state back.
+		this.session.begin();
 		let report: TickReport | undefined;
 		try {
-			const command = await this.resolver.resolve(input);
-			const stateBefore = this.state;
-			const clockBefore = stateBefore.worldClock.getTotalMinutes();
+			const working = this.state;
+			const clockBefore = working.worldClock.getTotalMinutes();
 			const result = await runCommand(this.handlers, command, this.session);
 
 			if (result.kind === "fail") {
+				this.session.rollback();
 				const { kind, message, cause } = result.error;
 				return this._fail(kind, message, cause);
 			}
 
-			// Time passed during this turn: let the world react. (A LOAD swaps
-			// the whole state, so there is no "before" to compare with.)
-			if (this.state === stateBefore) {
+			// Time passed during this turn: let the world react. (A LOAD or an
+			// undo swaps the whole state, so there is no "before" to compare with.)
+			if (this.state === working) {
 				report = this.worldTick.run(
 					this.state,
 					this.registry,
@@ -133,7 +144,9 @@ class GameEngine implements IGameEngine {
 						);
 
 			this.blueprintProgressService.checkMilestones(this.state, this.bus);
+			this.session.commit();
 		} catch (error) {
+			this.session.rollback();
 			return this._fail("internal", "Something went wrong.", error);
 		}
 

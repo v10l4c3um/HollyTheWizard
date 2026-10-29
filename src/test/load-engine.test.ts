@@ -58,7 +58,7 @@ describe("LOAD in the running engine", () => {
 		expect(JSON.stringify(beforeLoad)).toBe(snapshot); // the old state is not touched any more
 	});
 
-	it("writes bus-driven quest flags into the loaded state, not the old one", async () => {
+	it("writes bus-driven quest flags into the current state, not the snapshots", async () => {
 		await game.engine.handleCommand("save here");
 		const beforeLoad = game.engine.state;
 		await game.engine.handleCommand("load here");
@@ -67,7 +67,8 @@ describe("LOAD in the running engine", () => {
 		await say("go to the corridor", "MOVE", { target: "hallway" });
 		await say("go to the library", "MOVE", { target: "library" });
 
-		expect(loaded.questFlags.active).toContain("discovered:classroom");
+		expect(game.engine.state.questFlags.active).toContain("discovered:classroom");
+		expect(loaded.questFlags.active).not.toContain("discovered:classroom");
 		expect(beforeLoad.questFlags.active).not.toContain("discovered:classroom");
 	});
 
