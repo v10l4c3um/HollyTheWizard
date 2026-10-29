@@ -5,6 +5,7 @@ import {
 	TimeOfDay,
 } from "../quest/Curriculum";
 import { AttributeId } from "../player/PlayerStats";
+import type { Logger } from "../../application/ports/Logger";
 import { TypedBus } from "../../engine/EventBus";
 import type { InWorldCommand } from "../commands/CommandDefinitions";
 import type { SpellLearnSource } from "../effects/GameEffects";
@@ -129,8 +130,8 @@ export type GameEvents = {
 
 export type GameBus = TypedBus<GameEvents>;
 
-export function createGameBus(): GameBus {
-	return new TypedBus<GameEvents>();
+export function createGameBus(logger?: Logger): GameBus {
+	return new TypedBus<GameEvents>(logger);
 }
 
 /** One bus event, named and with its payload: what a rule asks to have announced. */

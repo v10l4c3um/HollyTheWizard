@@ -35,7 +35,6 @@ export async function buildTestGame(
 	options: { random?: (state: GameState) => Random } = {},
 ): Promise<TestGame> {
 	const registry = buildRegistry();
-	const bus = createGameBus();
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "holly-game-"));
 	const savesDir = path.join(root, "saves");
 	const logged: TestGame["logged"] = [];
@@ -46,6 +45,7 @@ export async function buildTestGame(
 			logged.push({ message, cause });
 		},
 	};
+	const bus = createGameBus(logger);
 	const turnResolver = new TurnResolver(bus, undefined, { random: options.random });
 	const engine = createEngine(registry, bus, {
 		persistenceRepository: new JsonPersistenceRepository(savesDir),

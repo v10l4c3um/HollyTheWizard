@@ -244,14 +244,15 @@ export async function engineFactory(
 	options: EngineOptions = {},
 ): Promise<IGameEngine> {
 	const registry = buildRegistry(onProgress);
-	const bus = createGameBus();
+	const logger = options.logger ?? new FileLogger();
+	const bus = createGameBus(logger);
 
 	onProgress?.({
 		id: "spellbook",
 		label: "Preparing spellbook state",
 		status: "in_progress",
 	});
-	const engine = createEngine(registry, bus, options);
+	const engine = createEngine(registry, bus, { ...options, logger });
 	onProgress?.({
 		id: "spellbook",
 		label: "Preparing spellbook state",

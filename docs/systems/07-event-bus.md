@@ -1,6 +1,6 @@
 # Event Bus
 
-Files: `src/core/engine/EventBus.ts` (18 lines, `TypedBus`), `src/core/domain/events/GameEvents.ts` (event catalog + `createGameBus`), `src/core/domain/ids.ts` (the id names the payloads use). Listeners: `src/core/engine/ProgressionTracker.ts` (the event → flag table is `src/core/domain/campaign/QuestFlags.ts`). Tests: `progression-tracker.test.ts`, `event-types.test.ts` (compile-time checks of the payload types).
+Files: `src/core/engine/EventBus.ts` (`TypedBus`), `src/core/domain/events/GameEvents.ts` (event catalog + `createGameBus`), `src/core/domain/ids.ts` (the id names the payloads use). Listeners: `src/core/engine/ProgressionTracker.ts` (the event → flag table is `src/core/domain/campaign/QuestFlags.ts`). Tests: `event-bus.test.ts`, `progression-tracker.test.ts`, `event-types.test.ts` (compile-time checks of the payload types).
 
 ## What it does
 
@@ -8,7 +8,10 @@ A synchronous, in-process publish/subscribe channel for "something happened" not
 
 ## How it works
 
-- `TypedBus<E>` stores handlers per event type. `on` and `off` add or remove one, and `emit` calls every handler in registration order, synchronously.
+- `TypedBus<E>` stores handlers per event type. `on(type, handler, { priority })` adds one and returns a function that removes it (`off` still works); `emit` calls the handlers synchronously, higher priority first and equal priorities in subscription order.
+- **A faulty listener is isolated.** A throw is logged through the injected `Logger` (the engine's, via `createGameBus(logger)`) and skipped; the emitter and the other listeners carry on, so a bad listener can no longer abort or roll back a turn.
+- **Emitting from a listener is safe.** The nested event is queued and delivered after the current event has reached every listener; the outermost `emit` returns when the queue is empty. It delivers at most `MAX_DELIVERIES_PER_EMIT` (100) events, then drops the rest with one logged error, so a listener that keeps re-emitting ends.
+- **Delivery is synchronous on purpose,** because a turn is a transaction and every listener has finished before it commits or rolls back. A listener may return a promise: it is not awaited and a rejection is only logged. Such a listener must not write game state (it would run after the commit or rollback decision).
 - `GameEvents` declares 26 event types with typed payloads (spells, lessons, locations, conversations, time, save/load, year, blueprint).
 - One bus is created in `engineFactory` and shared with the engine, `TurnResolver`, the blueprint use cases and `applyEffects`.
 - Emitters are scattered: `TurnResolver` (most), `GameEngine` (`TimeAdvanced`, `GameSaved`, `GameLoaded`), and the blueprint use cases (`BlueprintGenerated`, `YearAdvanced`, `BlueprintMilestoneReached`).
@@ -41,19 +44,17 @@ Those flags are what `BlueprintProgressService` checks to complete story milesto
 
 1. **Mostly a log with no readers.** Of ~20 emitted event types, 16 have zero subscribers. The architecture promises reactive systems (rumors, achievements, suspicion) that do not exist, and the bus adds ceremony without behavior. Six declared events are dead.
 2. **Events carry state-shaped meaning without a guarantee of ordering.** For example `LocationVisited` is emitted by `TurnResolver` before the engine updates `currentLocationId` (see 04). A listener that reads state sees the previous state. `emit` happens mid-resolution, not after the turn commits.
-3. **Synchronous and unguarded.** `emit` does not catch handler exceptions, so one faulty listener aborts the emitting handler mid-turn (the engine's outer `catch` then reports a generic error). There is no way to emit from inside a handler safely, no re-entrancy guard, no ordering/priority, and no async handlers.
-4. **Duplicate and inconsistent emissions.** `GameSaved` and `GameLoaded` can be emitted by both `TurnResolver` and `GameEngine` (the former is dead code today). The event set mixes granularities (`SubjectStudied` and `SpellPracticed` next to `ActionResolved`), and the same fact is announced by several events (`NpcTalkedTo`, `TopicDiscussed`, `ConversationResolved`, `RevealTriggered` all fire for one talk).
-5. **No registry of subscriptions or teardown.** `off` needs the original function reference, handlers are never removed, and `LOAD` replaces `engine.state` while listeners keep working only because they read `engine.state` lazily.
-6. **Hard to observe.** There is no wildcard subscription or event log, so debugging "what fired this turn?" means reading code. The `TurnResult.events` strings and the bus events are two separate, unrelated records of the same turn.
-7. **Placement.** `TypedBus` lives in `core/engine/` while `GameEvents.ts` (domain) imports it, so the domain layer depends on the engine layer.
-8. **No tests** for the bus itself (ordering, error isolation); only the quest-flag listeners are covered.
+3. **Duplicate and inconsistent emissions.** `GameSaved` and `GameLoaded` can be emitted by both `TurnResolver` and `GameEngine` (the former is dead code today). The event set mixes granularities (`SubjectStudied` and `SpellPracticed` next to `ActionResolved`), and the same fact is announced by several events (`NpcTalkedTo`, `TopicDiscussed`, `ConversationResolved`, `RevealTriggered` all fire for one talk).
+4. **Hard to observe.** There is no wildcard subscription or event log, so debugging "what fired this turn?" means reading code. The `TurnResult.events` strings and the bus events are two separate, unrelated records of the same turn.
+5. **Placement.** `TypedBus` lives in `core/engine/` while `GameEvents.ts` (domain) imports it, so the domain layer depends on the engine layer.
+
 
 ## Rework ideas
 
 - **Decide what the bus is for.** Either make it the real extension mechanism (named subscribers like `ProgressionTracker`, created by the engine), or reduce it. A good middle path: keep it for decoupled, side-effect-free observers, and move required game logic into explicit pipeline stages.
 - **Emit after commit.** Collect events during a turn and publish them once the effects have been applied (a per-turn outbox), so listeners always see consistent state, and so a failed turn emits nothing.
 - **Derive events from effects** where possible (see 06), and make handlers return facts, so events are not hand-emitted at five call sites.
-- **Harden delivery:** catch and log listener errors, add `once`, and add an `onAny` tap. Dev builds can record the event stream per turn.
+- **Observe the bus:** add `once` and an `onAny` tap; dev builds can record the event stream per turn.
 - **Prune the catalog:** delete never-emitted events (or implement the quest system they belong to), merge overlapping conversation events, and use one source for shared union types.
 - **Unify the two records of a turn** (`TurnResult.facts` and bus events) into a single structured event log that feeds `recentFacts`, narration facts and listeners.
 - **Test:** bus ordering and error isolation.
