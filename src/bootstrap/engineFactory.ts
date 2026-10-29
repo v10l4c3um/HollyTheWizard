@@ -1,11 +1,11 @@
 import { IGameEngine } from "../types";
 import { GameEngine } from "../core/engine/GameEngine";
 import Registry from "../core/Registry";
-import { createGameBus } from "../core/domain/events/GameEvents";
-import Location from "../core/domain/world/Location";
-import NPC from "../core/domain/npc/Npc";
+import { createGameBus, GameBus } from "../core/domain/events/GameEvents";
 import ContentLoader from "../core/content/ContentLoader";
 import { SchoolDataLoader } from "../core/content/SchoolDataLoader";
+import { ContentError } from "../core/content/ContentError";
+import { lintContent } from "../core/content/ContentLinter";
 import { createHiddenSpellState } from "../core/domain/magic/SpellStateFactory";
 
 export type StartupProgressStatus = "pending" | "in_progress" | "done";
@@ -27,46 +27,30 @@ export interface StartupProgressUpdate {
 
 type StartupProgressReporter = (update: StartupProgressUpdate) => void;
 
-export function buildRegistry(onProgress?: StartupProgressReporter): Registry {
-	const registry = new Registry();
-	const contentLoader = new ContentLoader();
+export interface RegistryOptions {
+	/** Where the content packs are; defaults to the shipped ones. */
+	packDirectory?: string;
+	/** Where subjects, curriculum and timetables are; defaults to the shipped ones. */
+	curriculumDirectory?: string;
+}
 
-	registry.registerLocation(
-		new Location(
-			"startingVillage",
-			"Starting Village",
-			"A quiet village at the edge of an ancient forest. Cobblestone paths wind between thatched-roof cottages.",
-			["forest", "market"],
-		),
-	);
-	registry.registerLocation(
-		new Location(
-			"forest",
-			"Ancient Forest",
-			"Towering oaks block out much of the sky. The air smells of moss and old magic.",
-			["startingVillage"],
-		),
-	);
-	registry.registerLocation(
-		new Location(
-			"market",
-			"Market Square",
-			"A bustling square lined with merchant stalls selling herbs, potions, and curious artifacts.",
-			["startingVillage"],
-		),
-	);
-	registry.registerNPC(
-		new NPC("villager", "Villager", [
-			"A friendly villager who seems eager to chat.",
-		]),
-	);
+/**
+ * Loads all game content into a registry. Throws a `ContentError` listing
+ * every problem if any content file is invalid or the content contradicts
+ * itself, so the game never starts on broken content.
+ */
+export function buildRegistry(
+	onProgress?: StartupProgressReporter,
+	options: RegistryOptions = {},
+): Registry {
+	const registry = new Registry();
 
 	onProgress?.({
 		id: "content-packs",
 		label: "Loading content packs",
 		status: "in_progress",
 	});
-	contentLoader.loadAllPacks(registry, (progress) => {
+	new ContentLoader(options.packDirectory).loadAllPacks(registry, (progress) => {
 		onProgress?.({
 			id: "content-packs",
 			label: "Loading content packs",
@@ -82,13 +66,19 @@ export function buildRegistry(onProgress?: StartupProgressReporter): Registry {
 		});
 	});
 
-	const schoolDataLoader = new SchoolDataLoader();
 	onProgress?.({
 		id: "school-data",
 		label: "Loading school data",
 		status: "in_progress",
 	});
-	registry.registerSchoolData(schoolDataLoader.loadSchoolData());
+	registry.registerSchoolData(
+		new SchoolDataLoader(options.curriculumDirectory).loadSchoolData(),
+	);
+
+	const problems = lintContent(registry);
+	if (problems.length > 0) {
+		throw new ContentError(problems);
+	}
 	onProgress?.({
 		id: "school-data",
 		label: "Loading school data",
@@ -98,13 +88,17 @@ export function buildRegistry(onProgress?: StartupProgressReporter): Registry {
 	return registry;
 }
 
-export async function engineFactory(
-	onProgress?: StartupProgressReporter,
-): Promise<IGameEngine> {
-	const registry = buildRegistry(onProgress);
-	const bus = createGameBus();
-	const engine = new GameEngine(registry, {}, bus);
-
+/**
+ * Connects an engine to its gameplay listeners (quest flags derived from bus
+ * events) and seeds the spellbook with every registered spell in the hidden
+ * state. Split out of `engineFactory` so tests can wire an engine built with
+ * injected dependencies the same way production does.
+ */
+export function wireEngine(
+	engine: GameEngine,
+	registry: Registry,
+	bus: GameBus,
+): void {
 	bus.on("LessonAttended", ({ subjectId, lessonId }) => {
 		const flag = `lesson_completed:${subjectId}:${lessonId}`;
 		if (!engine.state.questFlags.active.includes(flag))
@@ -126,17 +120,27 @@ export async function engineFactory(
 			engine.state.questFlags.completed.push(flag);
 	});
 
-	onProgress?.({
-		id: "spellbook",
-		label: "Preparing spellbook state",
-		status: "in_progress",
-	});
 	for (const spellId of registry.getAllSpellIds()) {
 		engine.state.spellbook.setSpellState(
 			spellId,
 			createHiddenSpellState(spellId),
 		);
 	}
+}
+
+export async function engineFactory(
+	onProgress?: StartupProgressReporter,
+): Promise<IGameEngine> {
+	const registry = buildRegistry(onProgress);
+	const bus = createGameBus();
+	const engine = new GameEngine(registry, {}, bus);
+
+	onProgress?.({
+		id: "spellbook",
+		label: "Preparing spellbook state",
+		status: "in_progress",
+	});
+	wireEngine(engine, registry, bus);
 	onProgress?.({
 		id: "spellbook",
 		label: "Preparing spellbook state",

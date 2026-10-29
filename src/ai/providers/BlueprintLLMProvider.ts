@@ -1,10 +1,19 @@
 import { z } from "zod";
 import { OllamaConfig } from "../OllamaConfig";
-import { generateWithOllama } from "../OllamaClient";
+import {
+	generateWithOllama,
+	OLLAMA_BLUEPRINT_TIMEOUT_MS,
+} from "../OllamaClient";
 
 type GenerateAttempt<T> =
 	| { ok: true; value: T }
-	| { ok: false; rawText: string; errors: string[] };
+	| {
+			ok: false;
+			rawText: string;
+			errors: string[];
+			/** The request itself failed, so there is no reply to repair. */
+			requestFailed?: boolean;
+	  };
 
 /**
  * Minimal, standalone LLM JSON-generation helper for the blueprint
@@ -24,6 +33,12 @@ export class BlueprintLLMProvider {
 		const first = await this._tryGenerate(prompt, schema);
 		if (first.ok) {
 			return first.value;
+		}
+		if (first.requestFailed) {
+			console.debug(
+				`[BlueprintLLMProvider] Request failed, not repairing: ${first.errors.join("; ")}`,
+			);
+			return null;
 		}
 
 		const repairPrompt = this._buildRepairPrompt(
@@ -50,6 +65,7 @@ export class BlueprintLLMProvider {
 			const responseText = await generateWithOllama(this.config, prompt, {
 				context: "blueprint generation",
 				format: "json",
+				timeoutMs: OLLAMA_BLUEPRINT_TIMEOUT_MS,
 			});
 
 			let parsed: unknown;
@@ -82,6 +98,7 @@ export class BlueprintLLMProvider {
 				errors: [
 					error instanceof Error ? error.message : "Unknown error",
 				],
+				requestFailed: true,
 			};
 		}
 	}

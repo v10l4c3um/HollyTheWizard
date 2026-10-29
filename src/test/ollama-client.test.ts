@@ -1,5 +1,7 @@
 import {
 	generateWithOllama,
+	OLLAMA_CONNECTIVITY_TIMEOUT_MS,
+	OLLAMA_REQUEST_TIMEOUT_MS,
 	probeOllamaConnectivity,
 	probeOllamaConnection,
 } from "../ai/OllamaClient";
@@ -140,51 +142,103 @@ describe("OllamaClient", () => {
 		await expectation;
 	});
 
-	it("does not arm request timeout when debug mode is enabled", async () => {
-		jest.useFakeTimers();
-		let resolveFetch: ((value: unknown) => void) | undefined;
-		(global.fetch as jest.Mock).mockImplementation(
-			(_url: string, init?: RequestInit) =>
-				new Promise((resolve, reject) => {
-					const signal = init?.signal as AbortSignal | undefined;
-					signal?.addEventListener("abort", () => {
-						reject(
-							Object.assign(new Error("Aborted"), {
-								name: "AbortError",
-							}),
-						);
-					});
-					resolveFetch = resolve;
-				}),
-		);
+	describe("timeouts", () => {
+		/** A server that never answers; it only gives up when the request is aborted. */
+		function hangingFetch() {
+			(global.fetch as jest.Mock).mockImplementation(
+				(_url: string, init?: RequestInit) =>
+					new Promise((_resolve, reject) => {
+						const signal = init?.signal as AbortSignal | undefined;
+						signal?.addEventListener("abort", () => {
+							reject(
+								Object.assign(new Error("Aborted"), {
+									name: "AbortError",
+								}),
+							);
+						});
+					}),
+			);
+		}
 
-		const promise = generateWithOllama(
-			{
-				...TEST_CONFIG,
-				debugMode: true,
-			},
-			"hello",
-			{
-				timeoutMs: 10,
-				maxRetries: 0,
-			},
-		);
+		/** Tracks whether a promise has settled, without waiting on it. */
+		function watch(promise: Promise<unknown>) {
+			const state = { settled: false };
+			promise.then(
+				() => (state.settled = true),
+				() => (state.settled = true),
+			);
+			return state;
+		}
 
-		await Promise.resolve();
-		await jest.advanceTimersByTimeAsync(100);
+		it("still times out when debugMode is on", async () => {
+			jest.useFakeTimers();
+			hangingFetch();
 
-		const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
-			string,
-			RequestInit,
-		];
-		expect(init.signal).toBeUndefined();
+			const promise = generateWithOllama(
+				{ ...TEST_CONFIG, debugMode: true },
+				"hello",
+				{ timeoutMs: 10, maxRetries: 0 },
+			);
+			const expectation = expect(promise).rejects.toThrow(
+				"Ollama request timed out",
+			);
+			await jest.advanceTimersByTimeAsync(10);
+			await expectation;
 
-		resolveFetch?.({
-			ok: true,
-			json: async () => ({ response: "resolved text" }),
+			const [, init] = (global.fetch as jest.Mock).mock.calls[0] as [
+				string,
+				RequestInit,
+			];
+			expect(init.signal).toBeDefined();
 		});
 
-		await expect(promise).resolves.toBe("resolved text");
+		it("times out at the default request limit when no timeout is given", async () => {
+			jest.useFakeTimers();
+			hangingFetch();
+
+			const promise = generateWithOllama(TEST_CONFIG, "hello", {
+				maxRetries: 0,
+			});
+			const state = watch(promise);
+			const expectation = expect(promise).rejects.toThrow(
+				"Ollama request timed out",
+			);
+
+			await jest.advanceTimersByTimeAsync(OLLAMA_REQUEST_TIMEOUT_MS - 1);
+			expect(state.settled).toBe(false);
+			await jest.advanceTimersByTimeAsync(1);
+			await expectation;
+		});
+
+		it("does not retry a timeout", async () => {
+			jest.useFakeTimers();
+			hangingFetch();
+
+			const promise = generateWithOllama(TEST_CONFIG, "hello", {
+				timeoutMs: 10,
+				maxRetries: 3,
+			});
+			const expectation = expect(promise).rejects.toThrow(
+				"Ollama request timed out",
+			);
+			await jest.advanceTimersByTimeAsync(10);
+			await expectation;
+			await jest.advanceTimersByTimeAsync(10_000);
+
+			expect(global.fetch).toHaveBeenCalledTimes(1);
+		});
+
+		it("gives the connectivity check its own short limit", async () => {
+			jest.useFakeTimers();
+			hangingFetch();
+
+			const promise = probeOllamaConnectivity(TEST_CONFIG);
+			const expectation = expect(promise).rejects.toThrow(
+				"Ollama request timed out",
+			);
+			await jest.advanceTimersByTimeAsync(OLLAMA_CONNECTIVITY_TIMEOUT_MS);
+			await expectation;
+		});
 	});
 
 	it("retries with backoff and succeeds on a later attempt", async () => {

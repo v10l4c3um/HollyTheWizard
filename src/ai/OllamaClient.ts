@@ -1,9 +1,14 @@
 import { OllamaConfig } from "./OllamaConfig";
 
-export const OLLAMA_REQUEST_TIMEOUT_MS = 5000;
-export const OLLAMA_RESOLVER_TIMEOUT_MS = 15000; // Resolver needs more time for JSON parsing
-export const OLLAMA_HEALTHCHECK_TIMEOUT_MS = 10000;
-export const OLLAMA_CONNECTIVITY_TIMEOUT_MS = 1000;
+// Per-attempt limits. Local models are slow, and the first call after idle
+// also loads the model, so these are generous; they exist so a stalled
+// server cannot freeze the game, not to make a healthy one fast.
+export const OLLAMA_REQUEST_TIMEOUT_MS = 20000; // default for calls that set none
+export const OLLAMA_RESOLVER_TIMEOUT_MS = 20000; // Resolver needs more time for JSON parsing
+export const OLLAMA_RENDER_TIMEOUT_MS = 30000; // one narrated paragraph
+export const OLLAMA_BLUEPRINT_TIMEOUT_MS = 90000; // a whole campaign/year blueprint
+export const OLLAMA_HEALTHCHECK_TIMEOUT_MS = 60000; // may include a cold model load
+export const OLLAMA_CONNECTIVITY_TIMEOUT_MS = 3000;
 export const OLLAMA_MAX_RETRIES = 3;
 export const OLLAMA_RETRY_BASE_DELAY_MS = 250;
 
@@ -58,13 +63,6 @@ async function fetchWithTimeout(
 	} finally {
 		clearTimeout(timeoutId);
 	}
-}
-
-function resolveTimeout(
-	timeoutMs: number,
-	config: OllamaConfig,
-): number | undefined {
-	return config.debugMode ? undefined : timeoutMs;
 }
 
 function normalizeError(error: unknown, endpoint: string): OllamaRequestError {
@@ -154,7 +152,7 @@ export async function generateWithOllama(
 					headers: { "Content-Type": "application/json" },
 					body,
 				},
-				resolveTimeout(timeoutMs, config),
+				timeoutMs,
 			);
 
 			if (!response.ok) {
@@ -204,7 +202,9 @@ export async function generateWithOllama(
 			// Empty responses are deterministic for a given format constraint—
 			// retrying with the same schema would just produce the same empty
 			// result, so bail out immediately and let the caller handle it.
-			if (lastError.code === "empty_response") {
+			// A timeout means the model is stalled or overloaded; retrying
+			// would only multiply the wait, so fail fast as well.
+			if (lastError.code === "empty_response" || lastError.code === "timeout") {
 				throw lastError;
 			}
 
@@ -241,7 +241,7 @@ export async function probeOllamaConnection(
 	await probeOllamaConnectivity(config);
 	await generateWithOllama(config, "Respond with OK.", {
 		context: "startup health check",
-		timeoutMs: resolveTimeout(OLLAMA_HEALTHCHECK_TIMEOUT_MS, config),
+		timeoutMs: OLLAMA_HEALTHCHECK_TIMEOUT_MS,
 	});
 }
 
@@ -256,7 +256,7 @@ export async function probeOllamaConnectivity(
 			{
 				method: "GET",
 			},
-			resolveTimeout(OLLAMA_CONNECTIVITY_TIMEOUT_MS, config),
+			OLLAMA_CONNECTIVITY_TIMEOUT_MS,
 		);
 
 		if (!response.ok) {
