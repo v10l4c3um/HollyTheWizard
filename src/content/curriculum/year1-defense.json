@@ -34,6 +34,7 @@
       "revealOpportunities": [
         {
           "spellId": "shield",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {
@@ -63,6 +64,7 @@
       "revealOpportunities": [
         {
           "spellId": "disarm",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {

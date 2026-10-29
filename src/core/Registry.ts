@@ -6,6 +6,7 @@ import {
 	SchoolData,
 	SubjectType,
 	SubjectCurriculum,
+	WeeklyTimetable,
 } from "./domain/quest/Curriculum";
 import { NpcConversationProfile } from "./domain/npc/NpcProfile";
 
@@ -31,6 +32,10 @@ class Registry {
 
 	getNpcProfile(id: string): NpcConversationProfile | undefined {
 		return this.npcProfiles.get(id);
+	}
+
+	getAllNpcProfileIds(): string[] {
+		return Array.from(this.npcProfiles.keys());
 	}
 
 	registerItem(item: Item): void {
@@ -75,6 +80,10 @@ class Registry {
 
 	getSchoolData(): SchoolData | null {
 		return this.schoolData;
+	}
+
+	getTimetable(year: number): WeeklyTimetable | undefined {
+		return this.schoolData?.timetables.find((t) => t.year === year);
 	}
 
 	getCurriculumForSubject(

@@ -34,6 +34,7 @@
       "revealOpportunities": [
         {
           "spellId": "levitate",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {
@@ -63,6 +64,7 @@
       "revealOpportunities": [
         {
           "spellId": "unlock",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {
@@ -92,6 +94,7 @@
       "revealOpportunities": [
         {
           "spellId": "repair",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {
@@ -121,6 +124,7 @@
       "revealOpportunities": [
         {
           "spellId": "mage_light",
+          "grants": "learned",
           "chance": 1.0,
           "requirements": [
             {

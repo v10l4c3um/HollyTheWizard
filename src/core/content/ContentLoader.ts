@@ -1,18 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
 import Registry from "../Registry";
-import { Spell } from "../domain/magic/Spell";
-import NPC from "../domain/npc/Npc";
-import { NpcConversationProfile } from "../domain/npc/NpcProfile";
-
-interface ContentPackManifest {
-	name: string;
-	version: string;
-	description?: string;
-	spells?: Spell[];
-	npcs?: NPC[];
-	profiles?: NpcConversationProfile[];
-}
+import Location from "../domain/world/Location";
+import { ContentError } from "./ContentError";
+import { PackManifest, PackManifestSchema } from "./ContentSchemas";
+import { readContentFile } from "./readContentFile";
 
 export interface ContentPackLoadProgress {
 	processedPacks: number;
@@ -20,6 +12,12 @@ export interface ContentPackLoadProgress {
 	currentPackName?: string;
 }
 
+/**
+ * Loads every `*.json` pack in a directory into the registry. A pack may hold
+ * any mix of locations, NPCs, NPC profiles and spells. Every file is
+ * validated; all problems are gathered and thrown together as a
+ * `ContentError`, so a broken pack can never be silently skipped.
+ */
 class ContentLoader {
 	private packDirectory: string;
 
@@ -29,191 +27,85 @@ class ContentLoader {
 		this.packDirectory = packDirectory;
 	}
 
-	private listPackFiles(): string[] {
-		if (!fs.existsSync(this.packDirectory)) {
-			return [];
-		}
-
-		return fs
-			.readdirSync(this.packDirectory)
-			.filter((file) => file.endsWith(".json"))
-			.sort();
-	}
-
-	private loadPackManifest(packName: string): ContentPackManifest {
-		const packPath = path.join(this.packDirectory, `${packName}.json`);
-		if (!fs.existsSync(packPath)) {
-			throw new Error(`Content pack not found: ${packPath}`);
-		}
-
-		const content = fs.readFileSync(packPath, "utf-8");
-		return JSON.parse(content) as ContentPackManifest;
-	}
-
-	loadSpellPack(packName: string, registry: Registry): void {
-		const manifest = this.loadPackManifest(packName);
-
-		if (!manifest.spells || !Array.isArray(manifest.spells)) {
-			console.warn(`No spells found in pack: ${packName}`);
-			return;
-		}
-
-		for (const spell of manifest.spells) {
-			registry.registerSpell(spell);
-		}
-
-		console.log(
-			`Loaded spell pack '${manifest.name}' with ${manifest.spells.length} spells`,
-		);
-	}
-
-	loadNpcPack(packName: string, registry: Registry): void {
-		const manifest = this.loadPackManifest(packName);
-
-		if (!manifest.npcs || !Array.isArray(manifest.npcs)) {
-			console.warn(`No NPCs found in pack: ${packName}`);
-			return;
-		}
-
-		for (const npc of manifest.npcs) {
-			registry.registerNPC(npc);
-		}
-
-		console.log(
-			`Loaded NPC pack '${manifest.name}' with ${manifest.npcs.length} NPCs`,
-		);
-	}
-
-	loadNpcProfilePack(packName: string, registry: Registry): void {
-		const manifest = this.loadPackManifest(packName);
-
-		if (!manifest.profiles || !Array.isArray(manifest.profiles)) {
-			console.warn(`No NPC profiles found in pack: ${packName}`);
-			return;
-		}
-
-		for (const profile of manifest.profiles) {
-			registry.registerNpcProfile(profile);
-		}
-
-		console.log(
-			`Loaded NPC profile pack '${manifest.name}' with ${manifest.profiles.length} profiles`,
-		);
-	}
-
 	loadAllPacks(
 		registry: Registry,
 		onProgress?: (progress: ContentPackLoadProgress) => void,
 	): void {
-		const files = this.listPackFiles();
-
 		if (!fs.existsSync(this.packDirectory)) {
-			console.warn(
+			throw new ContentError([
 				`Content pack directory not found: ${this.packDirectory}`,
-			);
-			onProgress?.({
-				processedPacks: 0,
-				totalPacks: 0,
-			});
-			return;
+			]);
 		}
 
+		const files = fs
+			.readdirSync(this.packDirectory)
+			.filter((file) => file.endsWith(".json"))
+			.sort();
 		if (files.length === 0) {
-			console.warn("No content pack files found");
-			onProgress?.({
-				processedPacks: 0,
-				totalPacks: 0,
-			});
-			return;
+			throw new ContentError([
+				`No content packs (*.json) found in ${this.packDirectory}`,
+			]);
 		}
 
+		const problems: string[] = [];
 		let processedPacks = 0;
 		for (const file of files) {
-			const packName = file.replace(".json", "");
-			try {
-				const manifest = this.loadPackManifest(packName);
-				const spells =
-					Array.isArray(manifest.spells) ? manifest.spells : [];
-				const npcs = Array.isArray(manifest.npcs) ? manifest.npcs : [];
-				const profiles =
-					Array.isArray(manifest.profiles) ? manifest.profiles : [];
-
-				for (const spell of spells) {
-					registry.registerSpell(spell);
-				}
-				for (const npc of npcs) {
-					registry.registerNPC(npc);
-				}
-				for (const profile of profiles) {
-					registry.registerNpcProfile(profile);
-				}
-
-				console.log(
-					`Loaded content pack '${manifest.name}' with ${spells.length} spells, ${npcs.length} NPCs, and ${profiles.length} NPC profiles`,
-				);
-			} catch (error) {
-				console.error(`Failed to load content pack '${packName}':`, error);
-			} finally {
-				processedPacks++;
-				onProgress?.({
-					processedPacks,
-					totalPacks: files.length,
-					currentPackName: packName,
-				});
+			const manifest = readContentFile(
+				path.join(this.packDirectory, file),
+				PackManifestSchema,
+				problems,
+			);
+			if (manifest) {
+				this.register(manifest, file, registry, problems);
 			}
+			processedPacks++;
+			onProgress?.({
+				processedPacks,
+				totalPacks: files.length,
+				currentPackName: file.replace(/\.json$/, ""),
+			});
+		}
+
+		if (problems.length > 0) {
+			throw new ContentError(problems);
 		}
 	}
 
-	loadAllSpellPacks(registry: Registry): void {
-		if (!fs.existsSync(this.packDirectory)) {
-			console.warn(
-				`Content pack directory not found: ${this.packDirectory}`,
-			);
-			return;
-		}
-
-		const files = this.listPackFiles();
-
-		if (files.length === 0) {
-			console.warn("No spell pack files found");
-			return;
-		}
-
-		for (const file of files) {
-			const packName = file.replace(".json", "");
-			try {
-				this.loadSpellPack(packName, registry);
-			} catch (error) {
-				console.error(
-					`Failed to load spell pack '${packName}':`,
-					error,
-				);
+	private register(
+		manifest: PackManifest,
+		file: string,
+		registry: Registry,
+		problems: string[],
+	): void {
+		for (const l of manifest.locations ?? []) {
+			if (registry.getLocation(l.id)) {
+				problems.push(`${file}: Duplicate location id "${l.id}"`);
+				continue;
 			}
-		}
-	}
-
-	loadAllNpcPacks(registry: Registry): void {
-		if (!fs.existsSync(this.packDirectory)) {
-			console.warn(
-				`Content pack directory not found: ${this.packDirectory}`,
+			registry.registerLocation(
+				new Location(l.id, l.displayName, l.description, l.connectedLocationsIds),
 			);
-			return;
 		}
-
-		const files = this.listPackFiles();
-
-		if (files.length === 0) {
-			console.warn("No NPC pack files found");
-			return;
-		}
-
-		for (const file of files) {
-			const packName = file.replace(".json", "");
-			try {
-				this.loadNpcPack(packName, registry);
-			} catch (error) {
-				console.error(`Failed to load NPC pack '${packName}':`, error);
+		for (const npc of manifest.npcs ?? []) {
+			if (registry.getNPC(npc.id)) {
+				problems.push(`${file}: Duplicate NPC id "${npc.id}"`);
+				continue;
 			}
+			registry.registerNPC(npc);
+		}
+		for (const profile of manifest.profiles ?? []) {
+			if (registry.getNpcProfile(profile.npcId)) {
+				problems.push(`${file}: Duplicate NPC profile for "${profile.npcId}"`);
+				continue;
+			}
+			registry.registerNpcProfile(profile);
+		}
+		for (const spell of manifest.spells ?? []) {
+			if (registry.getSpell(spell.definition.id)) {
+				problems.push(`${file}: Duplicate spell id "${spell.definition.id}"`);
+				continue;
+			}
+			registry.registerSpell(spell);
 		}
 	}
 }

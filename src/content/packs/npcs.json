@@ -6,46 +6,116 @@
     {
       "id": "professor_snape",
       "name": "Professor Snape",
+      "aliases": ["the potions master"],
       "dialogue": [
         "Potter! What do you think I am, a doormat?",
         "I suggest you study harder, Potter. Your magic is lacking.",
         "Dumbledore would be proud of your... lack of effort."
       ],
       "affinity": 85,
-      "tag_description": "Strict and intimidating, but ultimately caring"
+      "tag_description": "Strict and intimidating, but ultimately caring",
+      "schedule": {
+        "home": "dungeons",
+        "teaches": [
+          "potions",
+          "defense-against-the-dark-arts"
+        ],
+        "slots": [
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
     },
     {
       "id": "hagrid",
       "name": "Rubeus Hagrid",
+      "aliases": ["the gamekeeper"],
       "dialogue": [
         "Yer a wizard, Harry!",
         "Ferret, ferret, ferret... oh, it's just you, Harry.",
         "I likes t'be around the kids. Makes me feel young again!"
       ],
       "affinity": 90,
-      "tag_description": "Large, friendly, and protective of magical creatures"
+      "tag_description": "Large, friendly, and protective of magical creatures",
+      "schedule": {
+        "home": "hagrid_hut",
+        "slots": [
+          {
+            "periods": [
+              "morning",
+              "afternoon"
+            ],
+            "location": "grounds"
+          },
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
     },
     {
       "id": "dumbledore",
       "name": "Albus Dumbledore",
+      "aliases": ["the headmaster"],
       "dialogue": [
         "Happiness can be found even in the darkest of times, if one only remembers to turn on the light.",
         "It is our choices that show what we truly are, far more than our abilities.",
         "It is not our abilities that show what we truly are, but our choices."
       ],
       "affinity": 95,
-      "tag_description": "Wise, benevolent, and thoughtful leader"
+      "tag_description": "Wise, benevolent, and thoughtful leader",
+      "schedule": {
+        "home": "headmaster_office",
+        "teaches": [
+          "transfiguration"
+        ],
+        "slots": [
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
     },
     {
       "id": "harry_potter",
       "name": "Harry Potter",
+      "aliases": ["the boy who lived"],
       "dialogue": [
         "I'm not going to be bullied by you!",
         "I've got to go to the library.",
         "I'm not scared of anything anymore!"
       ],
       "affinity": 70,
-      "tag_description": "Brave and determined, but sometimes impulsive"
+      "tag_description": "Brave and determined, but sometimes impulsive",
+      "schedule": {
+        "home": "common_room",
+        "attendsClasses": true,
+        "slots": [
+          {
+            "periods": [
+              "morning",
+              "afternoon"
+            ],
+            "location": "grounds"
+          },
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
     },
     {
       "id": "hermione_granger",
@@ -56,7 +126,26 @@
         "I know all about this subject, actually."
       ],
       "affinity": 80,
-      "tag_description": "Knowledgeable, studious, and practical"
+      "tag_description": "Knowledgeable, studious, and practical",
+      "schedule": {
+        "home": "common_room",
+        "attendsClasses": true,
+        "slots": [
+          {
+            "periods": [
+              "morning",
+              "afternoon"
+            ],
+            "location": "library"
+          },
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
     },
     {
       "id": "ron_weasley",
@@ -67,7 +156,41 @@
         "I want to be a wizard too!"
       ],
       "affinity": 75,
-      "tag_description": "Loyal, funny, and supportive friend"
+      "tag_description": "Loyal, funny, and supportive friend",
+      "schedule": {
+        "home": "common_room",
+        "attendsClasses": true,
+        "slots": [
+          {
+            "periods": [
+              "morning"
+            ],
+            "location": "great_hall"
+          },
+          {
+            "periods": [
+              "afternoon"
+            ],
+            "location": "common_room"
+          },
+          {
+            "periods": [
+              "evening"
+            ],
+            "location": "great_hall"
+          }
+        ]
+      }
+    },
+    {
+      "id": "villager",
+      "name": "Villager",
+      "dialogue": [
+        "A friendly villager who seems eager to chat."
+      ],
+      "schedule": {
+        "home": "startingVillage"
+      }
     }
   ]
 }

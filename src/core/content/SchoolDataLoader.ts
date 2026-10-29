@@ -1,13 +1,19 @@
 import * as fs from "fs";
 import * as path from "path";
+import { ContentError } from "./ContentError";
 import {
-	SchoolData,
-	SubjectDefinition,
-	SubjectCurriculum,
-	WeeklyTimetable,
-	SubjectType
-} from "../domain/quest/Curriculum";
+	CurriculumFileSchema,
+	SubjectsFile,
+	SubjectsFileSchema,
+	TimetablesFileSchema,
+} from "./ContentSchemas";
+import { readContentFile } from "./readContentFile";
+import { SchoolData, SubjectCurriculum } from "../domain/quest/Curriculum";
 
+/**
+ * Loads subjects, curriculum (`year*.json`) and timetables. All three are
+ * required; every problem found is thrown together as a `ContentError`.
+ */
 export class SchoolDataLoader {
 	private basePath: string;
 
@@ -16,58 +22,54 @@ export class SchoolDataLoader {
 	}
 
 	loadSchoolData(): SchoolData {
-		const subjects = this.loadSubjects();
-		const curriculums = this.loadCurriculums();
-		const timetables = this.loadTimetables();
+		const problems: string[] = [];
+
+		const subjects = readContentFile(
+			path.join(this.basePath, "subjects.json"),
+			SubjectsFileSchema,
+			problems,
+		);
+		const timetables = readContentFile(
+			path.join(this.basePath, "timetables.json"),
+			TimetablesFileSchema,
+			problems,
+		);
+		const curriculums = this.loadCurriculums(problems);
+
+		if (problems.length > 0 || !subjects || !timetables) {
+			throw new ContentError(problems);
+		}
 
 		return {
-			subjects,
+			subjects: subjects as SubjectsFile,
 			curriculums,
-			timetables
+			timetables: Object.values(timetables),
 		};
 	}
 
-	private loadSubjects(): Record<SubjectType, SubjectDefinition> {
-		const filePath = path.join(this.basePath, "subjects.json");
-
-		if (!fs.existsSync(filePath)) {
-			return {} as Record<SubjectType, SubjectDefinition>;
-		}
-
-		const content = fs.readFileSync(filePath, "utf-8");
-		return JSON.parse(content);
-	}
-
-	private loadCurriculums(): SubjectCurriculum[] {
-		const curriculums: SubjectCurriculum[] = [];
-
+	private loadCurriculums(problems: string[]): SubjectCurriculum[] {
 		if (!fs.existsSync(this.basePath)) {
-			return curriculums;
-		}
-
-		const files = fs.readdirSync(this.basePath);
-		const curriculumFiles = files.filter(f => f.startsWith("year") && f.endsWith(".json"));
-
-		for (const file of curriculumFiles) {
-			const filePath = path.join(this.basePath, file);
-			const content = fs.readFileSync(filePath, "utf-8");
-			const curriculum = JSON.parse(content) as SubjectCurriculum;
-			curriculums.push(curriculum);
-		}
-
-		return curriculums;
-	}
-
-	private loadTimetables(): WeeklyTimetable[] {
-		const filePath = path.join(this.basePath, "timetables.json");
-
-		if (!fs.existsSync(filePath)) {
+			problems.push(`Curriculum directory not found: ${this.basePath}`);
 			return [];
 		}
 
-		const content = fs.readFileSync(filePath, "utf-8");
-		const data = JSON.parse(content);
+		const files = fs
+			.readdirSync(this.basePath)
+			.filter((file) => file.startsWith("year") && file.endsWith(".json"))
+			.sort();
+		if (files.length === 0) {
+			problems.push(`No curriculum files (year*.json) found in ${this.basePath}`);
+		}
 
-		return Object.values(data);
+		const curriculums: SubjectCurriculum[] = [];
+		for (const file of files) {
+			const curriculum = readContentFile(
+				path.join(this.basePath, file),
+				CurriculumFileSchema,
+				problems,
+			);
+			if (curriculum) curriculums.push(curriculum);
+		}
+		return curriculums;
 	}
 }

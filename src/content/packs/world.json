@@ -1,0 +1,124 @@
+{
+  "name": "World",
+  "version": "1.0.0",
+  "description": "The places the player can visit: the school and the country around it",
+  "locations": [
+    {
+      "id": "startingVillage",
+      "displayName": "Starting Village",
+      "description": "A quiet village at the edge of an ancient forest. Cobblestone paths wind between thatched-roof cottages.",
+      "connectedLocationsIds": [
+        "forest",
+        "market",
+        "grounds"
+      ]
+    },
+    {
+      "id": "forest",
+      "displayName": "Ancient Forest",
+      "description": "Towering oaks block out much of the sky. The air smells of moss and old magic.",
+      "connectedLocationsIds": [
+        "startingVillage",
+        "grounds"
+      ]
+    },
+    {
+      "id": "market",
+      "displayName": "Market Square",
+      "description": "A bustling square lined with merchant stalls selling herbs, potions, and curious artifacts.",
+      "connectedLocationsIds": [
+        "startingVillage"
+      ]
+    },
+    {
+      "id": "great_hall",
+      "displayName": "Great Hall",
+      "description": "A vast hall with long tables under a ceiling that mirrors the sky. The smell of breakfast drifts between the benches.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "hallway",
+      "displayName": "Main Corridor",
+      "description": "A wide stone corridor lined with portraits that watch you pass. Doors and stairways lead off in every direction.",
+      "connectedLocationsIds": [
+        "great_hall",
+        "classroom",
+        "dungeons",
+        "library",
+        "common_room",
+        "headmaster_office",
+        "grounds"
+      ]
+    },
+    {
+      "id": "classroom",
+      "displayName": "Classroom",
+      "description": "A bright classroom with rows of desks, a chalkboard and shelves of curious instruments.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "dungeons",
+      "displayName": "Dungeon Classroom",
+      "description": "A cold, candlelit room below the castle, its shelves crowded with jars and cauldrons.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "library",
+      "displayName": "Library",
+      "description": "Tall shelves of old books and narrow reading tables, hushed except for the turning of pages.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "common_room",
+      "displayName": "Common Room",
+      "description": "A warm room with deep armchairs and a crackling fire, where students gather in the evenings.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "headmaster_office",
+      "displayName": "Headmaster's Office",
+      "description": "A round, quiet office filled with ticking instruments and portraits that pretend to doze.",
+      "connectedLocationsIds": [
+        "hallway"
+      ]
+    },
+    {
+      "id": "grounds",
+      "displayName": "School Grounds",
+      "description": "Wide lawns and gravel paths around the castle, with the gamekeeper's hut, the greenhouses and the village road close by.",
+      "connectedLocationsIds": [
+        "hallway",
+        "greenhouse",
+        "hagrid_hut",
+        "forest",
+        "startingVillage"
+      ]
+    },
+    {
+      "id": "greenhouse",
+      "displayName": "Greenhouse",
+      "description": "A long glass house, damp and green, full of plants that are best not touched without gloves.",
+      "connectedLocationsIds": [
+        "grounds"
+      ]
+    },
+    {
+      "id": "hagrid_hut",
+      "displayName": "Gamekeeper's Hut",
+      "description": "A small timber hut with smoke from its chimney and the sound of something large snoring inside.",
+      "connectedLocationsIds": [
+        "grounds"
+      ]
+    }
+  ]
+}
